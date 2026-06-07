@@ -450,8 +450,11 @@ export async function getResClassificationService(client: AresClient, icoInput: 
 import { fetchPlatceStatus } from "./adis/client.js";
 import {
   HlidacStatuMissingTokenError,
+  fetchSmlouvyByIco,
   fetchUboByIco,
   hasHlidacToken,
+  type RawSmlouva,
+  type RawSmlouvaParty,
   type RawUboRecord,
 } from "./hlidacstatu/client.js";
 
@@ -495,6 +498,138 @@ function shapeUboRecord(r: RawUboRecord) {
     adresa: r.adresa_text ?? null,
     slovniVyjadreni: r.slovni_vyjadreni ?? null,
   };
+}
+
+// ─── Smlouvy ze Registru smluv (přes Hlídač státu) ───────────────────────────
+function partyName(p: RawSmlouvaParty | null | undefined): string {
+  if (!p) return "(neznámý)";
+  return (p.nazev ?? p.jmeno ?? "").trim() || "(neznámý)";
+}
+
+function partyAsArray(p: RawSmlouva["prijemce"]): RawSmlouvaParty[] {
+  if (!p) return [];
+  return Array.isArray(p) ? p : [p];
+}
+
+function smlouvaPrice(s: RawSmlouva): number | null {
+  if (typeof s.calculatedPriceWithVATinCZK === "number" && s.calculatedPriceWithVATinCZK > 0) {
+    return s.calculatedPriceWithVATinCZK;
+  }
+  if (typeof s.hodnotaVcetneDph === "number" && s.hodnotaVcetneDph > 0) {
+    return s.hodnotaVcetneDph;
+  }
+  if (typeof s.hodnotaBezDph === "number" && s.hodnotaBezDph > 0) {
+    return s.hodnotaBezDph * 1.21;
+  }
+  return null;
+}
+
+export async function getSmlouvyService(icoInput: string) {
+  if (!hasHlidacToken()) {
+    return {
+      ico: icoInput,
+      available: false,
+      reason: "HLIDAC_API_TOKEN není nastaven.",
+      _attribution: HLIDAC_ATTRIBUTION,
+    };
+  }
+  const { valid, normalized, reason } = validateIcoFn(icoInput);
+  if (!valid || !normalized) throw new InvalidInputError(`Invalid IČO: ${icoInput}`, { reason });
+  try {
+    const resp = await fetchSmlouvyByIco(normalized);
+
+    // Sample-level aggregations on the top page (sorted by price desc).
+    // Pro úplný součet by bylo třeba probrat všechny strany, ale top-25
+    // typicky obsahuje 90 %+ hodnoty (Pareto). Pro accuracy v UI je
+    // zřetelně vyznačeno "v top 25".
+    const top = resp.results;
+    let topSum = 0;
+    let topPriced = 0;
+    const counterpartyTotals = new Map<string, { name: string; ico?: string; sum: number; count: number }>();
+
+    for (const s of top) {
+      const price = smlouvaPrice(s);
+      if (price !== null) {
+        topSum += price;
+        topPriced += 1;
+      }
+      // Jednou ze stran je tato firma (filter byl ico:NORMALIZED), protistrana = ta druhá.
+      const parties: { p: RawSmlouvaParty; role: "platce" | "prijemce" }[] = [];
+      if (s.platce) parties.push({ p: s.platce, role: "platce" });
+      for (const p of partyAsArray(s.prijemce)) parties.push({ p, role: "prijemce" });
+      for (const { p } of parties) {
+        if (!p.ico || p.ico === normalized) continue;
+        const key = p.ico;
+        const existing = counterpartyTotals.get(key) ?? {
+          name: partyName(p),
+          ico: p.ico,
+          sum: 0,
+          count: 0,
+        };
+        existing.sum += price ?? 0;
+        existing.count += 1;
+        counterpartyTotals.set(key, existing);
+      }
+    }
+
+    const topCounterparties = [...counterpartyTotals.values()]
+      .sort((a, b) => b.sum - a.sum || b.count - a.count)
+      .slice(0, 5);
+
+    const recentContracts = top
+      .slice(0, 10)
+      .map((s) => {
+        const price = smlouvaPrice(s);
+        const platce = s.platce ? partyName(s.platce) : null;
+        const platceIco = s.platce?.ico ?? null;
+        const prijemci = partyAsArray(s.prijemce).map((p) => ({
+          name: partyName(p),
+          ico: p.ico ?? null,
+        }));
+        return {
+          id: s.identifikator?.idSmlouvy ?? s.id,
+          predmet: s.predmet ?? null,
+          datumUzavreni: s.datumUzavreni ? s.datumUzavreni.slice(0, 10) : null,
+          casZverejneni: s.casZverejneni ? s.casZverejneni.slice(0, 10) : null,
+          price,
+          priceFallbackReason: price === null ? (s.cenaNeuvedenaDuvod ?? "neuvedena") : null,
+          platce,
+          platceIco,
+          prijemci,
+          odkaz:
+            s.identifikator?.idSmlouvy && s.identifikator?.idVerze
+              ? `https://www.hlidacstatu.cz/Detail/${s.identifikator.idSmlouvy}`
+              : (s.odkaz ?? null),
+          vazbaNaPolitiky: Boolean(s.sVazbouNaPolitikyAktualni),
+        };
+      });
+
+    return {
+      ico: normalized,
+      available: true,
+      totalContracts: resp.total,
+      shown: top.length,
+      topSumCZK: topSum,
+      topPricedCount: topPriced,
+      topCounterparties,
+      recentContracts,
+      _attribution: HLIDAC_ATTRIBUTION,
+      _legalNote:
+        "Smlouvy zveřejněné v Registru smluv dle z. č. 340/2015 Sb. (povinné pro stát, kraje, obce a další veřejné instituce, hodnota nad 50 tis. Kč bez DPH).",
+      _commercialNote:
+        "Veřejné zakázky (výběrová řízení) jsou v Hlídači státu na komerční licenci. Smlouvy = uzavřené konečné dohody.",
+    };
+  } catch (err) {
+    if (err instanceof HlidacStatuMissingTokenError) {
+      return {
+        ico: normalized,
+        available: false,
+        reason: err.message,
+        _attribution: HLIDAC_ATTRIBUTION,
+      };
+    }
+    throw err;
+  }
 }
 
 export async function getUboService(icoInput: string) {

@@ -346,6 +346,38 @@ function addressSection() {
  * Inline loader pro DPH compliance data v DD kartě. Fetchne ADIS endpoint
  * po vyrendrování DD reportu a vystaví reactive `adis` property pro Alpine.
  */
+
+function formatCZK(n) {
+  if (n === null || n === undefined || Number.isNaN(n)) return "—";
+  if (n >= 1e9) return (n / 1e9).toFixed(2) + " mld Kč";
+  if (n >= 1e6) return (n / 1e6).toFixed(2) + " mil Kč";
+  if (n >= 1e3) return (n / 1e3).toFixed(0) + " tis Kč";
+  return Math.round(n) + " Kč";
+}
+window.formatCZK = formatCZK;
+
+function ddSmlouvyLoader() {
+  return {
+    smlouvy: null,
+    loading: false,
+    smlouvyError: "",
+    formatCZK,
+    async load(ico) {
+      if (!ico) return;
+      this.loading = true;
+      this.smlouvy = null;
+      this.smlouvyError = "";
+      try {
+        this.smlouvy = await jsonFetch(`/api/smlouvy/${encodeURIComponent(ico)}`);
+      } catch (e) {
+        this.smlouvyError = "Smlouvy nelze načíst: " + e.message;
+      } finally {
+        this.loading = false;
+      }
+    },
+  };
+}
+
 function ddUboLoader() {
   return {
     ubo: null,
@@ -474,4 +506,5 @@ window.historyBar = historyBar;
 window.themeToggle = themeToggle;
 window.ddAdisLoader = ddAdisLoader;
 window.ddUboLoader = ddUboLoader;
+window.ddSmlouvyLoader = ddSmlouvyLoader;
 window.featuresStatus = featuresStatus;

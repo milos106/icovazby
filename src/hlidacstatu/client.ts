@@ -112,6 +112,61 @@ export async function fetchUboByIco(ico: string): Promise<RawUboResponse> {
   );
 }
 
+// ─── Smlouvy (Registr smluv) ──────────────────────────────────────────────────
+// Veřejné zakázky (verejnezakazky/hledat) vyžadují komerční licenci. Smlouvy
+// (z. č. 340/2015 Sb.) jsou na free tieru dostupné a obsahují finální plnění.
+
+export interface RawSmlouvaParty {
+  jmeno?: string | null;
+  nazev?: string | null;
+  ico?: string | null;
+  adresa?: string | null;
+  datovaSchranka?: string | null;
+}
+
+export interface RawSmlouva {
+  id?: string;
+  identifikator?: { idSmlouvy?: string; idVerze?: string };
+  calculatedPriceWithVATinCZK?: number;
+  hodnotaVcetneDph?: number;
+  hodnotaBezDph?: number;
+  datumUzavreni?: string | null;
+  casZverejneni?: string | null;
+  predmet?: string | null;
+  cisloSmlouvy?: string | null;
+  platce?: RawSmlouvaParty | null;
+  prijemce?: RawSmlouvaParty | RawSmlouvaParty[] | null;
+  odkaz?: string | null;
+  cenaNeuvedenaDuvod?: string | null;
+  sVazbouNaPolitikyAktualni?: boolean;
+  [key: string]: unknown;
+}
+
+export interface RawSmlouvyResponse {
+  total: number;
+  page: number;
+  results: RawSmlouva[];
+}
+
+/**
+ * Vyhledá smlouvy podle IČO (kterékoli ze stran — platce i příjemce).
+ * Řazení podle ceny desc — vrátí nejdražší smlouvy jako první (top hits).
+ */
+export async function fetchSmlouvyByIco(
+  ico: string,
+  options: { strana?: number; razeni?: string } = {},
+): Promise<RawSmlouvyResponse> {
+  const key = ico.replace(/\D/g, "");
+  if (!/^\d{8}$/.test(key)) {
+    throw new Error(`Invalid IČO '${ico}'.`);
+  }
+  const strana = options.strana ?? 1;
+  const razeni = options.razeni ?? "cena_desc";
+  return getJson<RawSmlouvyResponse>(
+    `/api/v2/smlouvy/hledat?dotaz=ico%3A${key}&strana=${strana}&razeni=${encodeURIComponent(razeni)}`,
+  );
+}
+
 /** Vrátí Hlídač státu token status bez sahnutí na API. */
 export function hasHlidacToken(): boolean {
   return Boolean(process.env.HLIDAC_API_TOKEN?.trim());

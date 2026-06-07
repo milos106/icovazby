@@ -441,6 +441,101 @@
                 </dl>
               </div>
 
+              <div class="border-2 border-sky-300 dark:border-sky-700 rounded-lg p-4 md:col-span-2" x-data="ddSmlouvyLoader()" x-init="load(report.ico)">
+                <h4 class="font-bold mb-2 flex items-center gap-2">
+                  💰 Smlouvy se státem
+                  <span class="text-xs font-normal text-slate-500 dark:text-slate-400">— Registr smluv (z. č. 340/2015 Sb.)</span>
+                </h4>
+                <template x-if="loading">
+                  <p class="text-xs text-slate-500 dark:text-slate-400">Načítám smlouvy z Hlídače státu…</p>
+                </template>
+                <template x-if="smlouvyError">
+                  <p class="text-xs text-amber-700 dark:text-amber-400" x-text="smlouvyError"></p>
+                </template>
+                <template x-if="smlouvy && !smlouvy.available">
+                  <p class="text-xs text-slate-500 dark:text-slate-400" x-text="smlouvy.reason"></p>
+                </template>
+                <template x-if="smlouvy && smlouvy.available && smlouvy.totalContracts === 0">
+                  <p class="text-sm text-slate-500 dark:text-slate-400">Žádné smlouvy s veřejnými institucemi nebyly nalezeny.</p>
+                </template>
+                <template x-if="smlouvy && smlouvy.available && smlouvy.totalContracts > 0">
+                  <div>
+                    <div class="grid grid-cols-3 gap-2 mb-3 text-center">
+                      <div class="border dark:border-slate-700 rounded p-2">
+                        <div class="text-2xl font-bold" x-text="smlouvy.totalContracts"></div>
+                        <div class="text-xs text-slate-500 dark:text-slate-400">smluv celkem</div>
+                      </div>
+                      <div class="border dark:border-slate-700 rounded p-2">
+                        <div class="text-2xl font-bold" x-text="formatCZK(smlouvy.topSumCZK)"></div>
+                        <div class="text-xs text-slate-500 dark:text-slate-400">součet top <span x-text="smlouvy.shown"></span></div>
+                      </div>
+                      <div class="border dark:border-slate-700 rounded p-2">
+                        <div class="text-2xl font-bold" x-text="smlouvy.topCounterparties.length"></div>
+                        <div class="text-xs text-slate-500 dark:text-slate-400">protistran v top</div>
+                      </div>
+                    </div>
+
+                    <template x-if="smlouvy.topCounterparties.length > 0">
+                      <div class="mb-3">
+                        <p class="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase mb-2">🤝 Top protistrany (kdo platí)</p>
+                        <ul class="space-y-1">
+                          <template x-for="c in smlouvy.topCounterparties" :key="c.ico">
+                            <li class="flex items-center justify-between gap-2 text-sm border-l-4 border-sky-400 pl-3 py-1">
+                              <button @click="$dispatch('open-dd', { ico: c.ico })" class="text-left flex-1 hover:underline">
+                                <div class="font-semibold" x-text="c.name"></div>
+                                <div class="text-xs text-slate-500 dark:text-slate-400 font-mono" x-text="'IČO ' + c.ico"></div>
+                              </button>
+                              <div class="text-right">
+                                <div class="font-bold" x-text="formatCZK(c.sum)"></div>
+                                <div class="text-xs text-slate-500 dark:text-slate-400" x-text="c.count + ' smluv'"></div>
+                              </div>
+                            </li>
+                          </template>
+                        </ul>
+                      </div>
+                    </template>
+
+                    <details class="text-xs">
+                      <summary class="cursor-pointer text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200">
+                        📜 Nejdražší smlouvy (top <span x-text="Math.min(smlouvy.recentContracts.length, 10)"></span>)
+                      </summary>
+                      <ul class="mt-2 space-y-2">
+                        <template x-for="s in smlouvy.recentContracts" :key="s.id">
+                          <li class="border dark:border-slate-700 rounded p-2">
+                            <div class="flex justify-between items-baseline gap-2 flex-wrap">
+                              <span class="font-semibold text-sm" x-text="s.predmet || '(bez předmětu)'"></span>
+                              <span class="font-bold" x-text="s.price !== null ? formatCZK(s.price) : (s.priceFallbackReason || '—')"></span>
+                            </div>
+                            <div class="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                              <span x-text="'Platce: ' + (s.platce || '—')"></span>
+                              <template x-if="s.datumUzavreni">
+                                <span> · uzavřeno <span x-text="s.datumUzavreni"></span></span>
+                              </template>
+                              <template x-if="s.vazbaNaPolitiky">
+                                <span class="ml-2 bg-amber-100 dark:bg-amber-900/40 text-amber-800 dark:text-amber-300 px-1.5 py-0.5 rounded font-semibold">⚠ vazba na politika</span>
+                              </template>
+                            </div>
+                            <template x-if="s.odkaz">
+                              <a class="text-xs underline" :href="s.odkaz" target="_blank" rel="noopener">otevřít v Hlídači státu →</a>
+                            </template>
+                          </li>
+                        </template>
+                      </ul>
+                    </details>
+
+                    <details class="mt-3 text-xs text-slate-500 dark:text-slate-400 cursor-pointer">
+                      <summary class="hover:text-slate-700 dark:hover:text-slate-200">⚖️ K Registru smluv</summary>
+                      <p class="mt-1" x-text="smlouvy._legalNote"></p>
+                      <p class="mt-1 italic" x-text="smlouvy._commercialNote"></p>
+                    </details>
+                  </div>
+                </template>
+                <p class="mt-3 pt-2 border-t dark:border-slate-700 text-xs text-slate-500 dark:text-slate-400">
+                  Data: <a class="underline font-semibold" href="https://www.hlidacstatu.cz" target="_blank" rel="noopener">Hlídač státu, z.ú.</a>
+                  · licence <a class="underline" href="https://creativecommons.org/licenses/by/3.0/cz/" target="_blank" rel="noopener">CC BY 3.0 CZ</a>
+                </p>
+              </div>
+
               <div class="border-2 border-indigo-300 dark:border-indigo-700 rounded-lg p-4 md:col-span-2" x-data="ddUboLoader()" x-init="load(report.ico)">
                 <h4 class="font-bold mb-2 flex items-center gap-2">
                   👥 Skuteční majitelé (UBO)
