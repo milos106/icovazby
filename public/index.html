@@ -27,9 +27,45 @@
     <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
     <script type="module">
       import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs";
+      // Defaultní Mermaid theme měl moc světlý font na bílém pozadí.
+      // Vlastní themeVariables zajistí tmavý kontrastní text v obdélnících
+      // (firmy) a elipsách (osoby) + výraznější obrys nodů a edge labelů.
       function initMermaid() {
-        var theme = document.documentElement.classList.contains("dark") ? "dark" : "default";
-        mermaid.initialize({ startOnLoad: false, theme: theme, securityLevel: "loose" });
+        var isDark = document.documentElement.classList.contains("dark");
+        var vars = isDark
+          ? {
+              primaryColor: "#1e293b",         // slate-800 (fill nodů)
+              primaryTextColor: "#f1f5f9",     // slate-100 (text v nodech)
+              primaryBorderColor: "#34d399",   // emerald-400 (obrys)
+              lineColor: "#94a3b8",            // slate-400 (hrany)
+              secondaryColor: "#0f172a",       // slate-900
+              tertiaryColor: "#334155",        // slate-700
+              edgeLabelBackground: "#0f172a",
+              textColor: "#f1f5f9",
+              nodeTextColor: "#f1f5f9",
+              labelTextColor: "#f1f5f9",
+              fontSize: "14px",
+            }
+          : {
+              primaryColor: "#f1f5f9",         // slate-100 (fill)
+              primaryTextColor: "#0f172a",     // slate-900 (text — vysoký kontrast)
+              primaryBorderColor: "#047857",   // emerald-700 (obrys)
+              lineColor: "#475569",            // slate-600 (hrany)
+              secondaryColor: "#fef3c7",       // amber-100 (alternativní node)
+              tertiaryColor: "#dbeafe",        // sky-100
+              edgeLabelBackground: "#ffffff",
+              textColor: "#0f172a",
+              nodeTextColor: "#0f172a",
+              labelTextColor: "#0f172a",
+              fontSize: "14px",
+            };
+        mermaid.initialize({
+          startOnLoad: false,
+          theme: "base", // base umožní plnou kontrolu přes themeVariables
+          themeVariables: vars,
+          securityLevel: "loose",
+          flowchart: { htmlLabels: true, useMaxWidth: true },
+        });
       }
       initMermaid();
       window.__mermaid = mermaid;
@@ -45,6 +81,32 @@
       .dark .risk-green { background: linear-gradient(135deg, #022c22, #064e3b); border-color: #34d399; color: #d1fae5; }
       [x-cloak] { display: none !important; }
       .mermaid svg { max-width: 100%; height: auto; }
+      /* Mermaid kontrast: graf má někdy bledé výchozí styly i s themeVariables.
+         Tady vynucujeme tmavý text v nodech a tlustší font v label spans. */
+      .mermaid .nodeLabel, .mermaid .edgeLabel, .mermaid .label {
+        font-weight: 500;
+      }
+      :not(.dark) .mermaid .nodeLabel,
+      :not(.dark) .mermaid .nodeLabel * {
+        color: #0f172a !important;
+        fill: #0f172a !important;
+      }
+      .dark .mermaid .nodeLabel,
+      .dark .mermaid .nodeLabel * {
+        color: #f1f5f9 !important;
+        fill: #f1f5f9 !important;
+      }
+      :not(.dark) .mermaid .edgeLabel {
+        background-color: rgba(255, 255, 255, 0.9) !important;
+        color: #0f172a !important;
+      }
+      .dark .mermaid .edgeLabel {
+        background-color: rgba(15, 23, 42, 0.9) !important;
+        color: #f1f5f9 !important;
+      }
+      .mermaid .node rect, .mermaid .node circle, .mermaid .node ellipse, .mermaid .node polygon {
+        stroke-width: 2px;
+      }
       /* DD karty: rozbalovací stav řízený přes :data-collapsed atribut.
          Když je karta sbalená, schováme všechno UVNITŘ kromě hlavičky
          (.dd-card-header). Padding root karty zachováme aby header
