@@ -15,6 +15,7 @@ import { z } from "zod";
 import { AresClient } from "./ares/client.js";
 import { AresError, toToolErrorPayload } from "./errors.js";
 import { HlidacStatuMissingTokenError } from "./hlidacstatu/client.js";
+import { indexStats } from "./persons_index/store.js";
 import {
   crossCompanyPersonsService,
   exportForInvoicingService,
@@ -105,6 +106,15 @@ app.get("/healthz", async () => ({
   ok: true,
   version: "0.1.0",
   uptimeSeconds: Math.floor(process.uptime()),
+  integrations: {
+    ares: true,
+    adis: true,
+    cnb: true,
+    jerrs: true,
+    euSanctions: true,
+    vr: true,
+    hlidacstatu: Boolean(process.env.HLIDAC_API_TOKEN?.trim()),
+  },
 }));
 
 // ─── Feature flags ────────────────────────────────────────────────────────────
@@ -206,6 +216,9 @@ app.get("/api/jerrs/:ico", async (req: FastifyRequest, reply) => {
     sendError(reply, e);
   }
 });
+
+// ─── Lokální index osoba→firma — stats ────────────────────────────────────────
+app.get("/api/persons/index-stats", async () => indexStats());
 
 // ─── Person vazby (Hlídač státu osoby + ARES IČO resolve) ─────────────────────
 const personVazbySchema = z.object({
@@ -399,10 +412,37 @@ async function warmup() {
   app.log.info(`warmup done in ${Date.now() - t0}ms`);
 }
 
+// ─── Startup banner ───────────────────────────────────────────────────────────
+// Logujeme stav každého konektoru hned po startu. Pomáhá uživateli rychle
+// vidět co je aktivní bez nutnosti grepovat .env nebo hledat v logech.
+function logStartupBanner(): void {
+  const hsToken = process.env.HLIDAC_API_TOKEN?.trim();
+  const lines = [
+    "════════════════════════════════════════",
+    `  ares-web ready on http://${HOST}:${PORT}`,
+    "  Konektory:",
+    "   ✓ ARES (vždy aktivní)",
+    "   ✓ ADIS DPH (veřejná data, vždy aktivní)",
+    "   ✓ ČNB denní kurzy + JERRS (veřejná data)",
+    "   ✓ EU sankční list (veřejná data)",
+    "   ✓ Veřejný rejstřík OR (verejnerejstriky.msp.gov.cz)",
+    hsToken
+      ? `   ✓ Hlídač státu (HLIDAC_API_TOKEN nastaven, ${hsToken.length} znaků)`
+      : "   ✗ Hlídač státu (HLIDAC_API_TOKEN chybí — UBO, dotace, smlouvy, ISIR detail, vazby osob vypnuté)",
+    "════════════════════════════════════════",
+  ];
+  for (const line of lines) app.log.info(line);
+  if (!hsToken) {
+    app.log.warn(
+      "Hlídač státu integrace neaktivní. Token získáš na https://www.hlidacstatu.cz/api a vložíš jako HLIDAC_API_TOKEN do .env, pak restartuj.",
+    );
+  }
+}
+
 // ─── Boot ─────────────────────────────────────────────────────────────────────
 try {
   await app.listen({ port: PORT, host: HOST });
-  app.log.info(`ares-web ready on http://${HOST}:${PORT}`);
+  logStartupBanner();
   void warmup();
 } catch (err) {
   app.log.error(err as Error);

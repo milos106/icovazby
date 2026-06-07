@@ -306,6 +306,27 @@ export async function fullDueDiligenceService(client: AresClient, icoInput: stri
   const riskLevel = tally(findings);
   const obchodniJmeno = subject.obchodniJmeno ?? currentObchodniJmeno(pickPrimaryZaznam(vr));
 
+  // Hook do lokálního indexu osoba→firmy: vložíme všechny aktivní členy
+  // statutárního orgánu ze ARES VR. Postupně se index plní s každým DD.
+  for (const m of members) {
+    const fo = m.fyzickaOsoba;
+    if (!fo?.datumNarozeni || !fo.jmeno || !fo.prijmeni) continue;
+    upsertMembership({
+      jmeno: fo.jmeno,
+      prijmeni: fo.prijmeni,
+      titulPred: fo.titulPredJmenem ?? null,
+      displayName: memberDisplayName(m),
+      datumNarozeni: fo.datumNarozeni,
+      ico: normalized,
+      obchodniJmeno: obchodniJmeno ?? null,
+      funkce: m.funkce ?? null,
+      organ: m.organName ?? null,
+      datumZapisu: m.datumZapisu ?? null,
+      datumVymazu: null,
+      source: "ARES_VR",
+    });
+  }
+
   return {
     ico: normalized,
     obchodniJmeno,
@@ -520,6 +541,9 @@ export async function tryConvert(czkAmount: number, code: string): Promise<numbe
 // ─── Person vazby (HS osoby + ARES IČO resolve) ───────────────────────────────
 export { getPersonVazbyService } from "./persons/service.js";
 
+// ─── Local persistent index osoba → firmy (incremental) ──────────────────────
+import { upsertMembership } from "./persons_index/store.js";
+
 // ─── Veřejný rejstřík (OR) přes verejnerejstriky.msp.gov.cz ───────────────────
 import { VR_ATTRIBUTION, fetchVrDetailByIco } from "./justice_vr/client.js";
 
@@ -617,6 +641,30 @@ export async function getVrDetailService(ico: string) {
   const akcionari = (detail.akcionar?.osoby ?? [])
     .map(normalizeMember)
     .filter((m): m is VrMember => m !== null);
+
+  // Hook do lokálního indexu: OR má kompletnější data včetně dat zápisu
+  // jednotlivých funkcí + dozorčí rady + akcionářů. Vkládáme všechny FO.
+  const obchodniJmenoVr = detail.nazev?.value ?? null;
+  const insertMember = (m: VrMember, source: "OR_VR" | "OR_DR" | "OR_AKC"): void => {
+    if (m.isLegalEntity || !m.datumNarozeni || !m.jmeno || !m.prijmeni) return;
+    upsertMembership({
+      jmeno: m.jmeno,
+      prijmeni: m.prijmeni,
+      titulPred: m.titulPred,
+      displayName: m.fullName,
+      datumNarozeni: m.datumNarozeni,
+      ico: v.normalized,
+      obchodniJmeno: obchodniJmenoVr,
+      funkce: m.funkce,
+      organ: source === "OR_DR" ? "Dozorčí rada" : source === "OR_AKC" ? "Akcionář/společník" : null,
+      datumZapisu: m.vznikClenstvi ?? m.vznikFunkce ?? null,
+      datumVymazu: null,
+      source,
+    });
+  };
+  for (const m of stat) insertMember(m, "OR_VR");
+  for (const m of dozorci) insertMember(m, "OR_DR");
+  for (const m of akcionari) insertMember(m, "OR_AKC");
 
   const akcie = (detail.akcie ?? []).map((a) => ({
     typ: a.value?.typ ?? null,

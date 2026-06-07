@@ -9,3 +9,6 @@ coverage/
 .vscode/
 .idea/
 *.tsbuildinfo
+
+# Lokální index osoba→firmy se plní za běhu; per-user, nepatří do gitu.
+/data/

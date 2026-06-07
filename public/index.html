@@ -1620,21 +1620,37 @@
               </p>
             </div>
 
-            <!-- Empty state: HS našla profil osoby, ale nemá žádné události
-                 typu pracovní/politická vazba. Hlídač státu pokrývá primárně
-                 politiky a jejich okruh — pro běžné jednatele/statutáry malých
-                 s.r.o. tu obvykle není nic. To není bug, je to scope HS. -->
+            <!-- Source summary: kde se data vzala (lokální index + HS) -->
+            <template x-if="result.sources">
+              <div class="flex gap-2 text-xs flex-wrap">
+                <span class="px-2 py-0.5 rounded bg-emerald-100 dark:bg-emerald-900/40 text-emerald-800 dark:text-emerald-300">
+                  🗃️ Lokální index: <span class="font-semibold" x-text="result.sources.localIndexHits"></span>
+                </span>
+                <template x-if="result.sources.hlidacStatuAvailable">
+                  <span class="px-2 py-0.5 rounded bg-sky-100 dark:bg-sky-900/40 text-sky-800 dark:text-sky-300">
+                    🔍 Hlídač státu: <span class="font-semibold" x-text="result.sources.hlidacStatuHits"></span>
+                  </span>
+                </template>
+                <template x-if="!result.sources.hlidacStatuAvailable">
+                  <span class="px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300">
+                    🔍 Hlídač státu: profil nenalezen
+                  </span>
+                </template>
+              </div>
+            </template>
+
+            <!-- Empty state: ani lokální index, ani HS žádné vazby. -->
             <template x-if="result.vazby.length === 0">
               <div class="border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-900/20 rounded p-3 text-sm">
-                <p class="font-semibold text-amber-900 dark:text-amber-200">Hlídač státu o této osobě nezná žádné firemní vazby.</p>
+                <p class="font-semibold text-amber-900 dark:text-amber-200">Žádné vazby nenalezeny — zatím.</p>
                 <p class="text-amber-800 dark:text-amber-300 mt-1 text-xs">
-                  Profil v HS existuje, ale databáze událostí (členství v orgánech, politické posty, soukromá pracovní)
-                  je prázdná. HS sleduje hlavně politiky a jejich blízký okruh — běžní jednatelé malých firem v něm
-                  většinou nejsou. Tahle absence není nutně signál, jen mezera ve zdroji dat.
+                  Hlídač státu sleduje hlavně politiky a jejich blízký okruh; pro běžné jednatele tu obvykle nic není.
+                  Lokální index je vlastní databáze, která se plní automaticky pokaždé když projdeš hloubkovou prověrku
+                  jakékoli firmy — postupně zachytí všechny statutární orgány, dozorčí rady a akcionáře.
                 </p>
                 <p class="text-amber-700 dark:text-amber-400 mt-2 text-xs">
-                  Pro plnou historii statutárních pozic napříč ČR by byl potřeba přístup do Veřejného rejstříku
-                  (verejnerejstriky.msp.gov.cz) přes osobu, který zatím není veřejné API.
+                  <strong>Co dál:</strong> projdi hloubkovou prověrku firem, ve kterých osoba podle tvého povědomí
+                  seděla. Až ji najde alespoň v jedné, lokální index ji propojí napříč i pro budoucí dotazy.
                 </p>
               </div>
             </template>
@@ -1669,6 +1685,7 @@
                     <th class="text-left py-1 pr-2">Od → Do</th>
                     <th class="text-left py-1 pr-2">IČO</th>
                     <th class="text-left py-1 pr-2">Typ</th>
+                    <th class="text-left py-1 pr-2">Zdroj</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -1713,6 +1730,14 @@
                         </template>
                       </td>
                       <td class="py-1 pr-2 text-xs text-slate-500 dark:text-slate-400" x-text="v.typ"></td>
+                      <td class="py-1 pr-2 text-xs">
+                        <template x-if="v.source === 'LOCAL_INDEX'">
+                          <span class="bg-emerald-100 dark:bg-emerald-900/40 text-emerald-800 dark:text-emerald-300 px-1.5 py-0.5 rounded font-mono">🗃️ Lokální</span>
+                        </template>
+                        <template x-if="v.source === 'HLIDAC_STATU'">
+                          <span class="bg-sky-100 dark:bg-sky-900/40 text-sky-800 dark:text-sky-300 px-1.5 py-0.5 rounded font-mono">🔍 HS</span>
+                        </template>
+                      </td>
                     </tr>
                   </template>
                 </tbody>
