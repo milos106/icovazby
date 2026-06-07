@@ -473,13 +473,13 @@
             >
               <div class="flex gap-1 overflow-x-auto whitespace-nowrap items-center">
                 <a href="#dd-profil" class="px-2 py-1 rounded hover:bg-slate-100 dark:hover:bg-slate-700">👤 Profil</a>
-                <a href="#dd-adis" class="px-2 py-1 rounded hover:bg-slate-100 dark:hover:bg-slate-700">🏦 DPH</a>
-                <a href="#dd-jerrs" class="px-2 py-1 rounded hover:bg-slate-100 dark:hover:bg-slate-700">🏦 ČNB</a>
-                <a href="#dd-sankce" class="px-2 py-1 rounded hover:bg-slate-100 dark:hover:bg-slate-700">🇪🇺 Sankce</a>
                 <a href="#dd-ubo" class="px-2 py-1 rounded hover:bg-slate-100 dark:hover:bg-slate-700">👥 UBO</a>
                 <a href="#dd-dotace" class="px-2 py-1 rounded hover:bg-slate-100 dark:hover:bg-slate-700">💸 Dotace</a>
                 <a href="#dd-smlouvy" class="px-2 py-1 rounded hover:bg-slate-100 dark:hover:bg-slate-700">💰 Smlouvy</a>
+                <a href="#dd-adis" class="px-2 py-1 rounded hover:bg-slate-100 dark:hover:bg-slate-700">🏦 DPH</a>
                 <a href="#dd-isir" class="px-2 py-1 rounded hover:bg-slate-100 dark:hover:bg-slate-700">⚖️ Insolvence</a>
+                <a href="#dd-jerrs" class="px-2 py-1 rounded hover:bg-slate-100 dark:hover:bg-slate-700">🏦 ČNB</a>
+                <a href="#dd-sankce" class="px-2 py-1 rounded hover:bg-slate-100 dark:hover:bg-slate-700">🇪🇺 Sankce</a>
                 <a href="#dd-zivno" class="px-2 py-1 rounded hover:bg-slate-100 dark:hover:bg-slate-700">🏷️ Živno</a>
                 <span class="mx-2 text-slate-300 dark:text-slate-600">|</span>
                 <button
@@ -600,6 +600,104 @@
                 <template x-if="report.statutary.clenove.length === 0">
                   <p class="text-sm text-slate-500 dark:text-slate-400 italic">Žádní aktivní členové ve VR.</p>
                 </template>
+              </div>
+
+              <div id="dd-ubo" :data-collapsed="!$store.ddCollapse.isExpanded('dd-ubo')" class="dd-card border-2 border-indigo-300 dark:border-indigo-700 rounded-lg p-4 md:col-span-2 scroll-mt-32" x-data="ddUboLoader()" x-init="load(report.ico)">
+                <div class="dd-card-header flex items-baseline justify-between gap-2 mb-2 flex-wrap cursor-pointer select-none" @click="$store.ddCollapse.toggle('dd-ubo')">
+                  <h4 class="font-bold flex items-center gap-2">
+                    <span class="text-slate-400 w-3 inline-block" x-text="$store.ddCollapse.isExpanded('dd-ubo') ? '▼' : '▶'"></span>
+                    <span>👥 Skuteční majitelé (UBO)</span>
+                    <span class="text-xs font-normal text-slate-500 dark:text-slate-400">— evidence dle z. č. 37/2021 Sb.</span>
+                  </h4>
+                  <div class="relative" x-data="{ open: false }" @click.outside="open = false">
+                    <button type="button" @click.stop="open = !open" class="text-slate-400 hover:text-slate-600 text-base" title="Zdroj">ⓘ</button>
+                    <div x-show="open" x-cloak x-transition class="absolute right-0 mt-1 w-72 bg-white dark:bg-slate-800 border dark:border-slate-700 rounded-lg shadow-lg p-3 text-xs z-30 text-left">
+                      <p class="font-semibold">Zdroj: Hlídač státu — UBO</p>
+                      <p class="text-slate-600 dark:text-slate-400 mt-1">Evidence skutečných majitelů dle z. č. 37/2021 Sb. (MS ČR), zrcadlená Hlídačem státu.</p>
+                      <p class="mt-2">Licence: <a class="underline" href="https://creativecommons.org/licenses/by/3.0/cz/" target="_blank" rel="noopener">CC BY 3.0 CZ</a></p>
+                      <p class="mt-1"><a class="underline" href="https://esm.justice.cz/" target="_blank" rel="noopener">🔗 esm.justice.cz</a></p>
+                    </div>
+                  </div>
+                </div>
+                <template x-if="loading">
+                  <p class="text-xs text-slate-500 dark:text-slate-400">Načítám z Hlídače státu…</p>
+                </template>
+                <template x-if="uboError">
+                  <p class="text-xs text-amber-700 dark:text-amber-400" x-text="uboError"></p>
+                </template>
+                <template x-if="ubo && !ubo.available">
+                  <p class="text-xs text-slate-500 dark:text-slate-400" x-text="ubo.reason"></p>
+                </template>
+                <template x-if="ubo && ubo.available">
+                  <div>
+                    <p class="text-sm mb-2">
+                      Aktivních: <span class="font-bold" x-text="ubo.activeCount ?? 0"></span>
+                      <template x-if="ubo.historicalCount > 0">
+                        <span class="text-slate-500 dark:text-slate-400">
+                          · historických: <span class="font-semibold" x-text="ubo.historicalCount"></span>
+                        </span>
+                      </template>
+                    </p>
+                    <template x-if="ubo.message">
+                      <p class="text-xs text-slate-500 dark:text-slate-400" x-text="ubo.message"></p>
+                    </template>
+                    <template x-if="ubo.active && ubo.active.length > 0">
+                      <ul class="space-y-2 mb-3">
+                        <template x-for="(p, idx) in ubo.active" :key="idx">
+                          <li class="border-l-4 border-indigo-400 pl-3 py-1">
+                            <div class="flex items-baseline justify-between gap-2 flex-wrap">
+                              <span class="font-semibold text-sm" x-text="p.jmeno || '(neznámé)'"></span>
+                              <template x-if="p.podilProspech">
+                                <span class="bg-indigo-100 dark:bg-indigo-900/40 text-indigo-800 dark:text-indigo-300 px-2 py-0.5 rounded text-xs font-mono">
+                                  podíl <span x-text="p.podilProspech"></span>
+                                </span>
+                              </template>
+                            </div>
+                            <div class="text-xs text-slate-500 dark:text-slate-400 space-x-2">
+                              <template x-if="p.postaveni">
+                                <span x-text="p.postaveni"></span>
+                              </template>
+                              <template x-if="p.datumNarozeni">
+                                <span>· nar. <span x-text="p.datumNarozeni"></span></span>
+                              </template>
+                              <template x-if="p.datumZapis">
+                                <span>· zapsán <span x-text="p.datumZapis"></span></span>
+                              </template>
+                            </div>
+                          </li>
+                        </template>
+                      </ul>
+                    </template>
+                    <template x-if="ubo.historical && ubo.historical.length > 0">
+                      <details class="text-xs">
+                        <summary class="cursor-pointer text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200">
+                          📜 Historické záznamy (<span x-text="ubo.historicalCount"></span>)
+                        </summary>
+                        <ul class="mt-2 space-y-1 max-h-48 overflow-y-auto">
+                          <template x-for="(p, idx) in ubo.historical" :key="'h'+idx">
+                            <li class="border-l-2 border-slate-300 dark:border-slate-600 pl-2 py-0.5 text-slate-600 dark:text-slate-400">
+                              <span class="font-semibold" x-text="p.jmeno || '(neznámé)'"></span>
+                              <template x-if="p.podilProspech">
+                                <span class="ml-1" x-text="'(' + p.podilProspech + ')'"></span>
+                              </template>
+                              <template x-if="p.datumVymaz">
+                                <span class="text-amber-700 dark:text-amber-400 ml-1">— smazán <span x-text="p.datumVymaz"></span></span>
+                              </template>
+                            </li>
+                          </template>
+                        </ul>
+                      </details>
+                    </template>
+                    <details class="mt-3 text-xs text-slate-500 dark:text-slate-400 cursor-pointer">
+                      <summary class="hover:text-slate-700 dark:hover:text-slate-200">⚖️ K evidenci UBO (z. č. 37/2021 Sb.)</summary>
+                      <p class="mt-1" x-text="ubo._legalNote"></p>
+                    </details>
+                  </div>
+                </template>
+                <p class="mt-3 pt-2 border-t dark:border-slate-700 text-xs text-slate-500 dark:text-slate-400">
+                  Data: <a class="underline font-semibold" href="https://www.hlidacstatu.cz" target="_blank" rel="noopener">Hlídač státu, z.ú.</a>
+                  · licence <a class="underline" href="https://creativecommons.org/licenses/by/3.0/cz/" target="_blank" rel="noopener">CC BY 3.0 CZ</a>
+                </p>
               </div>
 
               <div id="dd-dotace" :data-collapsed="!$store.ddCollapse.isExpanded('dd-dotace')" class="dd-card border-2 border-emerald-300 dark:border-emerald-700 rounded-lg p-4 md:col-span-2 scroll-mt-32" x-data="ddDotaceLoader()" x-init="load(report.ico)">
@@ -830,104 +928,6 @@
                       <summary class="hover:text-slate-700 dark:hover:text-slate-200">⚖️ K Registru smluv</summary>
                       <p class="mt-1" x-text="smlouvy._legalNote"></p>
                       <p class="mt-1 italic" x-text="smlouvy._commercialNote"></p>
-                    </details>
-                  </div>
-                </template>
-                <p class="mt-3 pt-2 border-t dark:border-slate-700 text-xs text-slate-500 dark:text-slate-400">
-                  Data: <a class="underline font-semibold" href="https://www.hlidacstatu.cz" target="_blank" rel="noopener">Hlídač státu, z.ú.</a>
-                  · licence <a class="underline" href="https://creativecommons.org/licenses/by/3.0/cz/" target="_blank" rel="noopener">CC BY 3.0 CZ</a>
-                </p>
-              </div>
-
-              <div id="dd-ubo" :data-collapsed="!$store.ddCollapse.isExpanded('dd-ubo')" class="dd-card border-2 border-indigo-300 dark:border-indigo-700 rounded-lg p-4 md:col-span-2 scroll-mt-32" x-data="ddUboLoader()" x-init="load(report.ico)">
-                <div class="dd-card-header flex items-baseline justify-between gap-2 mb-2 flex-wrap cursor-pointer select-none" @click="$store.ddCollapse.toggle('dd-ubo')">
-                  <h4 class="font-bold flex items-center gap-2">
-                    <span class="text-slate-400 w-3 inline-block" x-text="$store.ddCollapse.isExpanded('dd-ubo') ? '▼' : '▶'"></span>
-                    <span>👥 Skuteční majitelé (UBO)</span>
-                    <span class="text-xs font-normal text-slate-500 dark:text-slate-400">— evidence dle z. č. 37/2021 Sb.</span>
-                  </h4>
-                  <div class="relative" x-data="{ open: false }" @click.outside="open = false">
-                    <button type="button" @click.stop="open = !open" class="text-slate-400 hover:text-slate-600 text-base" title="Zdroj">ⓘ</button>
-                    <div x-show="open" x-cloak x-transition class="absolute right-0 mt-1 w-72 bg-white dark:bg-slate-800 border dark:border-slate-700 rounded-lg shadow-lg p-3 text-xs z-30 text-left">
-                      <p class="font-semibold">Zdroj: Hlídač státu — UBO</p>
-                      <p class="text-slate-600 dark:text-slate-400 mt-1">Evidence skutečných majitelů dle z. č. 37/2021 Sb. (MS ČR), zrcadlená Hlídačem státu.</p>
-                      <p class="mt-2">Licence: <a class="underline" href="https://creativecommons.org/licenses/by/3.0/cz/" target="_blank" rel="noopener">CC BY 3.0 CZ</a></p>
-                      <p class="mt-1"><a class="underline" href="https://esm.justice.cz/" target="_blank" rel="noopener">🔗 esm.justice.cz</a></p>
-                    </div>
-                  </div>
-                </div>
-                <template x-if="loading">
-                  <p class="text-xs text-slate-500 dark:text-slate-400">Načítám z Hlídače státu…</p>
-                </template>
-                <template x-if="uboError">
-                  <p class="text-xs text-amber-700 dark:text-amber-400" x-text="uboError"></p>
-                </template>
-                <template x-if="ubo && !ubo.available">
-                  <p class="text-xs text-slate-500 dark:text-slate-400" x-text="ubo.reason"></p>
-                </template>
-                <template x-if="ubo && ubo.available">
-                  <div>
-                    <p class="text-sm mb-2">
-                      Aktivních: <span class="font-bold" x-text="ubo.activeCount ?? 0"></span>
-                      <template x-if="ubo.historicalCount > 0">
-                        <span class="text-slate-500 dark:text-slate-400">
-                          · historických: <span class="font-semibold" x-text="ubo.historicalCount"></span>
-                        </span>
-                      </template>
-                    </p>
-                    <template x-if="ubo.message">
-                      <p class="text-xs text-slate-500 dark:text-slate-400" x-text="ubo.message"></p>
-                    </template>
-                    <template x-if="ubo.active && ubo.active.length > 0">
-                      <ul class="space-y-2 mb-3">
-                        <template x-for="(p, idx) in ubo.active" :key="idx">
-                          <li class="border-l-4 border-indigo-400 pl-3 py-1">
-                            <div class="flex items-baseline justify-between gap-2 flex-wrap">
-                              <span class="font-semibold text-sm" x-text="p.jmeno || '(neznámé)'"></span>
-                              <template x-if="p.podilProspech">
-                                <span class="bg-indigo-100 dark:bg-indigo-900/40 text-indigo-800 dark:text-indigo-300 px-2 py-0.5 rounded text-xs font-mono">
-                                  podíl <span x-text="p.podilProspech"></span>
-                                </span>
-                              </template>
-                            </div>
-                            <div class="text-xs text-slate-500 dark:text-slate-400 space-x-2">
-                              <template x-if="p.postaveni">
-                                <span x-text="p.postaveni"></span>
-                              </template>
-                              <template x-if="p.datumNarozeni">
-                                <span>· nar. <span x-text="p.datumNarozeni"></span></span>
-                              </template>
-                              <template x-if="p.datumZapis">
-                                <span>· zapsán <span x-text="p.datumZapis"></span></span>
-                              </template>
-                            </div>
-                          </li>
-                        </template>
-                      </ul>
-                    </template>
-                    <template x-if="ubo.historical && ubo.historical.length > 0">
-                      <details class="text-xs">
-                        <summary class="cursor-pointer text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200">
-                          📜 Historické záznamy (<span x-text="ubo.historicalCount"></span>)
-                        </summary>
-                        <ul class="mt-2 space-y-1 max-h-48 overflow-y-auto">
-                          <template x-for="(p, idx) in ubo.historical" :key="'h'+idx">
-                            <li class="border-l-2 border-slate-300 dark:border-slate-600 pl-2 py-0.5 text-slate-600 dark:text-slate-400">
-                              <span class="font-semibold" x-text="p.jmeno || '(neznámé)'"></span>
-                              <template x-if="p.podilProspech">
-                                <span class="ml-1" x-text="'(' + p.podilProspech + ')'"></span>
-                              </template>
-                              <template x-if="p.datumVymaz">
-                                <span class="text-amber-700 dark:text-amber-400 ml-1">— smazán <span x-text="p.datumVymaz"></span></span>
-                              </template>
-                            </li>
-                          </template>
-                        </ul>
-                      </details>
-                    </template>
-                    <details class="mt-3 text-xs text-slate-500 dark:text-slate-400 cursor-pointer">
-                      <summary class="hover:text-slate-700 dark:hover:text-slate-200">⚖️ K evidenci UBO (z. č. 37/2021 Sb.)</summary>
-                      <p class="mt-1" x-text="ubo._legalNote"></p>
                     </details>
                   </div>
                 </template>
@@ -1429,25 +1429,46 @@
               </p>
             </div>
 
-            <div class="flex gap-2 items-center flex-wrap">
-              <button
-                @click="toggleAllResolved()"
-                class="text-xs px-2 py-1 border dark:border-slate-600 rounded hover:bg-slate-100 dark:hover:bg-slate-700"
-                x-text="allResolvedSelected() ? 'Odznačit všechny' : 'Vybrat všechny s IČO'"
-              ></button>
-              <button
-                @click="seedGraph()"
-                :disabled="selectedIcos().length < 2"
-                class="text-sm px-3 py-1.5 bg-emerald-600 text-white rounded hover:bg-emerald-700 disabled:opacity-50"
-              >
-                🌐 Vykreslit graf ze <span x-text="selectedIcos().length"></span> IČO
-              </button>
-              <span class="text-xs text-slate-500 dark:text-slate-400" x-show="result.truncated">
-                ⚠ Zobrazeno prvních 50 unikátních firem (osoba má víc).
-              </span>
-            </div>
+            <!-- Empty state: HS našla profil osoby, ale nemá žádné události
+                 typu pracovní/politická vazba. Hlídač státu pokrývá primárně
+                 politiky a jejich okruh — pro běžné jednatele/statutáry malých
+                 s.r.o. tu obvykle není nic. To není bug, je to scope HS. -->
+            <template x-if="result.vazby.length === 0">
+              <div class="border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-900/20 rounded p-3 text-sm">
+                <p class="font-semibold text-amber-900 dark:text-amber-200">Hlídač státu o této osobě nezná žádné firemní vazby.</p>
+                <p class="text-amber-800 dark:text-amber-300 mt-1 text-xs">
+                  Profil v HS existuje, ale databáze událostí (členství v orgánech, politické posty, soukromá pracovní)
+                  je prázdná. HS sleduje hlavně politiky a jejich blízký okruh — běžní jednatelé malých firem v něm
+                  většinou nejsou. Tahle absence není nutně signál, jen mezera ve zdroji dat.
+                </p>
+                <p class="text-amber-700 dark:text-amber-400 mt-2 text-xs">
+                  Pro plnou historii statutárních pozic napříč ČR by byl potřeba přístup do Veřejného rejstříku
+                  (verejnerejstriky.msp.gov.cz) přes osobu, který zatím není veřejné API.
+                </p>
+              </div>
+            </template>
 
-            <div class="overflow-x-auto">
+            <template x-if="result.vazby.length > 0">
+              <div class="flex gap-2 items-center flex-wrap">
+                <button
+                  @click="toggleAllResolved()"
+                  class="text-xs px-2 py-1 border dark:border-slate-600 rounded hover:bg-slate-100 dark:hover:bg-slate-700"
+                  x-text="allResolvedSelected() ? 'Odznačit všechny' : 'Vybrat všechny s IČO'"
+                ></button>
+                <button
+                  @click="seedGraph()"
+                  :disabled="selectedIcos().length < 2"
+                  class="text-sm px-3 py-1.5 bg-emerald-600 text-white rounded hover:bg-emerald-700 disabled:opacity-50"
+                >
+                  🌐 Vykreslit graf ze <span x-text="selectedIcos().length"></span> IČO
+                </button>
+                <span class="text-xs text-slate-500 dark:text-slate-400" x-show="result.truncated">
+                  ⚠ Zobrazeno prvních 50 unikátních firem (osoba má víc).
+                </span>
+              </div>
+            </template>
+
+            <div class="overflow-x-auto" x-show="result.vazby.length > 0">
               <table class="w-full text-sm">
                 <thead class="text-xs text-slate-500 dark:text-slate-400 border-b dark:border-slate-700">
                   <tr>
