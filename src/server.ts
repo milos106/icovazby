@@ -89,6 +89,14 @@ app.get("/healthz", async () => ({
   uptimeSeconds: Math.floor(process.uptime()),
 }));
 
+// ─── Feature flags ────────────────────────────────────────────────────────────
+// Browser reads this on init to know which optional integrations are active.
+// Footer attribution for Hlídač státu (CC BY 3.0 — mandatory link) only shows
+// when its token is present.
+app.get("/api/features", async () => ({
+  hlidacstatu: Boolean(process.env.HLIDAC_API_TOKEN),
+}));
+
 // ─── Validate IČO (pure) ──────────────────────────────────────────────────────
 app.get("/api/validate/:ico", async (req: FastifyRequest, reply) => {
   const ico = (req.params as { ico: string }).ico;

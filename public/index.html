@@ -712,12 +712,32 @@
       </section>
     </main>
 
-    <footer class="border-t dark:border-slate-700 bg-white dark:bg-slate-800">
-      <div class="max-w-6xl mx-auto px-4 py-6 text-xs text-slate-500 dark:text-slate-400 space-y-1">
+    <footer class="border-t dark:border-slate-700 bg-white dark:bg-slate-800" x-data="featuresStatus()" x-init="init()">
+      <div class="max-w-6xl mx-auto px-4 py-6 text-xs text-slate-500 dark:text-slate-400 space-y-2">
         <p>
-          Data: <a class="underline" href="https://ares.gov.cz" target="_blank" rel="noopener">ARES</a> —
-          Administrativní registr ekonomických subjektů, © Ministerstvo financí ČR,
-          licence <a class="underline" href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener">CC BY 4.0</a>.
+          <strong>Zdroje dat:</strong>
+        </p>
+        <ul class="space-y-1 pl-3">
+          <li>
+            🇨🇿 <a class="underline" href="https://ares.gov.cz" target="_blank" rel="noopener">ARES</a>
+            — Administrativní registr ekonomických subjektů, © Ministerstvo financí ČR,
+            licence <a class="underline" href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener">CC BY 4.0</a>.
+          </li>
+          <li>
+            🏦 <a class="underline" href="https://adisspr.mfcr.cz" target="_blank" rel="noopener">MFČR ADIS</a>
+            — registr plátců DPH a nespolehlivých plátců, Finanční správa ČR (§ 96a z. č. 235/2004 Sb.), veřejná data zdarma.
+          </li>
+          <li x-show="features.hlidacstatu">
+            🔍 Data z projektu <a class="underline font-semibold" href="https://www.hlidacstatu.cz" target="_blank" rel="noopener">Hlídač státu</a>
+            (veřejné zakázky, smlouvy, dotace, skuteční majitelé) — © Hlídač státu, z.ú., licence
+            <a class="underline" href="https://creativecommons.org/licenses/by/3.0/cz/" target="_blank" rel="noopener">CC BY 3.0 CZ</a>.
+            Při dalším šíření je povinné uvést tento odkaz na hlidacstatu.cz.
+          </li>
+        </ul>
+        <p class="pt-2">
+          ares-web je nezávislý open-source projekt a <strong>nesouvisí</strong> s MFČR, MSp ČR, Finanční správou ČR ani s provozovateli citovaných zdrojů.
+          Údaje mají pouze informativní charakter — pro právní účely si vyžádejte autoritativní výpis z
+          <a class="underline" href="https://or.justice.cz" target="_blank" rel="noopener">Veřejného rejstříku</a>.
         </p>
         <p>
           ares-web je nezávislý open-source projekt a <strong>nesouvisí</strong> s MFČR ani s provozovatelem ARES.

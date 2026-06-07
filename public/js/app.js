@@ -367,6 +367,24 @@ function ddAdisLoader() {
   };
 }
 
+/**
+ * Načte stav volitelných integrací (Hlídač státu API). Footer atribuce
+ * citujícího Hlídače státu se zobrazí pouze pokud je integrace aktivní.
+ */
+function featuresStatus() {
+  return {
+    features: { hlidacstatu: false },
+    async init() {
+      try {
+        const r = await fetch("/api/features");
+        if (r.ok) this.features = await r.json();
+      } catch {
+        /* offline / starting up — keep defaults (all off) */
+      }
+    },
+  };
+}
+
 function themeToggle() {
   return {
     isDark: false,
@@ -434,3 +452,4 @@ window.addressSection = addressSection;
 window.historyBar = historyBar;
 window.themeToggle = themeToggle;
 window.ddAdisLoader = ddAdisLoader;
+window.featuresStatus = featuresStatus;
