@@ -21,6 +21,7 @@ import {
   getAdisVatStatusService,
   getResClassificationService,
   getTradeLicensesService,
+  getUboService,
   type InvoiceTarget,
   lookupCompanyService,
   searchByAddressService,
@@ -155,6 +156,16 @@ app.get("/api/search/address", async (req: FastifyRequest, reply) => {
       return reply.status(400).send({ error: "INVALID_INPUT", message: parsed.error.message });
     }
     reply.send(await searchByAddressService(client, parsed.data));
+  } catch (e) {
+    sendError(reply, e);
+  }
+});
+
+// ─── UBO (skuteční majitelé via Hlídač státu) ─────────────────────────────────
+app.get("/api/ubo/:ico", async (req: FastifyRequest, reply) => {
+  try {
+    const ico = (req.params as { ico: string }).ico;
+    reply.send(await getUboService(ico));
   } catch (e) {
     sendError(reply, e);
   }

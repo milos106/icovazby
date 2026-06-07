@@ -448,6 +448,107 @@ export async function getResClassificationService(client: AresClient, icoInput: 
 
 // ─── ADIS DPH (nespolehlivý plátce + bankovní účty) ───────────────────────────
 import { fetchPlatceStatus } from "./adis/client.js";
+import {
+  HlidacStatuMissingTokenError,
+  fetchUboByIco,
+  hasHlidacToken,
+  type RawUboRecord,
+} from "./hlidacstatu/client.js";
+
+export const HLIDAC_ATTRIBUTION = {
+  source: "Hlídač státu, z.ú.",
+  url: "https://www.hlidacstatu.cz",
+  license: "CC BY 3.0 CZ",
+  licenseUrl: "https://creativecommons.org/licenses/by/3.0/cz/",
+  obligation:
+    "Při dalším šíření je povinné uvést tento odkaz na hlidacstatu.cz a zachovat licenci CC BY 3.0 CZ.",
+};
+
+/**
+ * Roztřídí UBO záznamy na aktivní (datum_vymaz == null) a historické a
+ * z plochých atributů sestaví human-readable shape.
+ */
+function shapeUboRecord(r: RawUboRecord) {
+  const name = [r.osoba_titul_pred, r.osoba_jmeno, r.osoba_prijmeni, r.osoba_titul_za]
+    .map((s) => (s ?? "").trim())
+    .filter(Boolean)
+    .join(" ");
+  const birth =
+    r.osoba_datum_narozeni && !r.osoba_datum_narozeni.startsWith("0001-")
+      ? r.osoba_datum_narozeni.slice(0, 10)
+      : null;
+  return {
+    jmeno: name || null,
+    datumNarozeni: birth,
+    udajTyp: r.udaj_typ_nazev ?? r.udaj_typ ?? null,
+    postaveni: r.postaveni ?? null,
+    podilProspech:
+      r.podil_na_prospechu_hodnota != null
+        ? `${r.podil_na_prospechu_hodnota}${r.podil_na_prospechu_typ === "PROCENTA" ? " %" : ""}`
+        : null,
+    podilHlasovani:
+      r.podil_na_hlasovani_hodnota != null
+        ? `${r.podil_na_hlasovani_hodnota}${r.podil_na_hlasovani_typ === "PROCENTA" ? " %" : ""}`
+        : null,
+    datumZapis: r.datum_zapis ? r.datum_zapis.slice(0, 10) : null,
+    datumVymaz: r.datum_vymaz ? r.datum_vymaz.slice(0, 10) : null,
+    adresa: r.adresa_text ?? null,
+    slovniVyjadreni: r.slovni_vyjadreni ?? null,
+  };
+}
+
+export async function getUboService(icoInput: string) {
+  if (!hasHlidacToken()) {
+    return {
+      ico: icoInput,
+      available: false,
+      reason: "HLIDAC_API_TOKEN není nastaven — UBO data nejsou dostupná.",
+      _attribution: HLIDAC_ATTRIBUTION,
+    };
+  }
+  const { valid, normalized, reason } = validateIcoFn(icoInput);
+  if (!valid || !normalized) throw new InvalidInputError(`Invalid IČO: ${icoInput}`, { reason });
+  try {
+    const resp = await fetchUboByIco(normalized);
+    const result = resp.results[0];
+    if (!result) {
+      return {
+        ico: normalized,
+        available: true,
+        nazev_subjektu: null,
+        active: [],
+        historical: [],
+        message: "Žádný záznam v evidenci skutečných majitelů.",
+        _attribution: HLIDAC_ATTRIBUTION,
+      };
+    }
+    const shaped = result.skutecni_majitele.map(shapeUboRecord);
+    const active = shaped.filter((s) => !s.datumVymaz);
+    const historical = shaped.filter((s) => s.datumVymaz);
+    return {
+      ico: normalized,
+      available: true,
+      nazev_subjektu: result.nazev_subjektu ?? null,
+      activeCount: active.length,
+      historicalCount: historical.length,
+      active,
+      historical,
+      _attribution: HLIDAC_ATTRIBUTION,
+      _legalNote:
+        "Evidence skutečných majitelů vedena dle zákona č. 37/2021 Sb. UBO = ten, kdo má fakticky nebo právně možnost vykonávat rozhodující vliv (přímý/nepřímý podíl > 25 %, hlasovací práva, jiná kontrola).",
+    };
+  } catch (err) {
+    if (err instanceof HlidacStatuMissingTokenError) {
+      return {
+        ico: normalized,
+        available: false,
+        reason: err.message,
+        _attribution: HLIDAC_ATTRIBUTION,
+      };
+    }
+    throw err;
+  }
+}
 
 export const ADIS_ATTRIBUTION = {
   source: "MFČR ADIS — registr plátců DPH",

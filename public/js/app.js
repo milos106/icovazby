@@ -346,6 +346,27 @@ function addressSection() {
  * Inline loader pro DPH compliance data v DD kartě. Fetchne ADIS endpoint
  * po vyrendrování DD reportu a vystaví reactive `adis` property pro Alpine.
  */
+function ddUboLoader() {
+  return {
+    ubo: null,
+    loading: false,
+    uboError: "",
+    async load(ico) {
+      if (!ico) return;
+      this.loading = true;
+      this.ubo = null;
+      this.uboError = "";
+      try {
+        this.ubo = await jsonFetch(`/api/ubo/${encodeURIComponent(ico)}`);
+      } catch (e) {
+        this.uboError = "UBO data nelze načíst: " + e.message;
+      } finally {
+        this.loading = false;
+      }
+    },
+  };
+}
+
 function ddAdisLoader() {
   return {
     adis: null,
@@ -452,4 +473,5 @@ window.addressSection = addressSection;
 window.historyBar = historyBar;
 window.themeToggle = themeToggle;
 window.ddAdisLoader = ddAdisLoader;
+window.ddUboLoader = ddUboLoader;
 window.featuresStatus = featuresStatus;

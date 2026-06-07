@@ -441,6 +441,92 @@
                 </dl>
               </div>
 
+              <div class="border-2 border-indigo-300 dark:border-indigo-700 rounded-lg p-4 md:col-span-2" x-data="ddUboLoader()" x-init="load(report.ico)">
+                <h4 class="font-bold mb-2 flex items-center gap-2">
+                  👥 Skuteční majitelé (UBO)
+                  <span class="text-xs font-normal text-slate-500 dark:text-slate-400">— evidence dle z. č. 37/2021 Sb.</span>
+                </h4>
+                <template x-if="loading">
+                  <p class="text-xs text-slate-500 dark:text-slate-400">Načítám z Hlídače státu…</p>
+                </template>
+                <template x-if="uboError">
+                  <p class="text-xs text-amber-700 dark:text-amber-400" x-text="uboError"></p>
+                </template>
+                <template x-if="ubo && !ubo.available">
+                  <p class="text-xs text-slate-500 dark:text-slate-400" x-text="ubo.reason"></p>
+                </template>
+                <template x-if="ubo && ubo.available">
+                  <div>
+                    <p class="text-sm mb-2">
+                      Aktivních: <span class="font-bold" x-text="ubo.activeCount ?? 0"></span>
+                      <template x-if="ubo.historicalCount > 0">
+                        <span class="text-slate-500 dark:text-slate-400">
+                          · historických: <span class="font-semibold" x-text="ubo.historicalCount"></span>
+                        </span>
+                      </template>
+                    </p>
+                    <template x-if="ubo.message">
+                      <p class="text-xs text-slate-500 dark:text-slate-400" x-text="ubo.message"></p>
+                    </template>
+                    <template x-if="ubo.active && ubo.active.length > 0">
+                      <ul class="space-y-2 mb-3">
+                        <template x-for="(p, idx) in ubo.active" :key="idx">
+                          <li class="border-l-4 border-indigo-400 pl-3 py-1">
+                            <div class="flex items-baseline justify-between gap-2 flex-wrap">
+                              <span class="font-semibold text-sm" x-text="p.jmeno || '(neznámé)'"></span>
+                              <template x-if="p.podilProspech">
+                                <span class="bg-indigo-100 dark:bg-indigo-900/40 text-indigo-800 dark:text-indigo-300 px-2 py-0.5 rounded text-xs font-mono">
+                                  podíl <span x-text="p.podilProspech"></span>
+                                </span>
+                              </template>
+                            </div>
+                            <div class="text-xs text-slate-500 dark:text-slate-400 space-x-2">
+                              <template x-if="p.postaveni">
+                                <span x-text="p.postaveni"></span>
+                              </template>
+                              <template x-if="p.datumNarozeni">
+                                <span>· nar. <span x-text="p.datumNarozeni"></span></span>
+                              </template>
+                              <template x-if="p.datumZapis">
+                                <span>· zapsán <span x-text="p.datumZapis"></span></span>
+                              </template>
+                            </div>
+                          </li>
+                        </template>
+                      </ul>
+                    </template>
+                    <template x-if="ubo.historical && ubo.historical.length > 0">
+                      <details class="text-xs">
+                        <summary class="cursor-pointer text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200">
+                          📜 Historické záznamy (<span x-text="ubo.historicalCount"></span>)
+                        </summary>
+                        <ul class="mt-2 space-y-1 max-h-48 overflow-y-auto">
+                          <template x-for="(p, idx) in ubo.historical" :key="'h'+idx">
+                            <li class="border-l-2 border-slate-300 dark:border-slate-600 pl-2 py-0.5 text-slate-600 dark:text-slate-400">
+                              <span class="font-semibold" x-text="p.jmeno || '(neznámé)'"></span>
+                              <template x-if="p.podilProspech">
+                                <span class="ml-1" x-text="'(' + p.podilProspech + ')'"></span>
+                              </template>
+                              <template x-if="p.datumVymaz">
+                                <span class="text-amber-700 dark:text-amber-400 ml-1">— smazán <span x-text="p.datumVymaz"></span></span>
+                              </template>
+                            </li>
+                          </template>
+                        </ul>
+                      </details>
+                    </template>
+                    <details class="mt-3 text-xs text-slate-500 dark:text-slate-400 cursor-pointer">
+                      <summary class="hover:text-slate-700 dark:hover:text-slate-200">⚖️ K evidenci UBO (z. č. 37/2021 Sb.)</summary>
+                      <p class="mt-1" x-text="ubo._legalNote"></p>
+                    </details>
+                  </div>
+                </template>
+                <p class="mt-3 pt-2 border-t dark:border-slate-700 text-xs text-slate-500 dark:text-slate-400">
+                  Data: <a class="underline font-semibold" href="https://www.hlidacstatu.cz" target="_blank" rel="noopener">Hlídač státu, z.ú.</a>
+                  · licence <a class="underline" href="https://creativecommons.org/licenses/by/3.0/cz/" target="_blank" rel="noopener">CC BY 3.0 CZ</a>
+                </p>
+              </div>
+
               <div class="border dark:border-slate-700 rounded-lg p-4" x-data="ddAdisLoader()" x-init="load(report.ico)">
                 <h4 class="font-bold mb-2">DPH compliance (MFČR)</h4>
                 <template x-if="loading">
@@ -740,12 +826,7 @@
           <a class="underline" href="https://or.justice.cz" target="_blank" rel="noopener">Veřejného rejstříku</a>.
         </p>
         <p>
-          ares-web je nezávislý open-source projekt a <strong>nesouvisí</strong> s MFČR ani s provozovatelem ARES.
-          Údaje mají pouze informativní charakter — pro právní účely si vyžádejte autoritativní výpis z
-          <a class="underline" href="https://or.justice.cz" target="_blank" rel="noopener">Veřejného rejstříku</a>.
-        </p>
-        <p>
-          GDPR: výpisy z ARES obsahují osobní údaje (jména, data narození jednatelů). Použití dat pro další zpracování
+          GDPR: výpisy z citovaných rejstříků obsahují osobní údaje (jména, data narození jednatelů a skutečných majitelů). Použití těchto dat pro další zpracování
           je tvoje odpovědnost jako správce ve smyslu nařízení (EU) 2016/679.
         </p>
       </div>
