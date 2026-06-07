@@ -8,10 +8,13 @@
 
 | Sekce | Co dělá |
 |---|---|
-| **Profil firmy** | Zadáš IČO (8 číslic) nebo část názvu → vidíš identifikaci, sídlo, DPH status, NACE kódy. |
-| **Due diligence** | Jeden klik na IČO → karta s risk badgem (🟢/🟡/🔴), findings, sekce identifikace + DPH + insolvence + statutáři. |
-| **Mapa propojení** | Vlepíš 2–50 IČO → najde osoby ve více firmách + vykreslí Mermaid graf. Volitelně i historické vazby. |
-| **Hledat na adrese** | Detekce virtuálních kanceláří. Adresa s > 50 firmami = ⚠️, > 500 = 🚨. |
+| **Profil firmy** | IČO nebo název → identifikace, sídlo, DPH, NACE. Rozbalitelné karty: 📊 RES klasifikace (SME, sektor), 🏷️ živnostenská oprávnění (RŽP). |
+| **Due diligence** | Jeden klik → 🟢🟡🔴 risk badge + findings + sekce identifikace + DPH + insolvence + statutáři + živnosti. |
+| **Mapa propojení** | 2–50 IČO → osoby ve více firmách + Mermaid graf. Volitelně i historické vazby (nominee detection). |
+| **Hledat na adrese** | Detekce virtuálních kanceláří. > 50 firem = ⚠️, > 500 = 🚨. |
+| **Export do fakturace** | Tlačítka Fakturoid / iDoklad / Pohoda → zkopíruje JSON do schránky, paste do fakturačního systému. |
+| **Historie + oblíbené** | Posledních 10 hledání v localStorage + bookmark hvězdičkou. Sticky dropdown v hlavičce. |
+| **Shareable URL** | `?ico=26185610&action=dd` deep-link → automaticky otevře report. Funguje pro DD, graf (`?icos=…`), adresu (`?address=…`). |
 
 ## Stack
 
@@ -57,6 +60,9 @@ npm run dev
 | `GET /api/validate/:ico` | Mod-11 checksum, bez network volání |
 | `GET /api/company/:ico` | Profil firmy z ARES agregátu |
 | `GET /api/dd/:ico` | Plný due-diligence report (paralelně 3 endpointy) |
+| `GET /api/licenses/:ico` | Živnostenská oprávnění z RŽP |
+| `GET /api/res/:ico` | Statistická klasifikace (velikost, sektor, NUTS) z RES |
+| `GET /api/export/:ico/:target` | Fakturoid / iDoklad / Pohoda payload (`target` = jeden z těchto tří) |
 | `GET /api/search/companies?obchodniJmeno=…&sidloPsc=…` | Hledání podle názvu / PSČ |
 | `GET /api/search/address?adresa=…` | Hledání podle adresy |
 | `POST /api/cross-persons` | Body: `{ icos: string[], includeHistorical?: bool, emitMermaid?: bool }` |
@@ -94,6 +100,15 @@ MIT — viz [LICENSE](./LICENSE). Licence dat (CC BY 4.0) je nezávislá.
 
 MFČR limituje ARES na **500 dotazů/min na uživatele**. ares-web defaultně tahá max 5 req/s = 300/min, takže pod stropem zůstaneš. Pokud někdy přesáhneš (např. paralelně několik instancí), MFČR si vyhrazuje právo IP zablokovat.
 
+## Testy
+
+```sh
+npm test                              # 14 unit testů, vitest, mock klient
+node tests/e2e.playwright.mjs         # 8 E2E proti běžícímu serveru
+```
+
+E2E test pokrývá: profil + URL state + RES klasifikaci + clipboard export + DD deep-link + Mermaid graf + shell detekci + history dropdown.
+
 ## Status projektu
 
-v0.1 — funkční MVP s 4 hlavními sekcemi, plně otestováno end-to-end přes Playwright. Žádné placeným SaaS, žádný npm publish, jen lokální použití.
+v0.2 — MVP rozšířený o RES/RŽP detaily, export do 3 fakturačních systémů, localStorage historie + oblíbené, shareable URL deep-links, vitest + Playwright pokrytí. Žádný placený SaaS, žádný npm publish, jen lokální použití.

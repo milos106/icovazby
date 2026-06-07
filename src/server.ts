@@ -16,7 +16,11 @@ import { AresClient } from "./ares/client.js";
 import { AresError, toToolErrorPayload } from "./errors.js";
 import {
   crossCompanyPersonsService,
+  exportForInvoicingService,
   fullDueDiligenceService,
+  getResClassificationService,
+  getTradeLicensesService,
+  type InvoiceTarget,
   lookupCompanyService,
   searchByAddressService,
   searchCompaniesService,
@@ -142,6 +146,43 @@ app.get("/api/search/address", async (req: FastifyRequest, reply) => {
       return reply.status(400).send({ error: "INVALID_INPUT", message: parsed.error.message });
     }
     reply.send(await searchByAddressService(client, parsed.data));
+  } catch (e) {
+    sendError(reply, e);
+  }
+});
+
+// ─── Trade licenses (RŽP) ─────────────────────────────────────────────────────
+app.get("/api/licenses/:ico", async (req: FastifyRequest, reply) => {
+  try {
+    const ico = (req.params as { ico: string }).ico;
+    reply.send(await getTradeLicensesService(client, ico));
+  } catch (e) {
+    sendError(reply, e);
+  }
+});
+
+// ─── RES classification ───────────────────────────────────────────────────────
+app.get("/api/res/:ico", async (req: FastifyRequest, reply) => {
+  try {
+    const ico = (req.params as { ico: string }).ico;
+    reply.send(await getResClassificationService(client, ico));
+  } catch (e) {
+    sendError(reply, e);
+  }
+});
+
+// ─── Export for invoicing ─────────────────────────────────────────────────────
+const ALLOWED_INVOICE_TARGETS: ReadonlyArray<InvoiceTarget> = ["fakturoid", "idoklad", "pohoda"];
+app.get("/api/export/:ico/:target", async (req: FastifyRequest, reply) => {
+  try {
+    const { ico, target } = req.params as { ico: string; target: string };
+    if (!ALLOWED_INVOICE_TARGETS.includes(target as InvoiceTarget)) {
+      return reply.status(400).send({
+        error: "INVALID_INPUT",
+        message: `Unknown target '${target}'. Use one of: ${ALLOWED_INVOICE_TARGETS.join(", ")}.`,
+      });
+    }
+    reply.send(await exportForInvoicingService(client, ico, target as InvoiceTarget));
   } catch (e) {
     sendError(reply, e);
   }

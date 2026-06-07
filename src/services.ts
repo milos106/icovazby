@@ -325,8 +325,231 @@ export async function fullDueDiligenceService(client: AresClient, icoInput: stri
   };
 }
 
+// ─── Trade licenses (RŽP) ─────────────────────────────────────────────────────
+function normalizeObory(value: unknown): string[] {
+  if (!value || !Array.isArray(value)) return [];
+  return value
+    .map((v) => {
+      if (typeof v === "string") return v;
+      if (v && typeof v === "object" && "nazev" in v) {
+        const nazev = (v as { nazev?: string }).nazev;
+        return typeof nazev === "string" ? nazev : undefined;
+      }
+      return undefined;
+    })
+    .filter((v): v is string => typeof v === "string");
+}
+
+export async function getTradeLicensesService(client: AresClient, icoInput: string) {
+  const { valid, normalized, reason } = validateIcoFn(icoInput);
+  if (!valid || !normalized) throw new InvalidInputError(`Invalid IČO: ${icoInput}`, { reason });
+  const rzp = await client.getRzpRecord(normalized);
+  const opravneni = (rzp.zivnostenskeOpravneni ?? []).map((z) => ({
+    predmetPodnikani: z.predmetPodnikani,
+    druh: z.druh,
+    datumVzniku: z.datumVzniku,
+    datumZaniku: z.datumZaniku ?? null,
+    stav: z.stav,
+    oboryCinnosti: normalizeObory(z.oboryCinnosti),
+  }));
+  const active = opravneni.filter((o) => !o.datumZaniku);
+  return {
+    ico: normalized,
+    pocetCelkem: opravneni.length,
+    pocetAktivnich: active.length,
+    zivnostenskaOpravneni: opravneni,
+    _attribution: ARES_ATTRIBUTION,
+  };
+}
+
+// ─── RES classification ───────────────────────────────────────────────────────
+const HEADCOUNT_BRACKET: Record<string, string> = {
+  "100": "Nezjištěno",
+  "110": "0 zaměstnanců",
+  "120": "1–5 zaměstnanců",
+  "130": "6–9 zaměstnanců",
+  "140": "10–19 zaměstnanců",
+  "210": "20–24 zaměstnanců",
+  "220": "25–49 zaměstnanců",
+  "310": "50–99 zaměstnanců",
+  "320": "100–199 zaměstnanců",
+  "330": "200–249 zaměstnanců",
+  "340": "250–499 zaměstnanců",
+  "410": "200–249 zaměstnanců (legacy)",
+  "420": "250–499 zaměstnanců (legacy)",
+  "510": "500–999 zaměstnanců",
+  "520": "1 000–1 499 zaměstnanců",
+  "530": "1 500–1 999 zaměstnanců",
+  "610": "2 000–2 499 zaměstnanců",
+  "620": "2 500–2 999 zaměstnanců",
+  "630": "3 000–3 999 zaměstnanců",
+  "640": "4 000–4 999 zaměstnanců",
+  "710": "5 000–9 999 zaměstnanců",
+  "720": "10 000+ zaměstnanců",
+  "999": "Nezjištěno",
+};
+
+function smeClass(code: string | undefined | null): "micro" | "small" | "medium" | "large" | "unknown" {
+  if (!code) return "unknown";
+  if (["110", "120", "130"].includes(code)) return "micro";
+  if (["140", "210", "220"].includes(code)) return "small";
+  if (["310", "320", "330", "410"].includes(code)) return "medium";
+  if (code === "340" || (/^[4-7]/.test(code) && code !== "410")) return "large";
+  return "unknown";
+}
+
+const SECTOR_GROUP: Record<string, string> = {
+  "11001": "Veřejné nefinanční korporace",
+  "11002": "Soukromé nefinanční korporace",
+  "11003": "Nefinanční korporace pod zahraniční kontrolou",
+  "12101": "Centrální banka",
+  "12201": "Depozitní instituce",
+  "13": "Vládní instituce",
+  "14": "Domácnosti",
+  "15": "Neziskové instituce",
+};
+
+export async function getResClassificationService(client: AresClient, icoInput: string) {
+  const { valid, normalized, reason } = validateIcoFn(icoInput);
+  if (!valid || !normalized) throw new InvalidInputError(`Invalid IČO: ${icoInput}`, { reason });
+  const res = await client.getResRecord(normalized);
+  const primary =
+    res.zaznamy?.find((z) => z.primarniZaznam) ?? res.zaznamy?.[0] ?? null;
+  if (!primary) {
+    throw new InvalidInputError(`Žádný RES záznam pro IČO ${normalized}.`);
+  }
+  const bracketCode = primary.statistickeUdaje?.kategoriePoctuPracovniku ?? null;
+  const sectorCode = primary.statistickeUdaje?.institucionalniSektor2010 ?? null;
+  return {
+    ico: normalized,
+    obchodniJmeno: primary.obchodniJmeno,
+    pravniForma: primary.pravniForma,
+    financniUrad: primary.financniUrad,
+    okresNutsLau: primary.okresNutsLau ?? null,
+    sidlo: primary.sidlo?.textovaAdresa,
+    czNacePrevazujici: primary.czNacePrevazujici2008 ?? primary.czNacePrevazujici ?? null,
+    czNace: primary.czNace2008 ?? primary.czNace ?? [],
+    kategoriePoctuPracovniku: {
+      code: bracketCode,
+      label: bracketCode ? (HEADCOUNT_BRACKET[bracketCode] ?? "Neznámý kód") : null,
+      smeClass: smeClass(bracketCode),
+    },
+    institucionalniSektor2010: {
+      code: sectorCode,
+      label: sectorCode
+        ? (SECTOR_GROUP[sectorCode] ?? SECTOR_GROUP[sectorCode.slice(0, 2)] ?? "Neznámý kód")
+        : null,
+    },
+    datumVzniku: primary.datumVzniku,
+    datumAktualizace: primary.datumAktualizace,
+    _attribution: ARES_ATTRIBUTION,
+  };
+}
+
+// ─── Export for invoicing ─────────────────────────────────────────────────────
+type InvoiceTarget = "fakturoid" | "idoklad" | "pohoda";
+
+function streetLine(a: EkonomickySubjekt["sidlo"]): string | undefined {
+  if (!a) return undefined;
+  const street = a.nazevUlice ?? "";
+  const domovni = a.cisloDomovni;
+  const orient = a.cisloOrientacni;
+  const orientPismeno = a.cisloOrientacniPismeno ?? "";
+  if (!street && !domovni) return a.textovaAdresa;
+  const num =
+    domovni && orient
+      ? `${domovni}/${orient}${orientPismeno}`
+      : (domovni ?? orient ?? "").toString();
+  return [street, num].filter(Boolean).join(" ").trim() || undefined;
+}
+
+export async function exportForInvoicingService(
+  client: AresClient,
+  icoInput: string,
+  target: InvoiceTarget,
+) {
+  const { valid, normalized, reason } = validateIcoFn(icoInput);
+  if (!valid || !normalized) throw new InvalidInputError(`Invalid IČO: ${icoInput}`, { reason });
+  const subject = await client.getEconomicSubject(normalized);
+  const reg = subject.seznamRegistraci ?? {};
+  const dphActive = isActiveRegistration(reg.stavZdrojeDph);
+  const sidlo = subject.sidlo;
+  const common = {
+    ico: normalized,
+    obchodniJmeno: subject.obchodniJmeno ?? "",
+    dic: subject.dic ?? null,
+    platceDph: dphActive,
+    ulice: streetLine(sidlo),
+    obec: sidlo?.nazevObce,
+    psc: sidlo?.psc !== undefined ? String(sidlo.psc) : undefined,
+    zeme: (sidlo?.nazevStatu ?? sidlo?.kodStatu) as string | undefined,
+  };
+
+  let payload: Record<string, unknown>;
+  let endpointHint: string;
+  let format: "json" | "xml-hint";
+  switch (target) {
+    case "fakturoid":
+      payload = {
+        custom_id: common.ico,
+        name: common.obchodniJmeno,
+        registration_no: common.ico,
+        vat_no: common.dic ?? undefined,
+        type: "supplier_customer",
+        enabled_reminders: true,
+        street: common.ulice,
+        city: common.obec,
+        zip: common.psc,
+        country: common.zeme === "Česká republika" ? "CZ" : common.zeme,
+      };
+      endpointHint = "POST https://app.fakturoid.cz/api/v3/{slug}/subjects.json";
+      format = "json";
+      break;
+    case "idoklad":
+      payload = {
+        CompanyName: common.obchodniJmeno,
+        IdentificationNumber: common.ico,
+        VatIdentificationNumber: common.dic ?? undefined,
+        Street: common.ulice,
+        City: common.obec,
+        PostalCode: common.psc,
+        Country: common.zeme,
+        IsRegisteredForVatOss: false,
+      };
+      endpointHint = "POST https://api.idoklad.cz/v3/Contacts";
+      format = "json";
+      break;
+    case "pohoda":
+      payload = {
+        "adb:identity": {
+          "adb:address": {
+            "adb:company": common.obchodniJmeno,
+            "adb:ico": common.ico,
+            "adb:dic": common.dic ?? undefined,
+            "adb:street": common.ulice,
+            "adb:city": common.obec,
+            "adb:zip": common.psc,
+            "adb:country": common.zeme,
+          },
+        },
+      };
+      endpointHint = "Wrap in <dat:dataPack> for Pohoda mServer / XML import";
+      format = "xml-hint";
+      break;
+  }
+  return {
+    ico: normalized,
+    obchodniJmeno: common.obchodniJmeno,
+    target,
+    format,
+    payload,
+    endpointHint,
+    _attribution: ARES_ATTRIBUTION,
+  };
+}
+
 // Expose helpers for tests / other consumers
 export { isActiveRegistration, statusOf, tally };
-export type { RiskFinding, RiskLevel };
+export type { InvoiceTarget, RiskFinding, RiskLevel };
 // Re-export deprecated wrapper for completeness if some caller needs the dic helper
 export { normalizeDic };

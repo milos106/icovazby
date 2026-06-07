@@ -4,6 +4,9 @@
  */
 
 const ICO_RE = /^\d{7,8}$/;
+const STORAGE_RECENT = "ares-web:recent";
+const STORAGE_BOOKMARKS = "ares-web:bookmarks";
+const RECENT_LIMIT = 10;
 
 async function jsonFetch(url, opts) {
   const r = await fetch(url, opts);
@@ -14,6 +17,62 @@ async function jsonFetch(url, opts) {
   return data;
 }
 
+function loadList(key) {
+  try {
+    const s = localStorage.getItem(key);
+    return s ? JSON.parse(s) : [];
+  } catch {
+    return [];
+  }
+}
+
+function saveList(key, list) {
+  try {
+    localStorage.setItem(key, JSON.stringify(list));
+  } catch {
+    /* ignore quota errors */
+  }
+}
+
+/**
+ * Replace the URL with the given state object without adding a history entry.
+ * Used to keep the URL in sync with the current view so deep-links and back/
+ * forward navigation work. We never reload — Alpine state drives rendering.
+ */
+function updateUrl(state) {
+  const params = new URLSearchParams();
+  if (state.ico) params.set("ico", state.ico);
+  if (state.action) params.set("action", state.action);
+  if (state.address) params.set("address", state.address);
+  if (state.icos) params.set("icos", state.icos);
+  const qs = params.toString();
+  const url = qs ? `?${qs}` : "/";
+  window.history.replaceState(null, "", url);
+}
+
+function readUrl() {
+  const p = new URLSearchParams(window.location.search);
+  return {
+    ico: p.get("ico"),
+    action: p.get("action"),
+    address: p.get("address"),
+    icos: p.get("icos"),
+  };
+}
+
+/**
+ * Record a visit. Bubbles the entry to the top of the recent list, dedupes
+ * by IČO, and keeps at most RECENT_LIMIT entries. Broadcasts a custom event
+ * so the header history dropdown updates without coupling.
+ */
+function recordVisit(entry) {
+  if (!entry || !entry.ico) return;
+  const recent = loadList(STORAGE_RECENT).filter((r) => r.ico !== entry.ico);
+  recent.unshift({ ico: entry.ico, obchodniJmeno: entry.obchodniJmeno, at: Date.now() });
+  saveList(STORAGE_RECENT, recent.slice(0, RECENT_LIMIT));
+  window.dispatchEvent(new CustomEvent("ares-history-changed"));
+}
+
 function searchSection() {
   return {
     query: "",
@@ -22,11 +81,39 @@ function searchSection() {
     profile: null,
     results: [],
     totalFound: 0,
+    resData: null,
+    licensesData: null,
+    exportNotice: "",
+    _initialized: false,
+    init() {
+      // history bar can ask us to load a specific IČO
+      window.addEventListener("open-search", (e) => {
+        if (e.detail?.ico) {
+          this.query = e.detail.ico;
+          this.run().then(() => {
+            document.getElementById("search")?.scrollIntoView({ behavior: "smooth" });
+          });
+        }
+      });
+      // restore from URL on first load if no other section will claim it
+      const url = readUrl();
+      if (url.ico && (!url.action || url.action === "profile")) {
+        this.query = url.ico;
+        this.run();
+      }
+      this._initialized = true;
+    },
+    _resetExpansions() {
+      this.resData = null;
+      this.licensesData = null;
+      this.exportNotice = "";
+    },
     async run() {
       this.error = "";
       this.profile = null;
       this.results = [];
       this.totalFound = 0;
+      this._resetExpansions();
       const q = (this.query || "").trim().replace(/\s+/g, " ");
       if (!q) return;
       this.loading = true;
@@ -34,6 +121,8 @@ function searchSection() {
         const cleaned = q.replace(/^CZ\s*/i, "").replace(/\s|-|\./g, "");
         if (ICO_RE.test(cleaned)) {
           this.profile = await jsonFetch(`/api/company/${encodeURIComponent(cleaned)}`);
+          recordVisit({ ico: this.profile.ico, obchodniJmeno: this.profile.obchodniJmeno });
+          updateUrl({ ico: this.profile.ico, action: "profile" });
         } else {
           const u = `/api/search/companies?obchodniJmeno=${encodeURIComponent(q)}&limit=25`;
           const r = await jsonFetch(u);
@@ -52,6 +141,45 @@ function searchSection() {
       await this.run();
       document.getElementById("search")?.scrollIntoView({ behavior: "smooth" });
     },
+    async toggleRes(ico) {
+      if (this.resData) {
+        this.resData = null;
+        return;
+      }
+      try {
+        this.resData = await jsonFetch(`/api/res/${encodeURIComponent(ico)}`);
+      } catch (e) {
+        this.error = "Klasifikaci nelze načíst: " + e.message;
+      }
+    },
+    async toggleLicenses(ico) {
+      if (this.licensesData) {
+        this.licensesData = null;
+        return;
+      }
+      try {
+        this.licensesData = await jsonFetch(`/api/licenses/${encodeURIComponent(ico)}`);
+      } catch (e) {
+        // 404 = no RŽP record for this entity — that's a valid response
+        if (e.message?.includes("404") || e.message?.toLowerCase().includes("not found")) {
+          this.licensesData = { pocetCelkem: 0, pocetAktivnich: 0, zivnostenskaOpravneni: [] };
+        } else {
+          this.error = "Živnosti nelze načíst: " + e.message;
+        }
+      }
+    },
+    async exportTo(ico, target) {
+      try {
+        this.exportNotice = "";
+        const r = await jsonFetch(`/api/export/${encodeURIComponent(ico)}/${target}`);
+        const text = JSON.stringify(r.payload, null, 2);
+        await navigator.clipboard.writeText(text);
+        this.exportNotice = `✅ JSON pro ${target} zkopírován do schránky (${text.length} znaků).`;
+        setTimeout(() => { this.exportNotice = ""; }, 6000);
+      } catch (e) {
+        this.exportNotice = `Export selhal: ${e.message}`;
+      }
+    },
   };
 }
 
@@ -61,9 +189,17 @@ function ddSection() {
     loading: false,
     error: "",
     report: null,
+    exportNotice: "",
+    init() {
+      const url = readUrl();
+      if (url.ico && url.action === "dd") {
+        this.run(url.ico);
+      }
+    },
     async run(maybeIco) {
       this.error = "";
       this.report = null;
+      this.exportNotice = "";
       const i = (maybeIco || this.ico || "").trim().replace(/^CZ\s*/i, "").replace(/\s|-|\./g, "");
       if (!ICO_RE.test(i)) {
         this.error = "Zadej platné IČO (7-8 číslic).";
@@ -73,11 +209,25 @@ function ddSection() {
       this.loading = true;
       try {
         this.report = await jsonFetch(`/api/dd/${encodeURIComponent(i)}`);
+        recordVisit({ ico: this.report.ico, obchodniJmeno: this.report.obchodniJmeno });
+        updateUrl({ ico: this.report.ico, action: "dd" });
         document.getElementById("dd")?.scrollIntoView({ behavior: "smooth", block: "start" });
       } catch (e) {
         this.error = e.message;
       } finally {
         this.loading = false;
+      }
+    },
+    async exportTo(ico, target) {
+      try {
+        this.exportNotice = "";
+        const r = await jsonFetch(`/api/export/${encodeURIComponent(ico)}/${target}`);
+        const text = JSON.stringify(r.payload, null, 2);
+        await navigator.clipboard.writeText(text);
+        this.exportNotice = `✅ JSON pro ${target} zkopírován do schránky.`;
+        setTimeout(() => { this.exportNotice = ""; }, 6000);
+      } catch (e) {
+        this.exportNotice = `Export selhal: ${e.message}`;
       }
     },
   };
@@ -91,6 +241,13 @@ function graphSection() {
     error: "",
     result: null,
     mermaidSvg: "",
+    init() {
+      const url = readUrl();
+      if (url.icos) {
+        this.raw = url.icos.split(",").join("\n");
+        this.run();
+      }
+    },
     parseIcos(raw) {
       return (raw || "")
         .split(/[\s,;\n]+/g)
@@ -121,6 +278,7 @@ function graphSection() {
             emitMermaid: true,
           }),
         });
+        updateUrl({ icos: icos.join(",") });
         if (this.result.mermaid && window.__mermaid) {
           const id = "mer-" + Date.now();
           try {
@@ -145,6 +303,13 @@ function addressSection() {
     loading: false,
     error: "",
     result: null,
+    init() {
+      const url = readUrl();
+      if (url.address) {
+        this.adresa = url.address;
+        this.run();
+      }
+    },
     async run() {
       this.error = "";
       this.result = null;
@@ -156,6 +321,7 @@ function addressSection() {
       this.loading = true;
       try {
         this.result = await jsonFetch(`/api/search/address?adresa=${encodeURIComponent(a)}&limit=50`);
+        updateUrl({ address: a });
       } catch (e) {
         this.error = e.message;
       } finally {
@@ -165,8 +331,47 @@ function addressSection() {
   };
 }
 
+function historyBar() {
+  return {
+    open: false,
+    recent: [],
+    bookmarks: [],
+    init() {
+      this.refresh();
+      window.addEventListener("ares-history-changed", () => this.refresh());
+    },
+    refresh() {
+      this.recent = loadList(STORAGE_RECENT);
+      this.bookmarks = loadList(STORAGE_BOOKMARKS);
+    },
+    async run(ico) {
+      // dispatch an event the search section listens for, mirroring DD's pattern
+      window.dispatchEvent(new CustomEvent("open-search", { detail: { ico } }));
+    },
+    bookmark(entry) {
+      if (!entry || !entry.ico) return;
+      const list = loadList(STORAGE_BOOKMARKS).filter((b) => b.ico !== entry.ico);
+      list.unshift({ ico: entry.ico, obchodniJmeno: entry.obchodniJmeno, at: Date.now() });
+      saveList(STORAGE_BOOKMARKS, list);
+      this.refresh();
+    },
+    unbookmark(ico) {
+      saveList(
+        STORAGE_BOOKMARKS,
+        loadList(STORAGE_BOOKMARKS).filter((b) => b.ico !== ico),
+      );
+      this.refresh();
+    },
+    clearRecent() {
+      saveList(STORAGE_RECENT, []);
+      this.refresh();
+    },
+  };
+}
+
 // Expose factories on window for Alpine
 window.searchSection = searchSection;
 window.ddSection = ddSection;
 window.graphSection = graphSection;
 window.addressSection = addressSection;
+window.historyBar = historyBar;

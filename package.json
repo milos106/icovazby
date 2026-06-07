@@ -1,6 +1,6 @@
 {
   "name": "ares-web",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
   "description": "Web application for Czech business registry due-diligence — search companies, run risk checks, map cross-company connections. Built on the public ARES API.",
   "license": "MIT",
