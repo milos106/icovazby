@@ -6,7 +6,50 @@
 const ICO_RE = /^\d{7,8}$/;
 const STORAGE_RECENT = "ares-web:recent";
 const STORAGE_BOOKMARKS = "ares-web:bookmarks";
+const STORAGE_DD_COLLAPSE = "ares-web:dd-collapsed";
 const RECENT_LIMIT = 10;
+
+// Alpine store pro stav rozbalení DD karet — persistovaný v localStorage.
+// Klíč = id karty (např. "dd-adis"). Default chování: dd-profil je VŽDY
+// rozbalený a nelze ho sbalit; ostatní jsou defaultně sbalené (uživatel
+// si je rozbalí kliknutím na hlavičku). Toggle se ukládá hned.
+document.addEventListener("alpine:init", () => {
+  window.Alpine.store("ddCollapse", {
+    state: (() => {
+      try {
+        const raw = localStorage.getItem(STORAGE_DD_COLLAPSE);
+        return raw ? JSON.parse(raw) : {};
+      } catch {
+        return {};
+      }
+    })(),
+    save() {
+      try {
+        localStorage.setItem(STORAGE_DD_COLLAPSE, JSON.stringify(this.state));
+      } catch {
+        /* private mode, ignore */
+      }
+    },
+    isExpanded(id) {
+      if (id === "dd-profil") return true;
+      const explicit = this.state[id];
+      return explicit === true;
+    },
+    toggle(id) {
+      if (id === "dd-profil") return;
+      this.state[id] = !this.isExpanded(id);
+      this.save();
+    },
+    expandAll(ids) {
+      for (const id of ids) if (id !== "dd-profil") this.state[id] = true;
+      this.save();
+    },
+    collapseAll(ids) {
+      for (const id of ids) if (id !== "dd-profil") this.state[id] = false;
+      this.save();
+    },
+  });
+});
 
 async function jsonFetch(url, opts) {
   const r = await fetch(url, opts);

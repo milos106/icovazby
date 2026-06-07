@@ -45,6 +45,13 @@
       .dark .risk-green { background: linear-gradient(135deg, #022c22, #064e3b); border-color: #34d399; color: #d1fae5; }
       [x-cloak] { display: none !important; }
       .mermaid svg { max-width: 100%; height: auto; }
+      /* DD karty: rozbalovací stav řízený přes :data-collapsed atribut.
+         Když je karta sbalená, schováme všechno UVNITŘ kromě hlavičky
+         (.dd-card-header). Padding root karty zachováme aby header
+         dýchal. */
+      .dd-card[data-collapsed="true"] { padding-bottom: 1rem; }
+      .dd-card[data-collapsed="true"] > *:not(.dd-card-header) { display: none !important; }
+      .dd-card[data-collapsed="true"] .dd-card-header { margin-bottom: 0; }
     </style>
   </head>
   <body class="bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-slate-100 min-h-screen flex flex-col transition-colors">
@@ -464,7 +471,7 @@
               class="sticky top-16 z-20 -mx-6 px-6 py-2 bg-white/95 dark:bg-slate-800/95 backdrop-blur border-y dark:border-slate-700 text-xs"
               aria-label="Sekce DD reportu"
             >
-              <div class="flex gap-1 overflow-x-auto whitespace-nowrap">
+              <div class="flex gap-1 overflow-x-auto whitespace-nowrap items-center">
                 <a href="#dd-profil" class="px-2 py-1 rounded hover:bg-slate-100 dark:hover:bg-slate-700">👤 Profil</a>
                 <a href="#dd-adis" class="px-2 py-1 rounded hover:bg-slate-100 dark:hover:bg-slate-700">🏦 DPH</a>
                 <a href="#dd-jerrs" class="px-2 py-1 rounded hover:bg-slate-100 dark:hover:bg-slate-700">🏦 ČNB</a>
@@ -474,6 +481,19 @@
                 <a href="#dd-smlouvy" class="px-2 py-1 rounded hover:bg-slate-100 dark:hover:bg-slate-700">💰 Smlouvy</a>
                 <a href="#dd-isir" class="px-2 py-1 rounded hover:bg-slate-100 dark:hover:bg-slate-700">⚖️ Insolvence</a>
                 <a href="#dd-zivno" class="px-2 py-1 rounded hover:bg-slate-100 dark:hover:bg-slate-700">🏷️ Živno</a>
+                <span class="mx-2 text-slate-300 dark:text-slate-600">|</span>
+                <button
+                  type="button"
+                  @click="$store.ddCollapse.expandAll(['dd-adis','dd-jerrs','dd-sankce','dd-ubo','dd-dotace','dd-smlouvy','dd-isir','dd-zivno'])"
+                  class="px-2 py-1 rounded hover:bg-slate-100 dark:hover:bg-slate-700"
+                  title="Rozbalit všechny sekce"
+                >▼ Vše</button>
+                <button
+                  type="button"
+                  @click="$store.ddCollapse.collapseAll(['dd-adis','dd-jerrs','dd-sankce','dd-ubo','dd-dotace','dd-smlouvy','dd-isir','dd-zivno'])"
+                  class="px-2 py-1 rounded hover:bg-slate-100 dark:hover:bg-slate-700"
+                  title="Sbalit všechny sekce"
+                >▶ Nic</button>
               </div>
             </nav>
 
@@ -582,9 +602,10 @@
                 </template>
               </div>
 
-              <div id="dd-dotace" class="border-2 border-emerald-300 dark:border-emerald-700 rounded-lg p-4 md:col-span-2 scroll-mt-32" x-data="ddDotaceLoader()" x-init="load(report.ico)">
-                <div class="flex items-baseline justify-between gap-2 mb-2 flex-wrap">
+              <div id="dd-dotace" :data-collapsed="!$store.ddCollapse.isExpanded('dd-dotace')" class="dd-card border-2 border-emerald-300 dark:border-emerald-700 rounded-lg p-4 md:col-span-2 scroll-mt-32" x-data="ddDotaceLoader()" x-init="load(report.ico)">
+                <div class="dd-card-header flex items-baseline justify-between gap-2 mb-2 flex-wrap cursor-pointer select-none" @click="$store.ddCollapse.toggle('dd-dotace')">
                   <h4 class="font-bold flex items-center gap-2">
+                    <span class="text-slate-400 w-3 inline-block" x-text="$store.ddCollapse.isExpanded('dd-dotace') ? '▼' : '▶'"></span>
                     <span>💸 Dotace</span>
                     <span class="text-xs font-normal text-slate-500 dark:text-slate-400">— CEDR + EU fondy + MMR/MPSV/MŠMT/SZIF/…</span>
                   </h4>
@@ -711,9 +732,10 @@
                 </p>
               </div>
 
-              <div id="dd-smlouvy" class="border-2 border-sky-300 dark:border-sky-700 rounded-lg p-4 md:col-span-2 scroll-mt-32" x-data="ddSmlouvyLoader()" x-init="load(report.ico)">
-                <div class="flex items-baseline justify-between gap-2 mb-2 flex-wrap">
+              <div id="dd-smlouvy" :data-collapsed="!$store.ddCollapse.isExpanded('dd-smlouvy')" class="dd-card border-2 border-sky-300 dark:border-sky-700 rounded-lg p-4 md:col-span-2 scroll-mt-32" x-data="ddSmlouvyLoader()" x-init="load(report.ico)">
+                <div class="dd-card-header flex items-baseline justify-between gap-2 mb-2 flex-wrap cursor-pointer select-none" @click="$store.ddCollapse.toggle('dd-smlouvy')">
                   <h4 class="font-bold flex items-center gap-2">
+                    <span class="text-slate-400 w-3 inline-block" x-text="$store.ddCollapse.isExpanded('dd-smlouvy') ? '▼' : '▶'"></span>
                     <span>💰 Smlouvy se státem</span>
                     <span class="text-xs font-normal text-slate-500 dark:text-slate-400">— Registr smluv (z. č. 340/2015 Sb.)</span>
                   </h4>
@@ -817,9 +839,10 @@
                 </p>
               </div>
 
-              <div id="dd-ubo" class="border-2 border-indigo-300 dark:border-indigo-700 rounded-lg p-4 md:col-span-2 scroll-mt-32" x-data="ddUboLoader()" x-init="load(report.ico)">
-                <div class="flex items-baseline justify-between gap-2 mb-2 flex-wrap">
+              <div id="dd-ubo" :data-collapsed="!$store.ddCollapse.isExpanded('dd-ubo')" class="dd-card border-2 border-indigo-300 dark:border-indigo-700 rounded-lg p-4 md:col-span-2 scroll-mt-32" x-data="ddUboLoader()" x-init="load(report.ico)">
+                <div class="dd-card-header flex items-baseline justify-between gap-2 mb-2 flex-wrap cursor-pointer select-none" @click="$store.ddCollapse.toggle('dd-ubo')">
                   <h4 class="font-bold flex items-center gap-2">
+                    <span class="text-slate-400 w-3 inline-block" x-text="$store.ddCollapse.isExpanded('dd-ubo') ? '▼' : '▶'"></span>
                     <span>👥 Skuteční majitelé (UBO)</span>
                     <span class="text-xs font-normal text-slate-500 dark:text-slate-400">— evidence dle z. č. 37/2021 Sb.</span>
                   </h4>
@@ -914,9 +937,12 @@
                 </p>
               </div>
 
-              <div id="dd-adis" class="border dark:border-slate-700 rounded-lg p-4 scroll-mt-32" x-data="ddAdisLoader()" x-init="load(report.ico)">
-                <h4 class="font-bold mb-2 flex items-center justify-between gap-2">
-                  <span>🏦 DPH compliance (MFČR ADIS)</span>
+              <div id="dd-adis" :data-collapsed="!$store.ddCollapse.isExpanded('dd-adis')" class="dd-card border dark:border-slate-700 rounded-lg p-4 scroll-mt-32" x-data="ddAdisLoader()" x-init="load(report.ico)">
+                <h4 class="dd-card-header font-bold mb-2 flex items-center justify-between gap-2 cursor-pointer select-none" @click="$store.ddCollapse.toggle('dd-adis')">
+                  <span class="flex items-center gap-2">
+                    <span class="text-slate-400 w-3 inline-block" x-text="$store.ddCollapse.isExpanded('dd-adis') ? '▼' : '▶'"></span>
+                    <span>🏦 DPH compliance (MFČR ADIS)</span>
+                  </span>
                   <div class="relative" x-data="{ open: false }" @click.outside="open = false">
                     <button type="button" @click.stop="open = !open" class="text-slate-400 hover:text-slate-600 text-base font-normal" title="Zdroj">ⓘ</button>
                     <div x-show="open" x-cloak x-transition class="absolute right-0 mt-1 w-72 bg-white dark:bg-slate-800 border dark:border-slate-700 rounded-lg shadow-lg p-3 text-xs font-normal z-30 text-left">
@@ -979,9 +1005,12 @@
                 </p>
               </div>
 
-              <div id="dd-isir" class="border dark:border-slate-700 rounded-lg p-4 scroll-mt-32" x-data="ddIsirLoader()" x-init="load(report.ico)">
-                <h4 class="font-bold mb-2 flex items-center justify-between gap-2">
-                  <span>⚖️ Insolvence</span>
+              <div id="dd-isir" :data-collapsed="!$store.ddCollapse.isExpanded('dd-isir')" class="dd-card border dark:border-slate-700 rounded-lg p-4 scroll-mt-32" x-data="ddIsirLoader()" x-init="load(report.ico)">
+                <h4 class="dd-card-header font-bold mb-2 flex items-center justify-between gap-2 cursor-pointer select-none" @click="$store.ddCollapse.toggle('dd-isir')">
+                  <span class="flex items-center gap-2">
+                    <span class="text-slate-400 w-3 inline-block" x-text="$store.ddCollapse.isExpanded('dd-isir') ? '▼' : '▶'"></span>
+                    <span>⚖️ Insolvence</span>
+                  </span>
                   <div class="relative" x-data="{ open: false }" @click.outside="open = false">
                     <button type="button" @click.stop="open = !open" class="text-slate-400 hover:text-slate-600 text-base font-normal" title="Zdroj">ⓘ</button>
                     <div x-show="open" x-cloak x-transition class="absolute right-0 mt-1 w-72 bg-white dark:bg-slate-800 border dark:border-slate-700 rounded-lg shadow-lg p-3 text-xs font-normal z-30 text-left">
@@ -1100,12 +1129,16 @@
 
               <div
                 id="dd-jerrs"
-                class="border dark:border-slate-700 rounded-lg p-4 scroll-mt-32"
+                :data-collapsed="!$store.ddCollapse.isExpanded('dd-jerrs')"
+                class="dd-card border dark:border-slate-700 rounded-lg p-4 scroll-mt-32"
                 x-data="ddJerrsLoader()"
                 x-init="load(report.ico)"
               >
-                <h4 class="font-bold mb-2 flex items-center justify-between gap-2">
-                  <span>🏦 ČNB — regulovaný subjekt</span>
+                <h4 class="dd-card-header font-bold mb-2 flex items-center justify-between gap-2 cursor-pointer select-none" @click="$store.ddCollapse.toggle('dd-jerrs')">
+                  <span class="flex items-center gap-2">
+                    <span class="text-slate-400 w-3 inline-block" x-text="$store.ddCollapse.isExpanded('dd-jerrs') ? '▼' : '▶'"></span>
+                    <span>🏦 ČNB — regulovaný subjekt</span>
+                  </span>
                   <div class="relative" x-data="{ open: false }" @click.outside="open = false">
                     <button type="button" @click.stop="open = !open" class="text-slate-400 hover:text-slate-600 text-base font-normal" title="Zdroj">ⓘ</button>
                     <div x-show="open" x-cloak x-transition class="absolute right-0 mt-1 w-72 bg-white dark:bg-slate-800 border dark:border-slate-700 rounded-lg shadow-lg p-3 text-xs font-normal z-30 text-left">
@@ -1170,12 +1203,16 @@
 
               <div
                 id="dd-sankce"
-                class="border dark:border-slate-700 rounded-lg p-4 scroll-mt-32"
+                :data-collapsed="!$store.ddCollapse.isExpanded('dd-sankce')"
+                class="dd-card border dark:border-slate-700 rounded-lg p-4 scroll-mt-32"
                 x-data="ddEuSanctionsLoader()"
                 x-init="screen(report)"
               >
-                <h4 class="font-bold mb-2 flex items-center justify-between gap-2">
-                  <span>🇪🇺 Screening EU sankcí</span>
+                <h4 class="dd-card-header font-bold mb-2 flex items-center justify-between gap-2 cursor-pointer select-none" @click="$store.ddCollapse.toggle('dd-sankce')">
+                  <span class="flex items-center gap-2">
+                    <span class="text-slate-400 w-3 inline-block" x-text="$store.ddCollapse.isExpanded('dd-sankce') ? '▼' : '▶'"></span>
+                    <span>🇪🇺 Screening EU sankcí</span>
+                  </span>
                   <div class="relative" x-data="{ open: false }" @click.outside="open = false">
                     <button type="button" @click.stop="open = !open" class="text-slate-400 hover:text-slate-600 text-base font-normal" title="Zdroj">ⓘ</button>
                     <div x-show="open" x-cloak x-transition class="absolute right-0 mt-1 w-72 bg-white dark:bg-slate-800 border dark:border-slate-700 rounded-lg shadow-lg p-3 text-xs font-normal z-30 text-left">
@@ -1258,9 +1295,12 @@
 
             <!-- Trade licenses as part of DD (we already have the data) -->
             <template x-if="report.trade_licenses && report.trade_licenses.total > 0">
-              <div id="dd-zivno" class="border dark:border-slate-700 rounded-lg p-4 scroll-mt-32">
-                <h4 class="font-bold mb-2 flex items-center justify-between gap-2">
-                  <span>🏷️ Živnostenská oprávnění</span>
+              <div id="dd-zivno" :data-collapsed="!$store.ddCollapse.isExpanded('dd-zivno')" class="dd-card border dark:border-slate-700 rounded-lg p-4 scroll-mt-32">
+                <h4 class="dd-card-header font-bold mb-2 flex items-center justify-between gap-2 cursor-pointer select-none" @click="$store.ddCollapse.toggle('dd-zivno')">
+                  <span class="flex items-center gap-2">
+                    <span class="text-slate-400 w-3 inline-block" x-text="$store.ddCollapse.isExpanded('dd-zivno') ? '▼' : '▶'"></span>
+                    <span>🏷️ Živnostenská oprávnění</span>
+                  </span>
                   <div class="relative" x-data="{ open: false }" @click.outside="open = false">
                     <button type="button" @click.stop="open = !open" class="text-slate-400 hover:text-slate-600 text-base font-normal" title="Zdroj">ⓘ</button>
                     <div x-show="open" x-cloak x-transition class="absolute right-0 mt-1 w-72 bg-white dark:bg-slate-800 border dark:border-slate-700 rounded-lg shadow-lg p-3 text-xs font-normal z-30 text-left">
