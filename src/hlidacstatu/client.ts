@@ -14,6 +14,7 @@
  */
 
 import { fetch as undiciFetch } from "undici";
+import { hsTokenContext } from "./token_context.js";
 
 const BASE = "https://api.hlidacstatu.cz";
 
@@ -25,7 +26,11 @@ export class HlidacStatuMissingTokenError extends Error {
 }
 
 function getToken(): string {
-  const t = process.env.HLIDAC_API_TOKEN?.trim();
+  // Priority: per-request token (z X-Hlidac-Token hlavičky) > env token.
+  // Tím je možné aby každý uživatel přinesl vlastní token a nesdílel rate
+  // limit s ostatními.
+  const fromRequest = hsTokenContext.getStore()?.trim();
+  const t = fromRequest || process.env.HLIDAC_API_TOKEN?.trim();
   if (!t) throw new HlidacStatuMissingTokenError();
   return t;
 }

@@ -51,13 +51,40 @@ document.addEventListener("alpine:init", () => {
   });
 });
 
+const STORAGE_HS_TOKEN = "ares-web:hs-token";
+
+/**
+ * Wrapped fetch: ke každému API requestu přidá X-Hlidac-Token hlavičku,
+ * pokud má uživatel v localStorage vlastní token. Server tento token
+ * použije přednostně před env tokenem — tím se rate limit rozdělí
+ * per-uživatele.
+ */
 async function jsonFetch(url, opts) {
-  const r = await fetch(url, opts);
+  const headers = new Headers((opts && opts.headers) || {});
+  try {
+    const tok = (localStorage.getItem(STORAGE_HS_TOKEN) || "").trim();
+    if (tok) headers.set("X-Hlidac-Token", tok);
+  } catch {
+    /* private mode, ignore */
+  }
+  const r = await fetch(url, { ...(opts || {}), headers });
   const data = await r.json().catch(() => ({}));
   if (!r.ok) {
     throw new Error(data.message || data.error || `HTTP ${r.status}`);
   }
   return data;
+}
+
+/** Stejné jako jsonFetch, ale pro raw `fetch()` v custom callerech. */
+function withHsToken(opts) {
+  const headers = new Headers((opts && opts.headers) || {});
+  try {
+    const tok = (localStorage.getItem(STORAGE_HS_TOKEN) || "").trim();
+    if (tok) headers.set("X-Hlidac-Token", tok);
+  } catch {
+    /* ignore */
+  }
+  return { ...(opts || {}), headers };
 }
 
 function loadList(key) {
@@ -417,7 +444,7 @@ function personVazbySection() {
       }
       this.loading = true;
       try {
-        const r = await fetch("/api/persons/vazby", {
+        const r = await fetch("/api/persons/vazby", withHsToken({
           method: "POST",
           headers: { "content-type": "application/json" },
           body: JSON.stringify({
@@ -426,7 +453,7 @@ function personVazbySection() {
             includeHistorical: this.form.includeHistorical,
             resolveIco: true,
           }),
-        });
+        }));
         if (!r.ok) {
           const e = await r.json().catch(() => ({ message: "HTTP " + r.status }));
           throw new Error(e.message || ("HTTP " + r.status));
@@ -493,8 +520,8 @@ function personVazbySection() {
       this.addingIco = true;
       try {
         const [dd, vr] = await Promise.allSettled([
-          fetch(`/api/dd/${encodeURIComponent(raw)}`),
-          fetch(`/api/vr/${encodeURIComponent(raw)}`),
+          fetch(`/api/dd/${encodeURIComponent(raw)}`, withHsToken()),
+          fetch(`/api/vr/${encodeURIComponent(raw)}`, withHsToken()),
         ]);
         if (dd.status === "rejected" && vr.status === "rejected") {
           this.addError = "Obě prověrky selhaly. Ověř IČO v ARES.";
@@ -812,6 +839,48 @@ function cnbRatesWidget() {
   };
 }
 
+/**
+ * HS token settings — per-user token saved in localStorage, sent
+ * as X-Hlidac-Token header. Bez tokenu uživatel sdílí serverový
+ * token (rate limit shared mezi všechny návštěvníky).
+ */
+function hsTokenSettings() {
+  return {
+    open: false,
+    draft: "",
+    saved: false,
+    hasOwnToken: false,
+    tokenLen: 0,
+    init() {
+      try {
+        const t = (localStorage.getItem(STORAGE_HS_TOKEN) || "").trim();
+        this.draft = t;
+        this.hasOwnToken = Boolean(t);
+        this.tokenLen = t.length;
+      } catch {
+        /* ignore */
+      }
+    },
+    save() {
+      const t = (this.draft || "").trim();
+      try {
+        if (t) localStorage.setItem(STORAGE_HS_TOKEN, t);
+        else localStorage.removeItem(STORAGE_HS_TOKEN);
+      } catch {
+        /* ignore */
+      }
+      this.hasOwnToken = Boolean(t);
+      this.tokenLen = t.length;
+      this.saved = true;
+      setTimeout(() => { this.saved = false; }, 2500);
+    },
+    clearToken() {
+      this.draft = "";
+      this.save();
+    },
+  };
+}
+
 function themeToggle() {
   return {
     isDark: false,
@@ -889,3 +958,4 @@ window.ddEuSanctionsLoader = ddEuSanctionsLoader;
 window.personVazbySection = personVazbySection;
 window.featuresStatus = featuresStatus;
 window.cnbRatesWidget = cnbRatesWidget;
+window.hsTokenSettings = hsTokenSettings;

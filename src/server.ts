@@ -15,6 +15,7 @@ import { z } from "zod";
 import { AresClient } from "./ares/client.js";
 import { AresError, toToolErrorPayload } from "./errors.js";
 import { HlidacStatuMissingTokenError } from "./hlidacstatu/client.js";
+import { hsTokenContext } from "./hlidacstatu/token_context.js";
 import { indexStats } from "./persons_index/store.js";
 import {
   crossCompanyPersonsService,
@@ -75,6 +76,17 @@ await app.register(fastifyStatic, {
   index: ["index.html"],
 });
 
+// Per-request HS token: pokud klient pošle hlavičku X-Hlidac-Token,
+// uložíme ji do AsyncLocalStorage. hlidacstatu/client.getToken() pak ji
+// použije přednostně před env tokenem. Tím se rozdělí rate limit na
+// per-uživatele a admin token serveru funguje jen jako fallback (např.
+// pro dev nebo pro DD endpointy bez UI).
+app.addHook("onRequest", async (req) => {
+  const raw = req.headers["x-hlidac-token"];
+  const token = typeof raw === "string" ? raw.trim() : Array.isArray(raw) ? raw[0]?.trim() : "";
+  if (token) hsTokenContext.enterWith(token);
+});
+
 const client = new AresClient({
   baseUrl: process.env.ARES_BASE_URL,
   ratePerSecond: parseEnvNumber(process.env.ARES_RATE_PER_SECOND, 5),
@@ -122,7 +134,13 @@ app.get("/healthz", async () => ({
 // Footer attribution for Hlídač státu (CC BY 3.0 — mandatory link) only shows
 // when its token is present.
 app.get("/api/features", async () => ({
-  hlidacstatu: Boolean(process.env.HLIDAC_API_TOKEN),
+  // Server má fallback (sdílený admin) token? UI ho neukazuje, jen
+  // ví, že může dělat HS dotazy i bez user-token. Při multi-user
+  // nasazení by tato hodnota měla být false a každý user si nasadí
+  // svůj.
+  hlidacstatuFallback: Boolean(process.env.HLIDAC_API_TOKEN?.trim()),
+  hlidacstatu: Boolean(process.env.HLIDAC_API_TOKEN?.trim()),
+  hsTokenRegistrationUrl: "https://www.hlidacstatu.cz/api",
 }));
 
 // ─── Validate IČO (pure) ──────────────────────────────────────────────────────

@@ -327,6 +327,29 @@ export async function fullDueDiligenceService(client: AresClient, icoInput: stri
     });
   }
 
+  // OSVČ self-membership: pokud je subjekt fyzická osoba podnikající,
+  // RŽP záznam obsahuje osobaPodnikatel s datumNarozeni. Vložíme to
+  // do indexu jako self-vazbu na stejné IČO — tím se pak při lookup
+  // osoby (např. „Petr Dubický 1962-11-08") objeví její OSVČ záznam
+  // vedle vazeb na firmy, kde sedí jako jednatel.
+  const osvc = rzp?.zaznamy?.[0]?.osobaPodnikatel;
+  if (osvc?.jmeno && osvc.prijmeni && osvc.datumNarozeni) {
+    upsertMembership({
+      jmeno: osvc.jmeno,
+      prijmeni: osvc.prijmeni,
+      titulPred: null,
+      displayName: `${osvc.jmeno} ${osvc.prijmeni}`,
+      datumNarozeni: osvc.datumNarozeni,
+      ico: normalized,
+      obchodniJmeno: obchodniJmeno ?? null,
+      funkce: "Podnikatel (OSVČ)",
+      organ: "RŽP",
+      datumZapisu: osvc.platnostOd ?? subject.datumVzniku ?? null,
+      datumVymazu: subject.datumZaniku ?? null,
+      source: "ARES_VR",
+    });
+  }
+
   return {
     ico: normalized,
     obchodniJmeno,

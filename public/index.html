@@ -119,6 +119,76 @@
             </div>
           </div>
 
+          <!-- HS token settings: každý user si zadá vlastní token, aby
+               nesdílel rate limit s ostatními. Token žije v localStorage,
+               odesílá se jako X-Hlidac-Token hlavička. -->
+          <div
+            x-data="hsTokenSettings()"
+            x-init="init()"
+            @click.outside="open = false"
+            class="relative"
+          >
+            <button
+              type="button"
+              @click="open = !open"
+              class="px-3 py-1.5 border dark:border-slate-600 rounded text-sm hover:bg-slate-50 dark:hover:bg-slate-700"
+              :class="hasOwnToken ? 'border-emerald-400 dark:border-emerald-600' : 'border-amber-400 dark:border-amber-600'"
+              :title="hasOwnToken ? 'Vlastní HS token nastaven (' + tokenLen + ' znaků)' : 'Hlídač státu token — klikni pro nastavení'"
+            >
+              <span x-text="hasOwnToken ? '🔑' : '🔓'"></span>
+            </button>
+            <div
+              x-show="open"
+              x-cloak
+              x-transition
+              class="absolute right-0 mt-2 w-80 bg-white dark:bg-slate-800 border dark:border-slate-700 rounded-lg shadow-lg z-40 p-3 text-left"
+            >
+              <h3 class="text-sm font-bold mb-1">🔑 Hlídač státu — tvůj token</h3>
+              <p class="text-xs text-slate-500 dark:text-slate-400 mb-3">
+                HS API má rate limit per token. Pokud používáš sdílený serverový token,
+                může být brzy přetížený. Vygeneruj si vlastní zdarma a zadej ho sem
+                — žije pouze ve tvém prohlížeči (localStorage).
+              </p>
+              <a
+                class="text-xs underline text-emerald-700 dark:text-emerald-400 block mb-2"
+                href="https://www.hlidacstatu.cz/api"
+                target="_blank"
+                rel="noopener"
+              >🔗 Vygenerovat token (hlidacstatu.cz/api)</a>
+              <input
+                type="password"
+                x-model="draft"
+                placeholder="HS API token (32 znaků)"
+                class="w-full px-2 py-1.5 border dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100 rounded text-sm font-mono"
+                @keydown.enter="save()"
+              />
+              <div class="flex gap-2 mt-2">
+                <button
+                  type="button"
+                  @click="save()"
+                  class="flex-1 px-3 py-1 bg-emerald-600 text-white rounded text-sm hover:bg-emerald-700"
+                >Uložit</button>
+                <button
+                  type="button"
+                  @click="clearToken()"
+                  class="px-3 py-1 border dark:border-slate-600 rounded text-sm hover:bg-slate-50 dark:hover:bg-slate-700"
+                  x-show="hasOwnToken"
+                >Smazat</button>
+              </div>
+              <p class="text-xs text-slate-400 mt-2" x-show="saved" x-cloak>
+                ✅ Uloženo.
+              </p>
+              <p class="text-xs mt-2" x-show="hasOwnToken">
+                <span class="text-emerald-700 dark:text-emerald-400">✓ Vlastní token aktivní</span>
+                (<span x-text="tokenLen"></span> znaků)
+              </p>
+              <p class="text-xs mt-2" x-show="!hasOwnToken">
+                <span class="text-amber-700 dark:text-amber-400">⚠ Bez vlastního tokenu</span>
+                — používáš sdílený serverový token (může mít rate limit).
+              </p>
+            </div>
+          </div>
+
           <button
             x-data="themeToggle()"
             @click="toggle()"

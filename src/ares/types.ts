@@ -163,8 +163,37 @@ export interface VrPravnickaOsoba {
   [key: string]: unknown;
 }
 
+/**
+ * Pro fyzické osoby podnikající (OSVČ, právní forma 107/108) je v RŽP
+ * uložená osobaPodnikatel — to je jediný veřejný zdroj datumNarozeni
+ * podnikatele dostupný přes ARES. Bez něj nelze propojit OSVČ záznam
+ * (IČO např. 49801431) se stejnou osobou, která je jednatelem jiné
+ * firmy (kde DOB pochází z VR).
+ */
+export interface RzpOsobaPodnikatel {
+  jmeno?: string;
+  prijmeni?: string;
+  datumNarozeni?: string;
+  platnostOd?: string;
+  statniObcanstvi?: string;
+  typAngazma?: string;
+}
+
+export interface RzpZaznamItem {
+  ico?: string;
+  obchodniJmeno?: string;
+  pravniForma?: string;
+  typSubjektu?: "F" | "P"; // F = fyzická, P = právnická
+  osobaPodnikatel?: RzpOsobaPodnikatel;
+  primarniZaznam?: boolean;
+  [key: string]: unknown;
+}
+
 export interface RzpZaznam {
   ico?: string;
+  icoId?: string;
+  /** Pro OSVČ má RŽP wrapping {zaznamy:[{osobaPodnikatel:...}]}. */
+  zaznamy?: RzpZaznamItem[];
   zivnostenskeOpravneni?: ZivnostenskeOpravneni[];
   [key: string]: unknown;
 }
