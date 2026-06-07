@@ -446,6 +446,48 @@ export async function getResClassificationService(client: AresClient, icoInput: 
   };
 }
 
+// ─── ADIS DPH (nespolehlivý plátce + bankovní účty) ───────────────────────────
+import { fetchPlatceStatus } from "./adis/client.js";
+
+export const ADIS_ATTRIBUTION = {
+  source: "MFČR ADIS — registr plátců DPH",
+  publisher: "Generální finanční ředitelství / Finanční správa ČR",
+  legalBasis: "§ 96a zákona č. 235/2004 Sb., o DPH",
+  url: "https://adisspr.mfcr.cz/",
+};
+
+export async function getAdisVatStatusService(icoInput: string) {
+  const { valid, normalized, reason } = validateIcoFn(icoInput);
+  if (!valid || !normalized) throw new InvalidInputError(`Invalid IČO: ${icoInput}`, { reason });
+  const r = await fetchPlatceStatus(normalized);
+  if (!r.info) {
+    return {
+      dic: normalized,
+      isVatPayer: false,
+      isUnreliable: null,
+      bankAccounts: [],
+      message: r.statusText ?? "Subjekt nenalezen v registru DPH (pravděpodobně neplátce DPH).",
+      _attribution: ADIS_ATTRIBUTION,
+    };
+  }
+  return {
+    dic: r.info.dic,
+    isVatPayer: true,
+    isUnreliable: r.info.nespolehlivyPlatce === "ANO",
+    nespolehlivyPlatceRaw: r.info.nespolehlivyPlatce,
+    cisloFu: r.info.cisloFu,
+    odpovedGenerovana: r.odpovedGenerovana,
+    bankAccounts: r.info.zverejneneUcty.map((u) => ({
+      formatted: u.cisloUctuFormatted,
+      type: u.type,
+      datumZverejneni: u.datumZverejneni,
+    })),
+    _attribution: ADIS_ATTRIBUTION,
+    _legalNote:
+      "Pokud plátce přijme platbu na účet jiný než zveřejněný a hodnota plnění přesáhne 540 000 Kč, podle § 109a zákona o DPH ručí příjemce za DPH dodavatele.",
+  };
+}
+
 // ─── Export for invoicing ─────────────────────────────────────────────────────
 type InvoiceTarget = "fakturoid" | "idoklad" | "pohoda";
 

@@ -441,6 +441,60 @@
                 </dl>
               </div>
 
+              <div class="border dark:border-slate-700 rounded-lg p-4" x-data="ddAdisLoader()" x-init="load(report.ico)">
+                <h4 class="font-bold mb-2">DPH compliance (MFČR)</h4>
+                <template x-if="loading">
+                  <p class="text-xs text-slate-500 dark:text-slate-400">Načítám z MFČR ADIS…</p>
+                </template>
+                <template x-if="adisError">
+                  <p class="text-xs text-amber-700 dark:text-amber-400" x-text="adisError"></p>
+                </template>
+                <template x-if="adis && !adis.isVatPayer">
+                  <p class="text-sm text-slate-500 dark:text-slate-400" x-text="adis.message"></p>
+                </template>
+                <template x-if="adis && adis.isVatPayer">
+                  <dl class="space-y-2 text-sm">
+                    <div>
+                      <dt class="text-xs text-slate-500 dark:text-slate-400">Nespolehlivý plátce</dt>
+                      <dd>
+                        <span
+                          :class="adis.isUnreliable ? 'bg-red-100 dark:bg-red-900/40 text-red-800 dark:text-red-300' : 'bg-emerald-100 dark:bg-emerald-900/40 text-emerald-800 dark:text-emerald-300'"
+                          class="px-2 py-0.5 rounded text-xs font-semibold"
+                          x-text="adis.isUnreliable ? '🚨 ANO — riziko ručení za DPH' : '✅ NE — spolehlivý plátce'"
+                        ></span>
+                      </dd>
+                    </div>
+                    <div>
+                      <dt class="text-xs text-slate-500 dark:text-slate-400">Finanční úřad</dt>
+                      <dd class="text-xs font-mono" x-text="adis.cisloFu || '—'"></dd>
+                    </div>
+                    <div>
+                      <dt class="text-xs text-slate-500 dark:text-slate-400">Zveřejněné účty (§ 96a)</dt>
+                      <dd>
+                        <p class="text-xs mb-1"><span class="font-bold" x-text="adis.bankAccounts.length"></span> účtů zveřejněno k <span x-text="adis.odpovedGenerovana"></span></p>
+                        <template x-if="adis.bankAccounts.length > 0">
+                          <ul class="text-xs space-y-0.5 max-h-32 overflow-y-auto font-mono">
+                            <template x-for="b in adis.bankAccounts.slice(0, 8)" :key="b.formatted">
+                              <li class="text-slate-700 dark:text-slate-300" x-text="b.formatted + (b.type === 'nestandardni' ? ' (IBAN)' : '')"></li>
+                            </template>
+                            <template x-if="adis.bankAccounts.length > 8">
+                              <li class="text-slate-400" x-text="`+ ${adis.bankAccounts.length - 8} dalších`"></li>
+                            </template>
+                          </ul>
+                        </template>
+                      </dd>
+                    </div>
+                    <details class="text-xs text-slate-500 dark:text-slate-400 cursor-pointer">
+                      <summary class="hover:text-slate-700 dark:hover:text-slate-200">⚖️ Právní upozornění (§ 109a)</summary>
+                      <p class="mt-1" x-text="adis._legalNote"></p>
+                    </details>
+                  </dl>
+                </template>
+                <p class="mt-3 text-xs text-slate-400">
+                  Zdroj: <a class="underline" href="https://adisspr.mfcr.cz/" target="_blank" rel="noopener">MFČR ADIS</a> · § 96a z. č. 235/2004 Sb.
+                </p>
+              </div>
+
               <div class="border dark:border-slate-700 rounded-lg p-4">
                 <h4 class="font-bold mb-2">Insolvence</h4>
                 <dl class="space-y-1 text-sm">

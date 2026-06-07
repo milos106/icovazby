@@ -342,6 +342,31 @@ function addressSection() {
   };
 }
 
+/**
+ * Inline loader pro DPH compliance data v DD kartě. Fetchne ADIS endpoint
+ * po vyrendrování DD reportu a vystaví reactive `adis` property pro Alpine.
+ */
+function ddAdisLoader() {
+  return {
+    adis: null,
+    loading: false,
+    adisError: "",
+    async load(ico) {
+      if (!ico) return;
+      this.loading = true;
+      this.adis = null;
+      this.adisError = "";
+      try {
+        this.adis = await jsonFetch(`/api/adis/${encodeURIComponent(ico)}`);
+      } catch (e) {
+        this.adisError = "DPH compliance check selhal: " + e.message;
+      } finally {
+        this.loading = false;
+      }
+    },
+  };
+}
+
 function themeToggle() {
   return {
     isDark: false,
@@ -408,3 +433,4 @@ window.graphSection = graphSection;
 window.addressSection = addressSection;
 window.historyBar = historyBar;
 window.themeToggle = themeToggle;
+window.ddAdisLoader = ddAdisLoader;
