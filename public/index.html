@@ -63,7 +63,55 @@
           <a href="#graph" class="hover:text-slate-900 dark:hover:text-white">Mapa propojení</a>
           <a href="#address" class="hover:text-slate-900 dark:hover:text-white">Podle adresy</a>
         </nav>
-        <div class="flex items-center gap-2">
+        <div class="flex items-center gap-2 flex-wrap">
+          <!-- ČNB kurz widget -->
+          <div
+            x-data="cnbRatesWidget()"
+            x-init="init()"
+            class="relative"
+            @click.outside="open = false"
+          >
+            <button
+              @click="open = !open"
+              class="px-3 py-1.5 border dark:border-slate-600 rounded text-xs hover:bg-slate-50 dark:hover:bg-slate-700 font-mono"
+              :title="rates ? 'Kurzy ČNB k ' + rates.validFor : 'Načítám kurz ČNB…'"
+            >
+              <template x-if="rates && rates.core && rates.core.EUR">
+                <span>
+                  €<span x-text="rates.core.EUR.rate.toFixed(2)"></span>
+                  · $<span x-text="rates.core.USD ? rates.core.USD.rate.toFixed(2) : '—'"></span>
+                </span>
+              </template>
+              <template x-if="!rates">
+                <span class="text-slate-400">💱 ...</span>
+              </template>
+            </button>
+            <div
+              x-show="open && rates"
+              x-cloak
+              x-transition
+              class="absolute right-0 mt-2 w-72 bg-white dark:bg-slate-800 border dark:border-slate-700 rounded-lg shadow-lg z-40 p-3"
+            >
+              <p class="text-xs text-slate-500 dark:text-slate-400 mb-2">
+                Kurzy ČNB k <span class="font-semibold" x-text="rates && rates.validFor"></span>
+              </p>
+              <table class="w-full text-xs font-mono">
+                <tbody>
+                  <template x-for="(r, code) in (rates && rates.core) || {}" :key="code">
+                    <tr class="border-b dark:border-slate-700 last:border-0">
+                      <td class="py-1" x-text="code"></td>
+                      <td class="py-1 text-slate-500 dark:text-slate-400" x-text="r.country"></td>
+                      <td class="py-1 text-right font-semibold" x-text="r.rate.toFixed(3) + ' Kč'"></td>
+                    </tr>
+                  </template>
+                </tbody>
+              </table>
+              <p class="mt-2 text-xs text-slate-400">
+                <a class="underline" href="https://www.cnb.cz/cs/financni-trhy/devizovy-trh/" target="_blank" rel="noopener">Zdroj: ČNB</a>
+              </p>
+            </div>
+          </div>
+
           <button
             x-data="themeToggle()"
             @click="toggle()"
@@ -466,7 +514,7 @@
                         <div class="text-xs text-slate-500 dark:text-slate-400">dotací celkem</div>
                       </div>
                       <div class="border dark:border-slate-700 rounded p-2">
-                        <div class="text-2xl font-bold text-emerald-700 dark:text-emerald-300" x-text="formatCZK(dotace.topPayedCZK)"></div>
+                        <div class="text-2xl font-bold text-emerald-700 dark:text-emerald-300" x-text="formatCZK(dotace.topPayedCZK)" :title="czkAsEurTooltip(dotace.topPayedCZK)"></div>
                         <div class="text-xs text-slate-500 dark:text-slate-400">
                           vyplaceno
                           <template x-if="dotace.yearRange">
@@ -584,7 +632,7 @@
                         <div class="text-xs text-slate-500 dark:text-slate-400">smluv celkem</div>
                       </div>
                       <div class="border dark:border-slate-700 rounded p-2">
-                        <div class="text-2xl font-bold" x-text="formatCZK(smlouvy.topSumCZK)"></div>
+                        <div class="text-2xl font-bold" x-text="formatCZK(smlouvy.topSumCZK)" :title="czkAsEurTooltip(smlouvy.topSumCZK)"></div>
                         <div class="text-xs text-slate-500 dark:text-slate-400">součet top <span x-text="smlouvy.shown"></span></div>
                       </div>
                       <div class="border dark:border-slate-700 rounded p-2">

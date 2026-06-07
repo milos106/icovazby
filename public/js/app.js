@@ -356,6 +356,22 @@ function formatCZK(n) {
 }
 window.formatCZK = formatCZK;
 
+// Tooltip helper: vrátí přepočet CZK → EUR podle aktuálního kurzu ČNB
+// (uložen v window.__cnbRates widgetem). Použito jako `:title` na headline
+// částkách v Smlouvy/Dotace tak, aby uživatel viděl řádové porovnání v euro.
+function czkAsEurTooltip(n) {
+  if (n === null || n === undefined || Number.isNaN(n)) return "";
+  const eur = window.__cnbRates?.core?.EUR?.rate;
+  if (!eur) return "";
+  const v = n / eur;
+  let formatted;
+  if (v >= 1e6) formatted = (v / 1e6).toFixed(2) + " mil €";
+  else if (v >= 1e3) formatted = (v / 1e3).toFixed(0) + " tis €";
+  else formatted = Math.round(v) + " €";
+  return `≈ ${formatted}  (kurz ČNB k ${window.__cnbRates.validFor})`;
+}
+window.czkAsEurTooltip = czkAsEurTooltip;
+
 function ddIsirLoader() {
   return {
     isir: null,
@@ -481,6 +497,28 @@ function featuresStatus() {
   };
 }
 
+/**
+ * Mini-widget zobrazující denní kurzy ČNB. Načítá pouze jednou za session
+ * (na serveru je 6h cache, není potřeba spam refresh).
+ */
+function cnbRatesWidget() {
+  return {
+    open: false,
+    rates: null,
+    async init() {
+      try {
+        const r = await fetch("/api/cnb/rates");
+        if (r.ok) {
+          this.rates = await r.json();
+          window.__cnbRates = this.rates;
+        }
+      } catch {
+        /* offline — keep null, the template falls back to placeholder */
+      }
+    },
+  };
+}
+
 function themeToggle() {
   return {
     isDark: false,
@@ -553,3 +591,4 @@ window.ddSmlouvyLoader = ddSmlouvyLoader;
 window.ddDotaceLoader = ddDotaceLoader;
 window.ddIsirLoader = ddIsirLoader;
 window.featuresStatus = featuresStatus;
+window.cnbRatesWidget = cnbRatesWidget;

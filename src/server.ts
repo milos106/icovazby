@@ -19,6 +19,7 @@ import {
   exportForInvoicingService,
   fullDueDiligenceService,
   getAdisVatStatusService,
+  getCnbRatesService,
   getDotaceService,
   getInsolvenceDetailService,
   getResClassificationService,
@@ -159,6 +160,15 @@ app.get("/api/search/address", async (req: FastifyRequest, reply) => {
       return reply.status(400).send({ error: "INVALID_INPUT", message: parsed.error.message });
     }
     reply.send(await searchByAddressService(client, parsed.data));
+  } catch (e) {
+    sendError(reply, e);
+  }
+});
+
+// ─── ČNB denní kurzy ──────────────────────────────────────────────────────────
+app.get("/api/cnb/rates", async (_req: FastifyRequest, reply) => {
+  try {
+    reply.send(await getCnbRatesService());
   } catch (e) {
     sendError(reply, e);
   }

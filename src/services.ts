@@ -446,6 +446,53 @@ export async function getResClassificationService(client: AresClient, icoInput: 
   };
 }
 
+// ─── ČNB denní kurzy ──────────────────────────────────────────────────────────
+import { CNB_ATTRIBUTION, fetchDailyRates, rateFor } from "./cnb/client.js";
+
+/** Vybrané "core" měny pro UI widget. EUR, USD, GBP, CHF, JPY, PLN. */
+const CORE_CURRENCIES = ["EUR", "USD", "GBP", "CHF", "PLN", "JPY"];
+
+export async function getCnbRatesService() {
+  const data = await fetchDailyRates();
+  const core: Record<string, { rate: number; country: string; currency: string }> = {};
+  for (const code of CORE_CURRENCIES) {
+    const r = data.rates.find((x) => x.currencyCode === code);
+    if (r) {
+      core[code] = {
+        rate: r.rate / r.amount,
+        country: r.country,
+        currency: r.currency,
+      };
+    }
+  }
+  const validFor = data.rates[0]?.validFor ?? null;
+  return {
+    validFor,
+    core,
+    all: data.rates.map((r) => ({
+      code: r.currencyCode,
+      country: r.country,
+      currency: r.currency,
+      amount: r.amount,
+      rate: r.rate,
+      ratePerUnit: r.rate / r.amount,
+    })),
+    _attribution: CNB_ATTRIBUTION,
+  };
+}
+
+/** Helper, který používáme v jiných službách k převodu z Kč na cizí měnu. */
+export async function tryConvert(czkAmount: number, code: string): Promise<number | null> {
+  try {
+    const data = await fetchDailyRates();
+    const r = rateFor(data, code);
+    if (!r || r === 0) return null;
+    return czkAmount / r;
+  } catch {
+    return null;
+  }
+}
+
 // ─── ADIS DPH (nespolehlivý plátce + bankovní účty) ───────────────────────────
 import { fetchPlatceStatus } from "./adis/client.js";
 import {
