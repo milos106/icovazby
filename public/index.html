@@ -3,10 +3,10 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>ARES Check — rychlá due diligence českých firem</title>
+    <title>ARES Check — rychlá hloubková prověrka českých firem</title>
     <meta
       name="description"
-      content="Bezplatný nástroj pro ověření českých firem: profil, due-diligence s risk skóre, mapa propojení statutárů, detekce virtuálních adres. Data z veřejného ARES."
+      content="Bezplatný nástroj pro ověření českých firem: profil, hloubková prověrka s risk skóre, mapa propojení statutárů, detekce virtuálních adres. Data z veřejného ARES."
     />
     <!-- FOUC-free theme init: must run before any styles render -->
     <script>
@@ -61,12 +61,12 @@
           <span class="text-3xl">🛡️</span>
           <div>
             <h1 class="text-xl font-bold">ARES Check</h1>
-            <p class="text-xs text-slate-500 dark:text-slate-400 dark:text-slate-400">Rychlá due diligence českých firem</p>
+            <p class="text-xs text-slate-500 dark:text-slate-400 dark:text-slate-400">Rychlá hloubková prověrka českých firem</p>
           </div>
         </div>
         <nav class="hidden md:flex gap-4 text-sm text-slate-600 dark:text-slate-400">
           <a href="#search" class="hover:text-slate-900 dark:hover:text-white">Hledat</a>
-          <a href="#dd" class="hover:text-slate-900 dark:hover:text-white">Due diligence</a>
+          <a href="#dd" class="hover:text-slate-900 dark:hover:text-white">Hloubková prověrka</a>
           <a href="#graph" class="hover:text-slate-900 dark:hover:text-white">Mapa propojení</a>
           <a href="#address" class="hover:text-slate-900 dark:hover:text-white">Podle adresy</a>
         </nav>
@@ -231,7 +231,7 @@
                 <button
                   @click="$dispatch('open-dd', { ico: profile.ico })"
                   class="px-3 py-1.5 bg-emerald-600 text-white rounded text-sm hover:bg-emerald-700"
-                >🛡️ Due diligence</button>
+                >🛡️ Hloubková prověrka</button>
               </div>
             </div>
             <dl class="grid grid-cols-2 md:grid-cols-4 gap-3 mt-4 text-sm">
@@ -407,9 +407,9 @@
         </template>
       </section>
 
-      <!-- ─── Due diligence ─────────────────────────────────────────── -->
+      <!-- ─── Hloubková prověrka ────────────────────────────────────── -->
       <section id="dd" x-data="ddSection()" x-init="init()" @open-dd.window="run($event.detail.ico)" class="bg-white dark:bg-slate-800 dark:border-slate-700 rounded-2xl shadow-sm border p-6">
-        <h2 class="text-lg font-bold mb-1">🛡️ Due diligence</h2>
+        <h2 class="text-lg font-bold mb-1">🛡️ Hloubková prověrka</h2>
         <p class="text-sm text-slate-500 dark:text-slate-400 mb-4">
           Jeden klik = kompletní report: profil + jednatelé + DPH + insolvence + risk skóre 🟢🟡🔴.
         </p>
@@ -424,7 +424,7 @@
             type="submit"
             class="px-6 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 disabled:opacity-50"
             :disabled="loading"
-            x-text="loading ? 'Probíhá kontrola…' : 'Spustit DD'"
+            x-text="loading ? 'Probíhá kontrola…' : 'Spustit prověrku'"
           ></button>
         </form>
 
@@ -469,7 +469,7 @@
                  globální header (top-0 z-30 h-~64px), proto top-16. -->
             <nav
               class="sticky top-16 z-20 -mx-6 px-6 py-2 bg-white/95 dark:bg-slate-800/95 backdrop-blur border-y dark:border-slate-700 text-xs"
-              aria-label="Sekce DD reportu"
+              aria-label="Sekce hloubkové prověrky"
             >
               <div class="flex gap-1 overflow-x-auto whitespace-nowrap items-center">
                 <a href="#dd-profil" class="px-2 py-1 rounded hover:bg-slate-100 dark:hover:bg-slate-700">👤 Profil</a>

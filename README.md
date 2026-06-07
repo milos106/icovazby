@@ -1,6 +1,6 @@
 # ares-web
 
-> Webová aplikace pro rychlou **due diligence českých firem** — vyhledávání podle IČO a názvu, kompletní DD report s 🟢🟡🔴 risk skóre, mapa propojení statutárů (Mermaid), detekce virtuálních adres. Bez AI, bez přihlášení, vše z veřejného ARES.
+> Webová aplikace pro **rychlou hloubkovou prověrku českých firem** — vyhledávání podle IČO a názvu, kompletní report s 🟢🟡🔴 risk skóre, mapa propojení statutárů (Mermaid), detekce virtuálních adres. Bez AI, bez přihlášení, vše z veřejného ARES.
 >
 > **Local-only projekt.** Není veřejně hostovaný ani na npm; spouští se z téhož repozitáře.
 
@@ -9,7 +9,7 @@
 | Sekce | Co dělá |
 |---|---|
 | **Profil firmy** | IČO nebo název → identifikace, sídlo, DPH, NACE. Rozbalitelné karty: 📊 RES klasifikace (SME, sektor), 🏷️ živnostenská oprávnění (RŽP). |
-| **Due diligence** | Jeden klik → 🟢🟡🔴 risk badge + findings + sekce identifikace + DPH + insolvence + statutáři + živnosti. |
+| **Hloubková prověrka** | Jeden klik → 🟢🟡🔴 risk badge + findings + sekce identifikace + DPH + insolvence + statutáři + živnosti. |
 | **Mapa propojení** | 2–50 IČO → osoby ve více firmách + Mermaid graf. Volitelně i historické vazby (nominee detection). |
 | **Hledat na adrese** | Detekce virtuálních kanceláří. > 50 firem = ⚠️, > 500 = 🚨. |
 | **Export do fakturace** | Tlačítka Fakturoid / iDoklad / Pohoda → zkopíruje JSON do schránky, paste do fakturačního systému. |
@@ -59,7 +59,7 @@ npm run dev
 | `GET /healthz` | Liveness check |
 | `GET /api/validate/:ico` | Mod-11 checksum, bez network volání |
 | `GET /api/company/:ico` | Profil firmy z ARES agregátu |
-| `GET /api/dd/:ico` | Plný due-diligence report (paralelně 3 endpointy) |
+| `GET /api/dd/:ico` | Plný report hloubkové prověrky (paralelně 3 endpointy) |
 | `GET /api/licenses/:ico` | Živnostenská oprávnění z RŽP |
 | `GET /api/res/:ico` | Statistická klasifikace (velikost, sektor, NUTS) z RES |
 | `GET /api/export/:ico/:target` | Fakturoid / iDoklad / Pohoda payload (`target` = jeden z těchto tří) |
