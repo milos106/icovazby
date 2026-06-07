@@ -489,6 +489,49 @@
                 </dl>
               </div>
 
+              <!-- Statutární orgány: součást profilu firmy (přesunuto sem z dolu DD).
+                   Klik na jméno (modře, podtržené) otevře sekci „Vazby osoby"
+                   se seznamem ostatních firem, kde osoba seděla / sedí. -->
+              <div class="border dark:border-slate-700 rounded-lg p-4 md:col-span-2 bg-emerald-50/40 dark:bg-emerald-900/10">
+                <div class="flex items-baseline justify-between flex-wrap gap-2 mb-2">
+                  <h4 class="font-bold">
+                    👥 Statutární orgány
+                    <span class="text-xs font-normal text-slate-500 dark:text-slate-400">
+                      — klikni na jméno pro mapu firem osoby
+                    </span>
+                  </h4>
+                  <p class="text-sm">
+                    Aktivních členů: <span class="font-bold" x-text="report.statutary.aktivniCount"></span>
+                  </p>
+                </div>
+                <template x-if="report.statutary.clenove.length > 0">
+                  <ul class="text-sm grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-1 max-h-72 overflow-y-auto">
+                    <template x-for="c in report.statutary.clenove.slice(0, 24)" :key="(c.jmeno||'') + (c.datumZapisu||'')">
+                      <li class="text-xs border-l-2 border-emerald-200 dark:border-emerald-800 pl-2">
+                        <template x-if="c.jmeno && c.datumNarozeni">
+                          <button
+                            type="button"
+                            @click="openPersonVazby(c.jmeno, c.datumNarozeni)"
+                            class="font-semibold underline text-emerald-700 dark:text-emerald-400 hover:text-emerald-800 text-left"
+                            :title="'Najít vazby osoby ' + c.jmeno"
+                          >
+                            <span x-text="c.jmeno"></span>
+                            <span class="text-xs text-slate-400 ml-0.5">🔗</span>
+                          </button>
+                        </template>
+                        <template x-if="!c.jmeno || !c.datumNarozeni">
+                          <span class="font-semibold" x-text="c.jmeno || '—'"></span>
+                        </template>
+                        <span class="text-slate-500 dark:text-slate-400" x-text="c.funkce ? ' — ' + c.funkce : ''"></span>
+                      </li>
+                    </template>
+                  </ul>
+                </template>
+                <template x-if="report.statutary.clenove.length === 0">
+                  <p class="text-sm text-slate-500 dark:text-slate-400 italic">Žádní aktivní členové ve VR.</p>
+                </template>
+              </div>
+
               <div class="border-2 border-emerald-300 dark:border-emerald-700 rounded-lg p-4 md:col-span-2" x-data="ddDotaceLoader()" x-init="load(report.ico)">
                 <h4 class="font-bold mb-2 flex items-center gap-2">
                   💸 Dotace
@@ -1006,34 +1049,6 @@
                   <a class="underline" href="https://www.cnb.cz/cs/dohled-financni-trh/seznamy/Otevrena-data/" target="_blank" rel="noopener">ČNB otevřená data</a>
                   · nař. vlády 425/2016 Sb.
                 </p>
-              </div>
-
-              <div class="border dark:border-slate-700 rounded-lg p-4">
-                <h4 class="font-bold mb-2">Statutární orgány</h4>
-                <p class="text-sm mb-2">Aktivních členů: <span class="font-bold" x-text="report.statutary.aktivniCount"></span></p>
-                <template x-if="report.statutary.clenove.length > 0">
-                  <ul class="text-sm space-y-1 max-h-40 overflow-y-auto">
-                    <template x-for="c in report.statutary.clenove.slice(0, 12)" :key="(c.jmeno||'') + (c.datumZapisu||'')">
-                      <li class="text-xs">
-                        <template x-if="c.jmeno && c.datumNarozeni">
-                          <button
-                            type="button"
-                            @click="openPersonVazby(c.jmeno, c.datumNarozeni)"
-                            class="font-semibold underline text-emerald-700 dark:text-emerald-400 hover:text-emerald-800 text-left"
-                            :title="'Najít vazby osoby ' + c.jmeno"
-                          >
-                            <span x-text="c.jmeno"></span>
-                            <span class="text-xs text-slate-400 ml-0.5">🔗</span>
-                          </button>
-                        </template>
-                        <template x-if="!c.jmeno || !c.datumNarozeni">
-                          <span class="font-semibold" x-text="c.jmeno || '—'"></span>
-                        </template>
-                        <span class="text-slate-500 dark:text-slate-400" x-text="c.funkce ? ' — ' + c.funkce : ''"></span>
-                      </li>
-                    </template>
-                  </ul>
-                </template>
               </div>
 
               <div
