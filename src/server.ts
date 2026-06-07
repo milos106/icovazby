@@ -21,6 +21,7 @@ import {
   getAdisVatStatusService,
   getCnbRatesService,
   getDotaceService,
+  getEuSanctionsScreenService,
   getInsolvenceDetailService,
   getJerrsService,
   getResClassificationService,
@@ -180,6 +181,22 @@ app.get("/api/jerrs/:ico", async (req: FastifyRequest, reply) => {
   try {
     const ico = (req.params as { ico: string }).ico;
     reply.send(await getJerrsService(ico));
+  } catch (e) {
+    sendError(reply, e);
+  }
+});
+
+// ─── EU consolidated financial sanctions — name screening ─────────────────────
+const euSanctionsSchema = z.object({
+  names: z.array(z.string().min(1)).min(1).max(200),
+});
+app.post("/api/eu-sanctions/screen", async (req: FastifyRequest, reply) => {
+  try {
+    const parsed = euSanctionsSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return reply.status(400).send({ error: "INVALID_INPUT", message: parsed.error.message });
+    }
+    reply.send(await getEuSanctionsScreenService(parsed.data.names));
   } catch (e) {
     sendError(reply, e);
   }

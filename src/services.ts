@@ -493,6 +493,34 @@ export async function tryConvert(czkAmount: number, code: string): Promise<numbe
   }
 }
 
+// ─── EU consolidated financial sanctions list ─────────────────────────────────
+import { EU_SANCTIONS_ATTRIBUTION, screenEuSanctions } from "./eu_sanctions/client.js";
+
+export async function getEuSanctionsScreenService(names: string[]) {
+  const r = await screenEuSanctions(names);
+  return {
+    queries: r.queries,
+    hits: r.hits.map((h) => ({
+      query: h.query,
+      matchedAs: h.matchedAs,
+      euReferenceNumber: h.entity.euReferenceNumber,
+      subjectType: h.entity.subjectType,
+      programmes: h.entity.programmes,
+      birthYears: h.entity.birthYears,
+      citizenships: h.entity.citizenships,
+      publicationUrls: h.entity.publicationUrls,
+      remark: h.entity.remark,
+      logicalId: h.entity.logicalId,
+    })),
+    snapshot: {
+      totalEntities: r.totalEntities,
+      generationDate: r.generationDate,
+      loadedAt: r.loadedAt,
+    },
+    _attribution: EU_SANCTIONS_ATTRIBUTION,
+  };
+}
+
 // ─── JERRS (regulované subjekty ČNB, open-data) ───────────────────────────────
 import { JERRS_ATTRIBUTION, lookupJerrsByIco } from "./jerrs/client.js";
 

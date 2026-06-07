@@ -1022,6 +1022,81 @@
                   </ul>
                 </template>
               </div>
+
+              <div
+                class="border dark:border-slate-700 rounded-lg p-4"
+                x-data="ddEuSanctionsLoader()"
+                x-init="screen(report)"
+              >
+                <h4 class="font-bold mb-2">🇪🇺 Screening EU sankcí</h4>
+                <template x-if="loading">
+                  <p class="text-sm text-slate-500 dark:text-slate-400">Načítám konsolidovaný EU sankční list…</p>
+                </template>
+                <template x-if="sanctionsError">
+                  <p class="text-sm text-rose-600 dark:text-rose-400" x-text="sanctionsError"></p>
+                </template>
+                <template x-if="result && result.hits.length === 0 && !loading">
+                  <p class="text-sm text-slate-600 dark:text-slate-400">
+                    Žádný shoda mezi
+                    <span class="font-semibold" x-text="result.queries.length"></span>
+                    prověřenými jmény (statutární orgány +&nbsp;název firmy) a EU sankčním listem
+                    (<span x-text="result.snapshot.totalEntities.toLocaleString('cs-CZ')"></span> subjektů).
+                  </p>
+                </template>
+                <template x-if="result && result.hits.length > 0">
+                  <div class="space-y-2">
+                    <p class="text-sm">
+                      <span class="bg-rose-100 dark:bg-rose-900/40 text-rose-800 dark:text-rose-300 px-2 py-0.5 rounded font-bold">
+                        🚨 <span x-text="result.hits.length"></span> shoda(y) v EU sankčním listu!
+                      </span>
+                    </p>
+                    <ul class="space-y-2">
+                      <template x-for="(h, idx) in result.hits" :key="idx">
+                        <li class="border-l-4 border-rose-500 pl-2">
+                          <div class="text-sm">
+                            <span class="font-semibold" x-text="h.query"></span>
+                            <span class="text-slate-500 dark:text-slate-400"> → </span>
+                            <span class="font-mono" x-text="h.matchedAs"></span>
+                          </div>
+                          <div class="text-xs text-slate-600 dark:text-slate-400 mt-0.5">
+                            Režim:
+                            <template x-for="(p, pi) in h.programmes" :key="pi">
+                              <span class="bg-rose-50 dark:bg-rose-900/30 px-1.5 py-0.5 rounded font-mono mr-1" x-text="p"></span>
+                            </template>
+                            <span x-text="' · ' + (h.subjectType === 'person' ? 'osoba' : 'subjekt')"></span>
+                            <template x-if="h.birthYears.length > 0">
+                              <span x-text="' · nar. ' + h.birthYears.join(', ')"></span>
+                            </template>
+                            · ref. <span class="font-mono" x-text="h.euReferenceNumber"></span>
+                          </div>
+                          <template x-if="h.publicationUrls.length > 0">
+                            <div class="text-xs mt-0.5">
+                              <a class="underline text-rose-700 dark:text-rose-400" :href="h.publicationUrls[0]" target="_blank" rel="noopener">🔗 Nařízení v EUR-Lex</a>
+                            </div>
+                          </template>
+                        </li>
+                      </template>
+                    </ul>
+                    <p class="text-xs text-amber-700 dark:text-amber-300 italic mt-2">
+                      ⚠ Shoda nemusí být totožná osoba — ověř datum narození, občanství a další identifikátory v EUR-Lex.
+                    </p>
+                  </div>
+                </template>
+                <details class="mt-2 text-xs text-slate-500 dark:text-slate-400 cursor-pointer">
+                  <summary class="hover:text-slate-700 dark:hover:text-slate-200">⚖️ K matchingu &amp; licenci</summary>
+                  <p class="mt-1">
+                    Match: token-set s subset matching (case + diacritic insensitive), min. 2 tokeny.
+                    Pro 100% jistotu konzultujte zdroj přímo. Zdroj:
+                    <a class="underline" href="https://data.europa.eu/data/datasets/consolidated-list-of-persons-groups-and-entities-subject-to-eu-financial-sanctions" target="_blank" rel="noopener">EU Open Data — Consolidated FSF</a>,
+                    licence Commission Decision 2011/833/EU (volné užití včetně komerčního).
+                  </p>
+                </details>
+                <template x-if="result && result.snapshot.generationDate">
+                  <p class="text-xs text-slate-400 mt-1">
+                    List vygenerován <span x-text="new Date(result.snapshot.generationDate).toLocaleString('cs-CZ')"></span>.
+                  </p>
+                </template>
+              </div>
             </div>
 
             <!-- Trade licenses as part of DD (we already have the data) -->

@@ -372,6 +372,45 @@ function czkAsEurTooltip(n) {
 }
 window.czkAsEurTooltip = czkAsEurTooltip;
 
+/**
+ * EU consolidated sanctions screening. Z reportu vytáhneme jména
+ * statutárních orgánů + samotnou firmu (pro případ, že je sankcionován
+ * jako entity); pošleme batch POST a vykreslíme případné shody.
+ */
+function ddEuSanctionsLoader() {
+  return {
+    result: null,
+    loading: false,
+    sanctionsError: "",
+    async screen(report) {
+      if (!report) return;
+      const names = [];
+      if (report.obchodniJmeno) names.push(report.obchodniJmeno);
+      const clenove = (report.statutary && report.statutary.clenove) || [];
+      for (const c of clenove) {
+        if (c.jmeno) names.push(c.jmeno);
+      }
+      if (names.length === 0) return;
+      this.loading = true;
+      this.result = null;
+      this.sanctionsError = "";
+      try {
+        const r = await fetch("/api/eu-sanctions/screen", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ names }),
+        });
+        if (!r.ok) throw new Error("HTTP " + r.status);
+        this.result = await r.json();
+      } catch (e) {
+        this.sanctionsError = "EU sankce nelze načíst: " + e.message;
+      } finally {
+        this.loading = false;
+      }
+    },
+  };
+}
+
 function ddJerrsLoader() {
   return {
     jerrs: null,
@@ -612,5 +651,6 @@ window.ddSmlouvyLoader = ddSmlouvyLoader;
 window.ddDotaceLoader = ddDotaceLoader;
 window.ddIsirLoader = ddIsirLoader;
 window.ddJerrsLoader = ddJerrsLoader;
+window.ddEuSanctionsLoader = ddEuSanctionsLoader;
 window.featuresStatus = featuresStatus;
 window.cnbRatesWidget = cnbRatesWidget;

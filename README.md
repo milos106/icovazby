@@ -88,8 +88,9 @@ Aplikace integruje veřejné datové zdroje. Každý má vlastní licenci a vlas
 | **ADIS** (Finanční správa) | Nespolehlivý plátce DPH + zveřejněné účty | Veřejná data § 96a z. o DPH | „Source: MFČR ADIS" | ✅ |
 | **Hlídač státu** _(v přípravě, vyžaduje token)_ | Veřejné zakázky, smlouvy, UBO, dotace | **CC BY 3.0 CZ** | ⚠️ **POVINNÝ funkční odkaz na hlidacstatu.cz** zobrazený vždy s daty i v patičce | ✅ s atribucí; komerční bez atribuce vyžaduje smlouvu s api@hlidacstatu.cz |
 | **ISIR** (Justice ČR) _(v přípravě)_ | Detail insolvenčního řízení | Veřejná data § 419 z. č. 182/2006 Sb. | „Source: ISIR / MSp ČR" | ✅ pod limitem 3000/den, 50/min |
-| **ČNB** _(v přípravě)_ | Kurzy + JERRS regulované subjekty | Veřejná data | Doporučená | ✅ |
-| **EU Consolidated Sanctions List** _(v přípravě)_ | Sankční screening | OpenSanctions wrapper: **CC BY-NC 4.0** | ⚠️ POVINNÝ link na opensanctions.org | ❌ **NE-komerční použití pouze** (pro komerční nutná samostatná licence OpenSanctions nebo přímý access EU FSF) |
+| **ČNB — denní kurzy** | CZK→cizí měna widget v headeru, tooltipy převodů | Veřejná data ČNB | „Source: ČNB" | ✅ |
+| **ČNB — JERRS open-data** | Indikátor regulovaného subjektu (banka, směnárna, NPSU…) | Otevřená data dle nař. vlády 425/2016 Sb. | „Source: ČNB" | ✅ |
+| **EU Consolidated Sanctions List** | Screening jmen statutárních orgánů proti EU sankcím | **Commission Decision 2011/833/EU** (free reuse) | „Source: EU Commission — FPI / FSF" | ✅ **včetně komerčního použití** |
 
 ### Hlídač státu — atribuční povinnost (citát z licence CC BY 3.0)
 
@@ -97,12 +98,17 @@ Aplikace integruje veřejné datové zdroje. Každý má vlastní licenci a vlas
 
 Toto je proto v patičce aplikace zobrazeno explicitně, pokud je integrace aktivní (HLIDAC_API_TOKEN nastaven).
 
-### EU sankce — pozn. k non-commercial režimu
+### EU sankce — přímý přístup, ne přes OpenSanctions
 
-Implementace bude integrovat EU Consolidated Financial Sanctions List skrze **OpenSanctions FSF wrapper**, který je licencován pod **CC BY-NC 4.0** (= zákaz komerčního využití). U datového bloku v UI bude zobrazena explicitní cedule **„🔒 Pouze pro non-commercial použití — výzkum, vlastní compliance, novinářská práce."** Pro komerční nasazení je nutné získat:
-- **OpenSanctions data license** (kontakt přes opensanctions.org), nebo
-- **Přímý přístup k EU FSF** přes webgate.ec.europa.eu (vyžaduje registraci u EU), nebo
-- Integraci přeskočit.
+Původně jsme uvažovali OpenSanctions wrapper (CC BY-NC 4.0, nelze komerčně), ale EU's vlastní Open Data Portal **explicitně publikuje** unauthenticated XML feed konsolidovaného sankčního listu:
+
+```
+https://webgate.ec.europa.eu/fsd/fsf/public/files/xmlFullSanctionsList_1_1/content?token=dG9rZW4tMjAxNw
+```
+
+Token `dG9rZW4tMjAxNw` (base64 „token-2017") je dokumentovaný jako veřejná URL distribuce datasetu na [data.europa.eu](https://data.europa.eu/data/datasets/consolidated-list-of-persons-groups-and-entities-subject-to-eu-financial-sanctions). Licence: **Commission Decision 2011/833/EU** — volné užití včetně komerčního, vyžaduje pouze uvedení zdroje. Žádné non-commercial restrikce.
+
+Můžeš override URL přes env `EU_SANCTIONS_URL` (např. pokud si zaregistruješ vlastní EU Login token pro vyšší stabilitu).
 
 ## Atribuce a licence dat
 
