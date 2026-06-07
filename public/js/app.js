@@ -166,12 +166,19 @@ function searchSection() {
           this.profile = await jsonFetch(`/api/company/${encodeURIComponent(cleaned)}`);
           recordVisit({ ico: this.profile.ico, obchodniJmeno: this.profile.obchodniJmeno });
           updateUrl({ ico: this.profile.ico, action: "profile" });
+          // Auto-trigger DD pro stejné IČO. Profil i prověrka by měly být
+          // v sync, aby uživatel nemusel klikat na samostatné tlačítko.
+          window.dispatchEvent(new CustomEvent("open-dd", { detail: { ico: this.profile.ico } }));
         } else {
           const u = `/api/search/companies?obchodniJmeno=${encodeURIComponent(q)}&limit=25`;
           const r = await jsonFetch(u);
           this.results = r.vysledky || [];
           this.totalFound = r.celkemNalezeno || 0;
           if (this.results.length === 0) this.error = `Nic nenalezeno pro "${q}".`;
+          // Pokud z name-search vypadne jediný hit → auto-trigger DD na něj.
+          if (this.results.length === 1) {
+            window.dispatchEvent(new CustomEvent("open-dd", { detail: { ico: this.results[0].ico } }));
+          }
         }
       } catch (e) {
         this.error = e.message;

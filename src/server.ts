@@ -14,6 +14,7 @@ import Fastify, { type FastifyReply, type FastifyRequest } from "fastify";
 import { z } from "zod";
 import { AresClient } from "./ares/client.js";
 import { AresError, toToolErrorPayload } from "./errors.js";
+import { HlidacStatuMissingTokenError } from "./hlidacstatu/client.js";
 import {
   crossCompanyPersonsService,
   exportForInvoicingService,
@@ -82,6 +83,14 @@ const client = new AresClient({
 
 // ─── Error handler ────────────────────────────────────────────────────────────
 function sendError(reply: FastifyReply, err: unknown): void {
+  if (err instanceof HlidacStatuMissingTokenError) {
+    reply.status(503).send({
+      error: "MISSING_TOKEN",
+      message:
+        "Hlídač státu není nakonfigurován (HLIDAC_API_TOKEN chybí v .env nebo serveru). Tato funkce vyžaduje token.",
+    });
+    return;
+  }
   if (err instanceof AresError) {
     const status = err.code === "NOT_FOUND" ? 404 : err.code === "INVALID_INPUT" ? 400 : 502;
     reply.status(status).send(toToolErrorPayload(err));
