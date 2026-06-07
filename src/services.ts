@@ -275,6 +275,30 @@ export async function fullDueDiligenceService(client: AresClient, icoInput: stri
   if (rzp && allLicenses.length > 0 && activeLicenses.length === 0) {
     findings.push({ level: "yellow", message: "Všechna živnostenská oprávnění ukončena." });
   }
+
+  // EU sanctions screening — statutární orgány + obchodní jméno proti konsolidovanému
+  // sankčnímu listu. Resilientně: pokud EU feed selže, DD pokračuje bez tohoto signálu.
+  try {
+    const names: string[] = [];
+    if (subject.obchodniJmeno) names.push(subject.obchodniJmeno);
+    for (const m of members) {
+      const name = memberDisplayName(m);
+      if (name) names.push(name);
+    }
+    if (names.length > 0) {
+      const screen = await screenEuSanctions(names);
+      if (screen.hits.length > 0) {
+        const persons = screen.hits.map((h) => h.query).filter((v, i, a) => a.indexOf(v) === i);
+        findings.push({
+          level: "red",
+          message: `EU sankce: ${persons.length} osoba/firma v konsolidovaném sankčním listu (${screen.hits.map((h) => h.entity.programmes.join("+")).join(", ")}).`,
+        });
+      }
+    }
+  } catch {
+    // EU feed nedostupný — nezahazujeme DD, jen vynecháme signál.
+  }
+
   if (findings.length === 0) {
     findings.push({ level: "green", message: "Žádné varovné signály v ARES." });
   }

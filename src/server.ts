@@ -307,10 +307,62 @@ app.post("/api/cross-persons", async (req: FastifyRequest, reply) => {
   }
 });
 
+// ─── Warm-up ──────────────────────────────────────────────────────────────────
+// Fire-and-forget: po startu servery na pozadí natáhneme datasety, které
+// jinak první uživatel platí latencí (EU sankce ~6 s na první load, JERRS
+// ~600 ms, ČNB kurzy ~150 ms). Selhání je pouze WARN, server běží dál.
+// Vypnout: WARMUP=0
+async function warmup() {
+  if (process.env.WARMUP === "0") {
+    app.log.info("warmup disabled (WARMUP=0)");
+    return;
+  }
+  app.log.info("warmup starting…");
+  const t0 = Date.now();
+  const tasks: Array<Promise<{ name: string; ok: boolean; ms: number; err?: string }>> = [
+    (async () => {
+      const t = Date.now();
+      try {
+        await getCnbRatesService();
+        return { name: "cnb-rates", ok: true, ms: Date.now() - t };
+      } catch (e) {
+        return { name: "cnb-rates", ok: false, ms: Date.now() - t, err: String(e) };
+      }
+    })(),
+    (async () => {
+      const t = Date.now();
+      try {
+        // Probe s reálným IČO (Air Bank — banka, vždy v seznamu) jen pro warming;
+        // cache je sdílená, takže jakýkoli platný lookup natáhne celý index.
+        await getJerrsService("29045371");
+        return { name: "jerrs", ok: true, ms: Date.now() - t };
+      } catch (e) {
+        return { name: "jerrs", ok: false, ms: Date.now() - t, err: String(e) };
+      }
+    })(),
+    (async () => {
+      const t = Date.now();
+      try {
+        await getEuSanctionsScreenService(["__warmup probe__"]);
+        return { name: "eu-sanctions", ok: true, ms: Date.now() - t };
+      } catch (e) {
+        return { name: "eu-sanctions", ok: false, ms: Date.now() - t, err: String(e) };
+      }
+    })(),
+  ];
+  const results = await Promise.all(tasks);
+  for (const r of results) {
+    if (r.ok) app.log.info(`warmup ${r.name}: ok (${r.ms}ms)`);
+    else app.log.warn(`warmup ${r.name}: failed (${r.ms}ms) — ${r.err}`);
+  }
+  app.log.info(`warmup done in ${Date.now() - t0}ms`);
+}
+
 // ─── Boot ─────────────────────────────────────────────────────────────────────
 try {
   await app.listen({ port: PORT, host: HOST });
   app.log.info(`ares-web ready on http://${HOST}:${PORT}`);
+  void warmup();
 } catch (err) {
   app.log.error(err as Error);
   process.exit(1);
