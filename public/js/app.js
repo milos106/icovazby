@@ -247,6 +247,17 @@ function graphSection() {
         this.raw = url.icos.split(",").join("\n");
         this.run();
       }
+      // re-render Mermaid on theme switch
+      window.addEventListener("ares-theme-changed", async () => {
+        if (this.result?.mermaid && window.__mermaid) {
+          try {
+            const { svg } = await window.__mermaid.render("mer-" + Date.now(), this.result.mermaid);
+            this.mermaidSvg = svg;
+          } catch (e) {
+            /* ignore */
+          }
+        }
+      });
     },
     parseIcos(raw) {
       return (raw || "")
@@ -331,6 +342,27 @@ function addressSection() {
   };
 }
 
+function themeToggle() {
+  return {
+    isDark: false,
+    init() {
+      this.isDark = document.documentElement.classList.contains("dark");
+    },
+    toggle() {
+      this.isDark = !this.isDark;
+      document.documentElement.classList.toggle("dark", this.isDark);
+      try {
+        localStorage.setItem("ares-web:theme", this.isDark ? "dark" : "light");
+      } catch {
+        /* private mode, ignore */
+      }
+      // re-init Mermaid with new theme and re-render visible graph
+      if (window.__mermaidReinit) window.__mermaidReinit();
+      window.dispatchEvent(new CustomEvent("ares-theme-changed", { detail: { dark: this.isDark } }));
+    },
+  };
+}
+
 function historyBar() {
   return {
     open: false,
@@ -375,3 +407,4 @@ window.ddSection = ddSection;
 window.graphSection = graphSection;
 window.addressSection = addressSection;
 window.historyBar = historyBar;
+window.themeToggle = themeToggle;
