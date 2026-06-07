@@ -1883,11 +1883,49 @@
       </section>
 
       <!-- ─── Cross-company graph ──────────────────────────────────── -->
-      <section id="graph" x-data="graphSection()" x-init="init()" @ares-seed-graph.window="seed($event.detail.icos)" class="bg-white dark:bg-slate-800 dark:border-slate-700 rounded-2xl shadow-sm border p-6">
+      <section
+        id="graph"
+        x-data="graphSection()"
+        x-init="init()"
+        @ares-seed-graph.window="seed($event.detail.icos)"
+        @ares-profile-loaded.window="addIcoFromProfile($event.detail.ico)"
+        class="bg-white dark:bg-slate-800 dark:border-slate-700 rounded-2xl shadow-sm border p-6"
+      >
         <h2 class="text-lg font-bold mb-1">🌐 Mapa propojení přes statutáry</h2>
-        <p class="text-sm text-slate-500 dark:text-slate-400 mb-4">
+        <p class="text-sm text-slate-500 dark:text-slate-400 mb-2">
           Zadej 2–50 IČO (každé na nový řádek nebo oddělené čárkou). Najdu osoby, které sedí ve více firmách najednou.
         </p>
+        <details class="mb-3 text-xs">
+          <summary class="cursor-pointer text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100">
+            💡 Příklady k vyzkoušení (kliknutím doplní IČO)
+          </summary>
+          <div class="mt-2 grid gap-2">
+            <button
+              type="button"
+              @click="raw = '26185610\n46900411\n49100262\n46967851\n45148210'"
+              class="text-left text-xs p-2 border dark:border-slate-700 rounded hover:bg-slate-50 dark:hover:bg-slate-700/50"
+            >
+              <span class="font-semibold">🌽 Agrofert family</span> — 5 firem holdingu: Agrofert, Kostelecké uzeniny, Lovochemie, Penam, ZZN Polabí.
+              <span class="text-slate-500 dark:text-slate-400 block mt-0.5">Očekávané: 4 sdílení statutáři (Cingr, Kurčík, Jedlička + samotný Agrofert jako akcionář).</span>
+            </button>
+            <button
+              type="button"
+              @click="raw = '47116129\n28195790\n26426804\n28182219'"
+              class="text-left text-xs p-2 border dark:border-slate-700 rounded hover:bg-slate-50 dark:hover:bg-slate-700/50"
+            >
+              <span class="font-semibold">💰 PPF Group jádro</span> — PPF a.s., Home Credit, Air Bank a další.
+              <span class="text-slate-500 dark:text-slate-400 block mt-0.5">Očekávané: sdílení manažeři PPF holdingu.</span>
+            </button>
+            <button
+              type="button"
+              @click="raw = '00006947\n00006599\n00007064'"
+              class="text-left text-xs p-2 border dark:border-slate-700 rounded hover:bg-slate-50 dark:hover:bg-slate-700/50"
+            >
+              <span class="font-semibold">🏛️ Státní ministerstva</span> — MFČR, Úřad vlády, MPO.
+              <span class="text-slate-500 dark:text-slate-400 block mt-0.5">Demonstrace: každé má jiného ministra (žádné aktivní sdílení), použij „Včetně historických" pro historické bývalé ministry.</span>
+            </button>
+          </div>
+        </details>
         <form @submit.prevent="run()" class="space-y-2">
           <textarea
             x-model="raw"

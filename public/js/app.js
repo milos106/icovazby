@@ -229,6 +229,10 @@ function searchSection() {
           // Auto-trigger DD pro stejné IČO. Profil i prověrka by měly být
           // v sync, aby uživatel nemusel klikat na samostatné tlačítko.
           window.dispatchEvent(new CustomEvent("open-dd", { detail: { ico: this.profile.ico } }));
+          // Profil → ostatní sekce: Mapa propojení si načte IČO do textarea
+          // (uživatel doplní další IČO a klikne Vykreslit), Vazby osoby
+          // si event ignoruje (pracují s osobou ne s firmou).
+          window.dispatchEvent(new CustomEvent("ares-profile-loaded", { detail: { ico: this.profile.ico } }));
         } else {
           const u = `/api/search/companies?obchodniJmeno=${encodeURIComponent(q)}&limit=25`;
           const r = await jsonFetch(u);
@@ -426,6 +430,19 @@ function graphSection() {
       this.raw = icos.join("\n");
       await this.run();
       document.getElementById("graph")?.scrollIntoView({ behavior: "smooth", block: "start" });
+    },
+    /**
+     * Profil firmy v searchSection se „přelije" do Mapy propojení: pokud IČO
+     * v textarea ještě není, přidá ho. Nespouští run() — uživatel si doplní
+     * další IČO a kliknutím Vykreslit explicitně potvrdí. Tím se sekce udržuje
+     * v sync bez automatického refreshe grafu pro každé prohlédnuté IČO.
+     */
+    addIcoFromProfile(ico) {
+      if (!ico) return;
+      const existing = this.parseIcos(this.raw);
+      if (existing.includes(ico)) return;
+      const combined = [...existing, ico].join("\n");
+      this.raw = combined;
     },
     /** Vyvolá vazby ze sharedPersons listu. */
     openPersonVazby(jmeno, datumNarozeni) {
