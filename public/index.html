@@ -1757,19 +1757,44 @@
             </details>
 
             <template x-if="result.vazby.length > 0">
-              <div class="flex gap-2 items-center flex-wrap">
+              <div class="flex gap-2 items-center flex-wrap p-2 bg-slate-50 dark:bg-slate-900/40 rounded">
+                <!-- One-click: vše rozvyřešené IČO → Mapa propojení.
+                     Ušetří uživateli kroky „vybrat všechny" + „vykreslit". -->
+                <button
+                  @click="openAllInMap()"
+                  :disabled="resolvedIcoCount() < 2"
+                  class="text-sm px-3 py-1.5 bg-emerald-600 text-white rounded hover:bg-emerald-700 disabled:opacity-50 font-semibold"
+                  :title="resolvedIcoCount() < 2 ? 'Potřeba alespoň 2 vyřešené IČO' : 'Otevře Mapu propojení s ' + resolvedIcoCount() + ' IČO'"
+                >
+                  🌐 Otevřít všechny v Mapě propojení (<span x-text="resolvedIcoCount()"></span>)
+                </button>
+
+                <!-- Copy do clipboardu pro paste mimo aplikaci. -->
+                <button
+                  @click="copyIcosToClipboard()"
+                  :disabled="resolvedIcoCount() === 0"
+                  class="text-xs px-2 py-1 border dark:border-slate-600 rounded hover:bg-slate-100 dark:hover:bg-slate-700 disabled:opacity-50"
+                  :title="'Zkopírovat všechny IČO jako čárkou oddělený seznam'"
+                >
+                  📋 <span x-text="copiedNotice || 'Kopírovat IČO'"></span>
+                </button>
+
+                <span class="text-xs text-slate-400 dark:text-slate-500 mx-1">|</span>
+
+                <!-- Pokročilý mód: ruční výběr pro graf pouze z části vazeb. -->
                 <button
                   @click="toggleAllResolved()"
                   class="text-xs px-2 py-1 border dark:border-slate-600 rounded hover:bg-slate-100 dark:hover:bg-slate-700"
-                  x-text="allResolvedSelected() ? 'Odznačit všechny' : 'Vybrat všechny s IČO'"
+                  x-text="allResolvedSelected() ? 'Odznačit všechny' : 'Vybrat všechny (checkboxy)'"
                 ></button>
                 <button
                   @click="seedGraph()"
                   :disabled="selectedIcos().length < 2"
-                  class="text-sm px-3 py-1.5 bg-emerald-600 text-white rounded hover:bg-emerald-700 disabled:opacity-50"
+                  class="text-xs px-2 py-1 border border-emerald-400 dark:border-emerald-600 rounded hover:bg-emerald-50 dark:hover:bg-emerald-900/30 disabled:opacity-50"
                 >
-                  🌐 Vykreslit graf ze <span x-text="selectedIcos().length"></span> IČO
+                  Otevřít z výběru (<span x-text="selectedIcos().length"></span>)
                 </button>
+
                 <span class="text-xs text-slate-500 dark:text-slate-400" x-show="result.truncated">
                   ⚠ Zobrazeno prvních 50 unikátních firem (osoba má víc).
                 </span>

@@ -502,6 +502,39 @@ function personVazbySection() {
       if (icos.length < 2) return;
       window.dispatchEvent(new CustomEvent("ares-seed-graph", { detail: { icos } }));
     },
+    /** Vrátí dedup-ed seznam všech jednoznačně vyřešených IČO ze všech vazeb. */
+    allResolvedIcos() {
+      if (!this.result) return [];
+      const set = new Set();
+      for (const v of this.result.vazby) {
+        if (v.resolvedIco && v.ambiguousMatchCount <= 1) set.add(v.resolvedIco);
+      }
+      return [...set];
+    },
+    resolvedIcoCount() {
+      return this.allResolvedIcos().length;
+    },
+    /** One-click: všechna vyřešená IČO → Mapa propojení. Bez nutnosti
+     *  ručního výběru checkboxy. */
+    openAllInMap() {
+      const icos = this.allResolvedIcos();
+      if (icos.length < 2) return;
+      window.dispatchEvent(new CustomEvent("ares-seed-graph", { detail: { icos } }));
+    },
+    copiedNotice: "",
+    async copyIcosToClipboard() {
+      const icos = this.allResolvedIcos();
+      if (icos.length === 0) return;
+      const text = icos.join(", ");
+      try {
+        await navigator.clipboard.writeText(text);
+        this.copiedNotice = `✓ Zkopírováno (${icos.length})`;
+      } catch {
+        // fallback bez clipboard API
+        this.copiedNotice = "✗ Selhalo (zkopíruj ručně)";
+      }
+      setTimeout(() => { this.copiedNotice = ""; }, 2500);
+    },
     /**
      * Uživatel zná IČO další firmy, kde sedí prohlížená osoba.
      * Spustíme paralelně DD + VR endpointy (oba plní lokální index),
