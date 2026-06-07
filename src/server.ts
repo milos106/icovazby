@@ -1,0 +1,188 @@
+/**
+ * ares-web — Fastify HTTP server exposing a Czech business-registry due-
+ * diligence web app. Serves a static SPA from public/ and a small REST API
+ * backed by the public ARES endpoints.
+ *
+ * Run: `npm run dev` (watch) or `npm run start` (built).
+ */
+
+import { fileURLToPath } from "node:url";
+import { dirname, join } from "node:path";
+import fastifyRateLimit from "@fastify/rate-limit";
+import fastifyStatic from "@fastify/static";
+import Fastify, { type FastifyReply, type FastifyRequest } from "fastify";
+import { z } from "zod";
+import { AresClient } from "./ares/client.js";
+import { AresError, toToolErrorPayload } from "./errors.js";
+import {
+  crossCompanyPersonsService,
+  fullDueDiligenceService,
+  lookupCompanyService,
+  searchByAddressService,
+  searchCompaniesService,
+  validateIcoService,
+} from "./services.js";
+
+const HERE = dirname(fileURLToPath(import.meta.url));
+const PUBLIC_DIR = join(HERE, "..", "public");
+
+function parseEnvNumber(v: string | undefined, fallback: number): number {
+  if (!v) return fallback;
+  const n = Number(v);
+  return Number.isFinite(n) && n > 0 ? n : fallback;
+}
+
+const PORT = parseEnvNumber(process.env.PORT, 3000);
+const HOST = process.env.HOST ?? "127.0.0.1";
+
+const app = Fastify({
+  logger: { level: process.env.LOG_LEVEL ?? "info" },
+  trustProxy: true,
+});
+
+await app.register(fastifyRateLimit, {
+  max: parseEnvNumber(process.env.RATE_LIMIT_PER_MIN, 60),
+  timeWindow: "1 minute",
+  keyGenerator: (req) =>
+    (req.headers["cf-connecting-ip"] as string) ||
+    (req.headers["x-forwarded-for"] as string)?.split(",")[0]?.trim() ||
+    req.ip,
+  errorResponseBuilder: () => ({
+    error: "RATE_LIMITED",
+    message: "Příliš mnoho dotazů, zkuste to za chvíli.",
+  }),
+});
+
+await app.register(fastifyStatic, {
+  root: PUBLIC_DIR,
+  prefix: "/",
+  index: ["index.html"],
+});
+
+const client = new AresClient({
+  baseUrl: process.env.ARES_BASE_URL,
+  ratePerSecond: parseEnvNumber(process.env.ARES_RATE_PER_SECOND, 5),
+  timeoutMs: parseEnvNumber(process.env.ARES_TIMEOUT_MS, 15000),
+  retries: parseEnvNumber(process.env.ARES_RETRIES, 3),
+});
+
+// ─── Error handler ────────────────────────────────────────────────────────────
+function sendError(reply: FastifyReply, err: unknown): void {
+  if (err instanceof AresError) {
+    const status = err.code === "NOT_FOUND" ? 404 : err.code === "INVALID_INPUT" ? 400 : 502;
+    reply.status(status).send(toToolErrorPayload(err));
+    return;
+  }
+  app.log.error(err as Error);
+  reply.status(500).send({ error: "INTERNAL", message: "Interní chyba serveru." });
+}
+
+// ─── Health ───────────────────────────────────────────────────────────────────
+app.get("/healthz", async () => ({
+  ok: true,
+  version: "0.1.0",
+  uptimeSeconds: Math.floor(process.uptime()),
+}));
+
+// ─── Validate IČO (pure) ──────────────────────────────────────────────────────
+app.get("/api/validate/:ico", async (req: FastifyRequest, reply) => {
+  const ico = (req.params as { ico: string }).ico;
+  reply.send(validateIcoService(ico));
+});
+
+// ─── Company profile ──────────────────────────────────────────────────────────
+app.get("/api/company/:ico", async (req: FastifyRequest, reply) => {
+  try {
+    const ico = (req.params as { ico: string }).ico;
+    reply.send(await lookupCompanyService(client, ico));
+  } catch (e) {
+    sendError(reply, e);
+  }
+});
+
+// ─── Due diligence ────────────────────────────────────────────────────────────
+app.get("/api/dd/:ico", async (req: FastifyRequest, reply) => {
+  try {
+    const ico = (req.params as { ico: string }).ico;
+    reply.send(await fullDueDiligenceService(client, ico));
+  } catch (e) {
+    sendError(reply, e);
+  }
+});
+
+// ─── Search companies by name + optional PSČ ─────────────────────────────────
+const searchSchema = z.object({
+  obchodniJmeno: z.string().min(1).optional(),
+  sidloPsc: z.string().optional(),
+  limit: z.coerce.number().int().min(1).max(100).optional(),
+  offset: z.coerce.number().int().min(0).optional(),
+});
+app.get("/api/search/companies", async (req: FastifyRequest, reply) => {
+  try {
+    const parsed = searchSchema.safeParse(req.query);
+    if (!parsed.success) {
+      return reply.status(400).send({ error: "INVALID_INPUT", message: parsed.error.message });
+    }
+    reply.send(await searchCompaniesService(client, parsed.data));
+  } catch (e) {
+    sendError(reply, e);
+  }
+});
+
+// ─── Search by address ────────────────────────────────────────────────────────
+const addressSchema = z.object({
+  adresa: z.string().min(3),
+  limit: z.coerce.number().int().min(1).max(100).optional(),
+  offset: z.coerce.number().int().min(0).optional(),
+});
+app.get("/api/search/address", async (req: FastifyRequest, reply) => {
+  try {
+    const parsed = addressSchema.safeParse(req.query);
+    if (!parsed.success) {
+      return reply.status(400).send({ error: "INVALID_INPUT", message: parsed.error.message });
+    }
+    reply.send(await searchByAddressService(client, parsed.data));
+  } catch (e) {
+    sendError(reply, e);
+  }
+});
+
+// ─── Cross-company persons ────────────────────────────────────────────────────
+const crossSchema = z.object({
+  icos: z.array(z.string()).min(2).max(50),
+  includeHistorical: z.boolean().optional(),
+  emitMermaid: z.boolean().optional(),
+});
+app.post("/api/cross-persons", async (req: FastifyRequest, reply) => {
+  try {
+    const parsed = crossSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return reply.status(400).send({ error: "INVALID_INPUT", message: parsed.error.message });
+    }
+    reply.send(await crossCompanyPersonsService(client, parsed.data));
+  } catch (e) {
+    sendError(reply, e);
+  }
+});
+
+// ─── Boot ─────────────────────────────────────────────────────────────────────
+try {
+  await app.listen({ port: PORT, host: HOST });
+  app.log.info(`ares-web ready on http://${HOST}:${PORT}`);
+} catch (err) {
+  app.log.error(err as Error);
+  process.exit(1);
+}
+
+const shutdown = async (signal: string) => {
+  app.log.info(`${signal} received, shutting down`);
+  try {
+    await app.close();
+    process.exit(0);
+  } catch (err) {
+    app.log.error(err as Error);
+    process.exit(1);
+  }
+};
+process.on("SIGINT", () => void shutdown("SIGINT"));
+process.on("SIGTERM", () => void shutdown("SIGTERM"));

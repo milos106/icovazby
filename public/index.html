@@ -1,0 +1,465 @@
+<!doctype html>
+<html lang="cs">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>ARES Check — rychlá due diligence českých firem</title>
+    <meta
+      name="description"
+      content="Bezplatný nástroj pro ověření českých firem: profil, due-diligence s risk skóre, mapa propojení statutárů, detekce virtuálních adres. Data z veřejného ARES."
+    />
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <script type="module">
+      import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs";
+      mermaid.initialize({ startOnLoad: false, theme: "default", securityLevel: "loose" });
+      window.__mermaid = mermaid;
+    </script>
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E🛡️%3C/text%3E%3C/svg%3E" />
+    <style>
+      .risk-red { background: linear-gradient(135deg, #fee2e2, #fecaca); border-color: #dc2626; }
+      .risk-yellow { background: linear-gradient(135deg, #fef3c7, #fde68a); border-color: #d97706; }
+      .risk-green { background: linear-gradient(135deg, #d1fae5, #a7f3d0); border-color: #059669; }
+      [x-cloak] { display: none !important; }
+      .mermaid svg { max-width: 100%; height: auto; }
+    </style>
+  </head>
+  <body class="bg-slate-50 text-slate-900 min-h-screen flex flex-col">
+    <header class="bg-white border-b">
+      <div class="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between">
+        <div class="flex items-center gap-3">
+          <span class="text-3xl">🛡️</span>
+          <div>
+            <h1 class="text-xl font-bold">ARES Check</h1>
+            <p class="text-xs text-slate-500">Rychlá due diligence českých firem · data z veřejného ARES</p>
+          </div>
+        </div>
+        <nav class="hidden sm:flex gap-4 text-sm text-slate-600">
+          <a href="#search" class="hover:text-slate-900">Hledat</a>
+          <a href="#dd" class="hover:text-slate-900">Due diligence</a>
+          <a href="#graph" class="hover:text-slate-900">Mapa propojení</a>
+          <a href="#address" class="hover:text-slate-900">Podle adresy</a>
+        </nav>
+      </div>
+    </header>
+
+    <main class="flex-1 max-w-6xl mx-auto w-full px-4 py-8 space-y-10">
+      <!-- ─── Search ────────────────────────────────────────────────── -->
+      <section id="search" x-data="searchSection()" class="bg-white rounded-2xl shadow-sm border p-6">
+        <h2 class="text-lg font-bold mb-1">Profil firmy</h2>
+        <p class="text-sm text-slate-500 mb-4">Zadej IČO (8 číslic) nebo část názvu firmy.</p>
+        <form @submit.prevent="run()" class="flex gap-2 flex-wrap">
+          <input
+            type="text"
+            x-model="query"
+            placeholder="např. 26185610  nebo  AGROFERT"
+            class="flex-1 min-w-[200px] px-4 py-2 border rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none"
+            autofocus
+          />
+          <button
+            type="submit"
+            class="px-6 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 disabled:opacity-50"
+            :disabled="loading"
+            x-text="loading ? 'Hledám…' : 'Najít'"
+          ></button>
+        </form>
+
+        <template x-if="error">
+          <div class="mt-4 p-3 bg-red-50 border border-red-200 rounded text-sm text-red-800" x-text="error"></div>
+        </template>
+
+        <!-- Single-company profile -->
+        <template x-if="profile">
+          <div class="mt-6 p-5 border rounded-xl">
+            <div class="flex items-start justify-between gap-2 flex-wrap">
+              <div>
+                <h3 class="text-xl font-bold" x-text="profile.obchodniJmeno"></h3>
+                <p class="text-sm text-slate-500">
+                  IČO <span x-text="profile.ico" class="font-mono"></span>
+                  <template x-if="profile.dic">
+                    · DIČ <span x-text="profile.dic" class="font-mono"></span>
+                  </template>
+                </p>
+              </div>
+              <div class="flex gap-2 flex-wrap">
+                <button
+                  @click="$dispatch('open-dd', { ico: profile.ico })"
+                  class="px-3 py-1.5 bg-emerald-600 text-white rounded text-sm hover:bg-emerald-700"
+                >🛡️ Due diligence</button>
+              </div>
+            </div>
+            <dl class="grid grid-cols-2 md:grid-cols-4 gap-3 mt-4 text-sm">
+              <div>
+                <dt class="text-slate-500 text-xs">Sídlo</dt>
+                <dd x-text="profile.sidloText || '—'"></dd>
+              </div>
+              <div>
+                <dt class="text-slate-500 text-xs">Vznik</dt>
+                <dd x-text="profile.datumVzniku || '—'"></dd>
+              </div>
+              <div>
+                <dt class="text-slate-500 text-xs">DPH</dt>
+                <dd>
+                  <span
+                    :class="profile.platceDph ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-100 text-slate-700'"
+                    class="px-2 py-0.5 rounded text-xs"
+                    x-text="profile.platceDph ? 'plátce' : 'neplátce'"
+                  ></span>
+                </dd>
+              </div>
+              <div>
+                <dt class="text-slate-500 text-xs">Stav</dt>
+                <dd>
+                  <span
+                    :class="profile.datumZaniku ? 'bg-red-100 text-red-800' : 'bg-emerald-100 text-emerald-800'"
+                    class="px-2 py-0.5 rounded text-xs"
+                    x-text="profile.datumZaniku ? 'Zanikla ' + profile.datumZaniku : 'Aktivní'"
+                  ></span>
+                </dd>
+              </div>
+            </dl>
+            <template x-if="profile.czNace && profile.czNace.length > 0">
+              <div class="mt-4">
+                <p class="text-xs text-slate-500 mb-1">CZ-NACE</p>
+                <div class="flex flex-wrap gap-1">
+                  <template x-for="kod in profile.czNace.slice(0, 12)" :key="kod">
+                    <span class="px-2 py-0.5 bg-slate-100 text-slate-700 rounded text-xs font-mono" x-text="kod"></span>
+                  </template>
+                  <template x-if="profile.czNace.length > 12">
+                    <span class="text-xs text-slate-400" x-text="`+ ${profile.czNace.length - 12} dalších`"></span>
+                  </template>
+                </div>
+              </div>
+            </template>
+          </div>
+        </template>
+
+        <!-- Multi-result list -->
+        <template x-if="results.length > 0">
+          <div class="mt-6 space-y-2">
+            <p class="text-sm text-slate-600">
+              Nalezeno <span x-text="totalFound" class="font-semibold"></span> firem
+            </p>
+            <template x-for="r in results" :key="r.ico">
+              <button
+                @click="loadByIco(r.ico)"
+                class="w-full text-left p-3 border rounded-lg hover:bg-slate-50 transition"
+              >
+                <div class="flex items-center justify-between gap-2 flex-wrap">
+                  <div>
+                    <div class="font-semibold" x-text="r.obchodniJmeno"></div>
+                    <div class="text-xs text-slate-500">
+                      IČO <span x-text="r.ico" class="font-mono"></span> · <span x-text="r.sidlo || ''"></span>
+                    </div>
+                  </div>
+                  <span
+                    :class="r.datumZaniku ? 'bg-red-100 text-red-800' : 'bg-emerald-100 text-emerald-800'"
+                    class="px-2 py-0.5 rounded text-xs"
+                    x-text="r.datumZaniku ? 'zanikla' : 'aktivní'"
+                  ></span>
+                </div>
+              </button>
+            </template>
+          </div>
+        </template>
+      </section>
+
+      <!-- ─── Due diligence ─────────────────────────────────────────── -->
+      <section id="dd" x-data="ddSection()" @open-dd.window="run($event.detail.ico)" class="bg-white rounded-2xl shadow-sm border p-6">
+        <h2 class="text-lg font-bold mb-1">🛡️ Due diligence</h2>
+        <p class="text-sm text-slate-500 mb-4">
+          Jeden klik = kompletní report: profil + jednatelé + DPH + insolvence + risk skóre 🟢🟡🔴.
+        </p>
+        <form @submit.prevent="run(ico)" class="flex gap-2 flex-wrap">
+          <input
+            type="text"
+            x-model="ico"
+            placeholder="IČO (8 číslic)"
+            class="flex-1 min-w-[200px] px-4 py-2 border rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none"
+          />
+          <button
+            type="submit"
+            class="px-6 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 disabled:opacity-50"
+            :disabled="loading"
+            x-text="loading ? 'Probíhá kontrola…' : 'Spustit DD'"
+          ></button>
+        </form>
+
+        <template x-if="error">
+          <div class="mt-4 p-3 bg-red-50 border border-red-200 rounded text-sm text-red-800" x-text="error"></div>
+        </template>
+
+        <template x-if="report">
+          <div class="mt-6 space-y-4">
+            <!-- Risk hero -->
+            <div
+              :class="{
+                'risk-red': report.risk.level === 'red',
+                'risk-yellow': report.risk.level === 'yellow',
+                'risk-green': report.risk.level === 'green'
+              }"
+              class="border-l-4 rounded-lg p-5"
+            >
+              <div class="flex items-start justify-between gap-2 flex-wrap">
+                <div>
+                  <h3 class="text-2xl font-bold" x-text="report.obchodniJmeno"></h3>
+                  <p class="text-sm">
+                    IČO <span x-text="report.ico" class="font-mono"></span>
+                  </p>
+                </div>
+                <div class="text-3xl font-bold flex items-center gap-2">
+                  <span x-text="report.risk.level === 'red' ? '🔴' : report.risk.level === 'yellow' ? '🟡' : '🟢'"></span>
+                  <span x-text="report.risk.level.toUpperCase()"></span>
+                </div>
+              </div>
+              <div class="mt-4 space-y-2">
+                <template x-for="f in report.risk.findings" :key="f.message">
+                  <div class="flex gap-2 items-start text-sm">
+                    <span x-text="f.level === 'red' ? '🚨' : f.level === 'yellow' ? '⚠️' : '✅'"></span>
+                    <span x-text="f.message"></span>
+                  </div>
+                </template>
+              </div>
+            </div>
+
+            <!-- Sections -->
+            <div class="grid md:grid-cols-2 gap-4">
+              <div class="border rounded-lg p-4">
+                <h4 class="font-bold mb-2">Identifikace</h4>
+                <dl class="space-y-1 text-sm">
+                  <div><dt class="text-slate-500 text-xs">Sídlo</dt><dd x-text="report.identification.sidloText || '—'"></dd></div>
+                  <div><dt class="text-slate-500 text-xs">Vznik</dt><dd x-text="report.identification.datumVzniku || '—'"></dd></div>
+                  <template x-if="report.identification.datumZaniku">
+                    <div><dt class="text-slate-500 text-xs">Zánik</dt><dd class="text-red-700 font-semibold" x-text="report.identification.datumZaniku"></dd></div>
+                  </template>
+                  <div><dt class="text-slate-500 text-xs">Právní forma</dt><dd x-text="report.identification.pravniForma || '—'"></dd></div>
+                </dl>
+              </div>
+
+              <div class="border rounded-lg p-4">
+                <h4 class="font-bold mb-2">DPH</h4>
+                <dl class="space-y-1 text-sm">
+                  <div><dt class="text-slate-500 text-xs">Plátce</dt>
+                    <dd>
+                      <span
+                        :class="report.vat.platceDph ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-100 text-slate-700'"
+                        class="px-2 py-0.5 rounded text-xs"
+                        x-text="report.vat.platceDph ? 'Ano' : 'Ne'"
+                      ></span>
+                    </dd>
+                  </div>
+                  <div><dt class="text-slate-500 text-xs">DIČ</dt><dd x-text="report.vat.dic || '—'" class="font-mono"></dd></div>
+                  <div><dt class="text-slate-500 text-xs">Stav v ARES</dt><dd x-text="report.vat.stavZdrojeDph || '—'"></dd></div>
+                </dl>
+              </div>
+
+              <div class="border rounded-lg p-4">
+                <h4 class="font-bold mb-2">Insolvence</h4>
+                <dl class="space-y-1 text-sm">
+                  <div><dt class="text-slate-500 text-xs">Insolvenční rejstřík</dt>
+                    <dd>
+                      <span
+                        :class="report.insolvenci.insolvencniRejstrik === 'ACTIVE' ? 'bg-red-100 text-red-800' : 'bg-emerald-100 text-emerald-800'"
+                        class="px-2 py-0.5 rounded text-xs"
+                        x-text="report.insolvenci.insolvencniRejstrik"
+                      ></span>
+                    </dd>
+                  </div>
+                  <div><dt class="text-slate-500 text-xs">Centrální evidence úpadců</dt>
+                    <dd>
+                      <span class="px-2 py-0.5 rounded text-xs bg-slate-100 text-slate-700" x-text="report.insolvenci.centralniEvidenceUpadcu"></span>
+                    </dd>
+                  </div>
+                </dl>
+              </div>
+
+              <div class="border rounded-lg p-4">
+                <h4 class="font-bold mb-2">Statutární orgány</h4>
+                <p class="text-sm mb-2">Aktivních členů: <span class="font-bold" x-text="report.statutary.aktivniCount"></span></p>
+                <template x-if="report.statutary.clenove.length > 0">
+                  <ul class="text-sm space-y-1 max-h-40 overflow-y-auto">
+                    <template x-for="c in report.statutary.clenove.slice(0, 12)" :key="(c.jmeno||'') + (c.datumZapisu||'')">
+                      <li class="text-xs">
+                        <span class="font-semibold" x-text="c.jmeno || '—'"></span>
+                        <span class="text-slate-500" x-text="c.funkce ? ' — ' + c.funkce : ''"></span>
+                      </li>
+                    </template>
+                  </ul>
+                </template>
+              </div>
+            </div>
+
+            <p class="text-xs text-slate-500">
+              Zdroj dat: <a class="underline" href="https://ares.gov.cz" target="_blank" rel="noopener">ARES</a>
+              (Ministerstvo financí ČR, CC BY 4.0). Pro vážné rozhodnutí ověř i v
+              <a class="underline" href="https://isir.justice.cz" target="_blank" rel="noopener">ISIR</a> a
+              <a class="underline" href="https://or.justice.cz" target="_blank" rel="noopener">Veřejném rejstříku</a>.
+            </p>
+          </div>
+        </template>
+      </section>
+
+      <!-- ─── Cross-company graph ──────────────────────────────────── -->
+      <section id="graph" x-data="graphSection()" class="bg-white rounded-2xl shadow-sm border p-6">
+        <h2 class="text-lg font-bold mb-1">🌐 Mapa propojení přes statutáry</h2>
+        <p class="text-sm text-slate-500 mb-4">
+          Zadej 2–50 IČO (každé na nový řádek nebo oddělené čárkou). Najdu osoby, které sedí ve více firmách najednou.
+        </p>
+        <form @submit.prevent="run()" class="space-y-2">
+          <textarea
+            x-model="raw"
+            rows="3"
+            placeholder="26185610&#10;46967851&#10;46900411&#10;27435148"
+            class="w-full px-3 py-2 border rounded-lg font-mono text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none"
+          ></textarea>
+          <div class="flex gap-3 items-center flex-wrap">
+            <label class="flex items-center gap-2 text-sm">
+              <input type="checkbox" x-model="includeHistorical" class="rounded" />
+              Včetně historických členů
+            </label>
+            <button
+              type="submit"
+              class="px-6 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 disabled:opacity-50"
+              :disabled="loading"
+              x-text="loading ? 'Stavím graf…' : 'Vykreslit'"
+            ></button>
+          </div>
+        </form>
+
+        <template x-if="error">
+          <div class="mt-4 p-3 bg-red-50 border border-red-200 rounded text-sm text-red-800" x-text="error"></div>
+        </template>
+
+        <template x-if="result">
+          <div class="mt-6 space-y-4">
+            <div class="grid grid-cols-3 gap-3 text-center">
+              <div class="border rounded-lg p-3"><div class="text-2xl font-bold" x-text="result.zpracovanoIco"></div><div class="text-xs text-slate-500">Firem</div></div>
+              <div class="border rounded-lg p-3"><div class="text-2xl font-bold" x-text="result.totalActivePersons"></div><div class="text-xs text-slate-500">Aktivních osob</div></div>
+              <div class="border rounded-lg p-3 bg-amber-50"><div class="text-2xl font-bold text-amber-700" x-text="result.sharedCount"></div><div class="text-xs text-slate-500">Sdílených napříč</div></div>
+            </div>
+
+            <div class="border rounded-xl p-4 bg-white">
+              <div class="mermaid" x-html="mermaidSvg"></div>
+            </div>
+
+            <template x-if="result.sharedPersons.length > 0">
+              <div>
+                <h4 class="font-bold mb-2">Sdílení statutáři</h4>
+                <ul class="space-y-2">
+                  <template x-for="p in result.sharedPersons" :key="p.jmeno">
+                    <li class="border rounded-lg p-3">
+                      <div class="font-semibold" x-text="p.jmeno"></div>
+                      <template x-if="p.datumNarozeni">
+                        <div class="text-xs text-slate-500">nar. <span x-text="p.datumNarozeni"></span></div>
+                      </template>
+                      <ul class="mt-1 text-sm space-y-0.5">
+                        <template x-for="m in p.memberships" :key="m.ico + (m.datumVymazu || '') + (m.funkce || '')">
+                          <li>
+                            <span class="font-mono text-xs" x-text="m.ico"></span>
+                            <span x-text="' ' + (m.company || '')"></span>
+                            <span class="text-slate-500" x-text="m.funkce ? ' — ' + m.funkce : ''"></span>
+                            <template x-if="m.datumVymazu">
+                              <span class="text-xs text-amber-700" x-text="' [bývalý, ukončeno ' + m.datumVymazu + ']'"></span>
+                            </template>
+                          </li>
+                        </template>
+                      </ul>
+                    </li>
+                  </template>
+                </ul>
+              </div>
+            </template>
+          </div>
+        </template>
+      </section>
+
+      <!-- ─── Search by address ────────────────────────────────────── -->
+      <section id="address" x-data="addressSection()" class="bg-white rounded-2xl shadow-sm border p-6">
+        <h2 class="text-lg font-bold mb-1">🏢 Hledat firmy na adrese</h2>
+        <p class="text-sm text-slate-500 mb-4">
+          Detekce virtuálních kanceláří a sdílených sídel — adresa s desítkami firem je červená vlajka.
+        </p>
+        <form @submit.prevent="run()" class="flex gap-2 flex-wrap">
+          <input
+            type="text"
+            x-model="adresa"
+            placeholder="např. Vratimovská 689/117, Ostrava"
+            class="flex-1 min-w-[200px] px-4 py-2 border rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none"
+          />
+          <button
+            type="submit"
+            class="px-6 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 disabled:opacity-50"
+            :disabled="loading"
+            x-text="loading ? 'Hledám…' : 'Najít'"
+          ></button>
+        </form>
+
+        <template x-if="error">
+          <div class="mt-4 p-3 bg-red-50 border border-red-200 rounded text-sm text-red-800" x-text="error"></div>
+        </template>
+
+        <template x-if="result">
+          <div class="mt-6 space-y-3">
+            <div
+              :class="{
+                'risk-red': result.shellLevel === 'high',
+                'risk-yellow': result.shellLevel === 'medium',
+                'risk-green': result.shellLevel === 'low'
+              }"
+              class="border-l-4 rounded-lg p-4"
+            >
+              <p class="text-sm">
+                Na adrese <strong x-text="result.adresa"></strong> sídlí
+                <strong class="text-xl" x-text="result.celkemNalezeno"></strong> firem.
+                <template x-if="result.shellLevel === 'high'">
+                  <span class="font-semibold text-red-800">🚨 Velmi pravděpodobně virtuální adresa.</span>
+                </template>
+                <template x-if="result.shellLevel === 'medium'">
+                  <span class="font-semibold text-amber-800">⚠️ Sdílená business adresa (regus / virtual office).</span>
+                </template>
+                <template x-if="result.shellLevel === 'low'">
+                  <span class="font-semibold text-emerald-800">✅ Běžná adresa.</span>
+                </template>
+              </p>
+            </div>
+            <template x-if="result.vysledky.length > 0">
+              <ul class="space-y-2">
+                <template x-for="r in result.vysledky" :key="r.ico">
+                  <li class="border rounded-lg p-3">
+                    <button @click="$dispatch('open-dd', { ico: r.ico })" class="text-left w-full">
+                      <div class="font-semibold" x-text="r.obchodniJmeno"></div>
+                      <div class="text-xs text-slate-500">
+                        IČO <span class="font-mono" x-text="r.ico"></span>
+                      </div>
+                    </button>
+                  </li>
+                </template>
+              </ul>
+            </template>
+          </div>
+        </template>
+      </section>
+    </main>
+
+    <footer class="border-t bg-white">
+      <div class="max-w-6xl mx-auto px-4 py-6 text-xs text-slate-500 space-y-1">
+        <p>
+          Data: <a class="underline" href="https://ares.gov.cz" target="_blank" rel="noopener">ARES</a> —
+          Administrativní registr ekonomických subjektů, © Ministerstvo financí ČR,
+          licence <a class="underline" href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener">CC BY 4.0</a>.
+        </p>
+        <p>
+          ares-web je nezávislý open-source projekt a <strong>nesouvisí</strong> s MFČR ani s provozovatelem ARES.
+          Údaje mají pouze informativní charakter — pro právní účely si vyžádejte autoritativní výpis z
+          <a class="underline" href="https://or.justice.cz" target="_blank" rel="noopener">Veřejného rejstříku</a>.
+        </p>
+        <p>
+          GDPR: výpisy z ARES obsahují osobní údaje (jména, data narození jednatelů). Použití dat pro další zpracování
+          je tvoje odpovědnost jako správce ve smyslu nařízení (EU) 2016/679.
+        </p>
+      </div>
+    </footer>
+
+    <script src="/js/app.js"></script>
+  </body>
+</html>
