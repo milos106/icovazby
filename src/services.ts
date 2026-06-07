@@ -520,6 +520,187 @@ export async function tryConvert(czkAmount: number, code: string): Promise<numbe
 // ─── Person vazby (HS osoby + ARES IČO resolve) ───────────────────────────────
 export { getPersonVazbyService } from "./persons/service.js";
 
+// ─── Veřejný rejstřík (OR) přes verejnerejstriky.msp.gov.cz ───────────────────
+import { VR_ATTRIBUTION, fetchVrDetailByIco } from "./justice_vr/client.js";
+
+function vrAddressToText(a?: {
+  ulice?: string;
+  cisloPop?: string;
+  cisloOr?: string;
+  obec?: string;
+  castObce?: string;
+  psc?: string;
+  mop?: string;
+}): string | null {
+  if (!a) return null;
+  let cislo = "";
+  if (a.cisloPop && a.cisloOr) cislo = `${a.cisloPop}/${a.cisloOr}`;
+  else cislo = a.cisloPop || a.cisloOr || "";
+  const street = [a.ulice, cislo].filter(Boolean).join(" ");
+  const city = a.mop || a.obec || "";
+  const cityWithPart = a.castObce && city && a.castObce !== city ? `${city}-${a.castObce}` : city;
+  const where = [a.psc, cityWithPart].filter(Boolean).join(" ");
+  return [street, where].filter(Boolean).join(", ") || null;
+}
+
+interface VrMember {
+  jmeno: string;
+  prijmeni: string;
+  titulPred: string | null;
+  datumNarozeni: string | null;
+  funkce: string | null;
+  vznikClenstvi: string | null;
+  vznikFunkce: string | null;
+  adresa: string | null;
+  isLegalEntity: boolean;
+  ico: string | null;
+  fullName: string;
+}
+
+function normalizeMember(raw: {
+  value?: {
+    osoba?: {
+      jmeno?: string;
+      prijmeni?: string;
+      titulPred?: string | null;
+      datumNarozeni?: string;
+      nazev?: string;
+      ico?: string;
+      adresa?: Parameters<typeof vrAddressToText>[0];
+    };
+    funkce?: { funkce?: string; vznikFunkce?: string };
+    clenstvi?: { vznikClenstvi?: string };
+  };
+  hlavicka?: string;
+}): VrMember | null {
+  const o = raw.value?.osoba;
+  if (!o) return null;
+  const isLegal = Boolean(o.nazev && !o.jmeno);
+  const jmeno = o.jmeno?.trim() ?? "";
+  const prijmeni = o.prijmeni?.trim() ?? "";
+  const fullName = isLegal
+    ? (o.nazev ?? "")
+    : [o.titulPred, jmeno, prijmeni].filter(Boolean).join(" ");
+  return {
+    jmeno,
+    prijmeni,
+    titulPred: o.titulPred ?? null,
+    datumNarozeni: o.datumNarozeni ? o.datumNarozeni.slice(0, 10) : null,
+    funkce: raw.value?.funkce?.funkce ?? raw.hlavicka ?? null,
+    vznikClenstvi: raw.value?.clenstvi?.vznikClenstvi?.replace(/^PRESNY-/, "") ?? null,
+    vznikFunkce: raw.value?.funkce?.vznikFunkce?.replace(/^PRESNY-/, "") ?? null,
+    adresa: vrAddressToText(o.adresa),
+    isLegalEntity: isLegal,
+    ico: o.ico ?? null,
+    fullName,
+  };
+}
+
+export async function getVrDetailService(ico: string) {
+  const v = validateIcoFn(ico);
+  if (!v.valid) throw new InvalidInputError(v.reason ?? "Neplatné IČO.");
+  const detail = await fetchVrDetailByIco(v.normalized);
+  if (!detail) {
+    return {
+      ico: v.normalized,
+      available: false,
+      reason: "Subjekt nebyl v novém VR portálu nalezen (může to být v ověřovacím provozu mezera).",
+      _attribution: VR_ATTRIBUTION,
+    };
+  }
+  const stat = (detail.statutarniOrgan?.osoby ?? [])
+    .map(normalizeMember)
+    .filter((m): m is VrMember => m !== null);
+  const dozorci = (detail.dozorciRada?.osoby ?? [])
+    .map(normalizeMember)
+    .filter((m): m is VrMember => m !== null);
+  const akcionari = (detail.akcionar?.osoby ?? [])
+    .map(normalizeMember)
+    .filter((m): m is VrMember => m !== null);
+
+  const akcie = (detail.akcie ?? []).map((a) => ({
+    typ: a.value?.typ ?? null,
+    podoba: a.value?.podoba ?? null,
+    pocet: a.value?.pocet ?? null,
+    hodnotaCZK: a.value?.hodnota?.textValue?.replace(";00", "") ?? null,
+    text: a.value?.text ?? null,
+  }));
+
+  const ostatniSkutecnosti = (detail.ostatniSkutecnosti?.skutecnosti ?? [])
+    .filter((s) => !s.skryty)
+    .map((s) => ({
+      validFrom: s.validFrom ?? null,
+      validTo: s.validTo ?? null,
+      isActive: !s.validTo,
+      value: s.value,
+    }));
+
+  const predmetCinnosti = (detail.predmetCinnosti ?? [])
+    .filter((p) => !p.skryty && !p.validTo)
+    .map((p) => p.value);
+  const predmetPodnikani = (detail.predmetPodnikani ?? [])
+    .filter((p) => !p.skryty && !p.validTo)
+    .map((p) => p.value);
+  const predmetPodnikaniHistoric = (detail.predmetPodnikani ?? [])
+    .filter((p) => !p.skryty && p.validTo)
+    .map((p) => ({ value: p.value, validFrom: p.validFrom ?? null, validTo: p.validTo ?? null }));
+
+  // Základní kapitál může být buď prostá hodnota nebo objekt {vklad, splaceni}.
+  // Pro UI sestavíme čitelný string a zároveň necháme strukturu pro tooltip.
+  const kapitalRaw = detail.zakladniKapital?.value as
+    | string
+    | { vklad?: { typ?: string; textValue?: string }; splaceni?: { typ?: string; textValue?: string } }
+    | undefined;
+  let zakladniKapital: string | null = null;
+  if (typeof kapitalRaw === "string") {
+    zakladniKapital = kapitalRaw;
+  } else if (kapitalRaw && typeof kapitalRaw === "object") {
+    const v = kapitalRaw.vklad?.textValue?.replace(";00", "");
+    const typ = kapitalRaw.vklad?.typ === "KORUNY" ? "Kč" : kapitalRaw.vklad?.typ ?? "";
+    const sp = kapitalRaw.splaceni?.textValue;
+    const formattedNum = v ? Number(v).toLocaleString("cs-CZ") : null;
+    const main = formattedNum && typ ? `${formattedNum} ${typ}` : v ?? null;
+    zakladniKapital = main && sp ? `${main} (splaceno ${sp} %)` : main;
+  }
+
+  return {
+    ico: v.normalized,
+    available: true,
+    subjektId: detail.subjektId ?? null,
+    datumZapisu: detail.datumZapisu ?? null,
+    datumVygenerovani: detail.datumVygenerovani ?? null,
+    nazev: detail.nazev?.value ?? null,
+    pravniForma: detail.pravniForma?.value ?? null,
+    sidlo: typeof detail.sidlo?.value === "string"
+      ? detail.sidlo.value
+      : vrAddressToText(detail.sidlo?.value as Parameters<typeof vrAddressToText>[0] | undefined),
+    spisovaZnacka: detail.spisovaZnacka?.value ?? null,
+    zakladniKapital,
+    predmetCinnosti,
+    predmetPodnikani,
+    predmetPodnikaniHistoric,
+    statutarniOrgan: {
+      hlavicka: detail.statutarniOrgan?.hlavicka ?? null,
+      pocet: stat.length,
+      clenove: stat,
+    },
+    dozorciRada: {
+      pocet: dozorci.length,
+      clenove: dozorci,
+    },
+    akcionar: {
+      pocet: akcionari.length,
+      clenove: akcionari,
+    },
+    akcie,
+    ostatniSkutecnosti,
+    portalUrl: detail.subjektId
+      ? `https://verejnerejstriky.msp.gov.cz/vypis/${detail.subjektId}`
+      : null,
+    _attribution: VR_ATTRIBUTION,
+  };
+}
+
 // ─── EU consolidated financial sanctions list ─────────────────────────────────
 import { EU_SANCTIONS_ATTRIBUTION, screenEuSanctions } from "./eu_sanctions/client.js";
 

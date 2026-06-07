@@ -574,6 +574,32 @@ function ddEuSanctionsLoader() {
   };
 }
 
+function ddVrLoader() {
+  return {
+    vr: null,
+    loading: false,
+    vrError: "",
+    async load(ico) {
+      if (!ico) return;
+      this.loading = true;
+      this.vr = null;
+      this.vrError = "";
+      try {
+        this.vr = await jsonFetch(`/api/vr/${encodeURIComponent(ico)}`);
+      } catch (e) {
+        this.vrError = "Veřejný rejstřík nelze načíst: " + e.message;
+      } finally {
+        this.loading = false;
+      }
+    },
+    openPersonVazby(jmeno, datumNarozeni) {
+      window.dispatchEvent(new CustomEvent("ares-open-person-vazby", {
+        detail: { jmeno, datumNarozeni },
+      }));
+    },
+  };
+}
+
 function ddJerrsLoader() {
   return {
     jerrs: null,
@@ -814,6 +840,7 @@ window.ddSmlouvyLoader = ddSmlouvyLoader;
 window.ddDotaceLoader = ddDotaceLoader;
 window.ddIsirLoader = ddIsirLoader;
 window.ddJerrsLoader = ddJerrsLoader;
+window.ddVrLoader = ddVrLoader;
 window.ddEuSanctionsLoader = ddEuSanctionsLoader;
 window.personVazbySection = personVazbySection;
 window.featuresStatus = featuresStatus;

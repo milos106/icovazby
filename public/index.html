@@ -473,6 +473,7 @@
             >
               <div class="flex gap-1 overflow-x-auto whitespace-nowrap items-center">
                 <a href="#dd-profil" class="px-2 py-1 rounded hover:bg-slate-100 dark:hover:bg-slate-700">👤 Profil</a>
+                <a href="#dd-vr" class="px-2 py-1 rounded hover:bg-slate-100 dark:hover:bg-slate-700">⚖️ OR</a>
                 <a href="#dd-ubo" class="px-2 py-1 rounded hover:bg-slate-100 dark:hover:bg-slate-700">👥 UBO</a>
                 <a href="#dd-dotace" class="px-2 py-1 rounded hover:bg-slate-100 dark:hover:bg-slate-700">💸 Dotace</a>
                 <a href="#dd-smlouvy" class="px-2 py-1 rounded hover:bg-slate-100 dark:hover:bg-slate-700">💰 Smlouvy</a>
@@ -484,13 +485,13 @@
                 <span class="mx-2 text-slate-300 dark:text-slate-600">|</span>
                 <button
                   type="button"
-                  @click="$store.ddCollapse.expandAll(['dd-adis','dd-jerrs','dd-sankce','dd-ubo','dd-dotace','dd-smlouvy','dd-isir','dd-zivno'])"
+                  @click="$store.ddCollapse.expandAll(['dd-vr','dd-adis','dd-jerrs','dd-sankce','dd-ubo','dd-dotace','dd-smlouvy','dd-isir','dd-zivno'])"
                   class="px-2 py-1 rounded hover:bg-slate-100 dark:hover:bg-slate-700"
                   title="Rozbalit všechny sekce"
                 >▼ Vše</button>
                 <button
                   type="button"
-                  @click="$store.ddCollapse.collapseAll(['dd-adis','dd-jerrs','dd-sankce','dd-ubo','dd-dotace','dd-smlouvy','dd-isir','dd-zivno'])"
+                  @click="$store.ddCollapse.collapseAll(['dd-vr','dd-adis','dd-jerrs','dd-sankce','dd-ubo','dd-dotace','dd-smlouvy','dd-isir','dd-zivno'])"
                   class="px-2 py-1 rounded hover:bg-slate-100 dark:hover:bg-slate-700"
                   title="Sbalit všechny sekce"
                 >▶ Nic</button>
@@ -599,6 +600,196 @@
                 </template>
                 <template x-if="report.statutary.clenove.length === 0">
                   <p class="text-sm text-slate-500 dark:text-slate-400 italic">Žádní aktivní členové ve VR.</p>
+                </template>
+              </div>
+
+              <div id="dd-vr" :data-collapsed="!$store.ddCollapse.isExpanded('dd-vr')" class="dd-card border-2 border-violet-300 dark:border-violet-700 rounded-lg p-4 md:col-span-2 scroll-mt-32" x-data="ddVrLoader()" x-init="load(report.ico)">
+                <div class="dd-card-header flex items-baseline justify-between gap-2 mb-2 flex-wrap cursor-pointer select-none" @click="$store.ddCollapse.toggle('dd-vr')">
+                  <h4 class="font-bold flex items-center gap-2">
+                    <span class="text-slate-400 w-3 inline-block" x-text="$store.ddCollapse.isExpanded('dd-vr') ? '▼' : '▶'"></span>
+                    <span>⚖️ Veřejný rejstřík (OR)</span>
+                    <span class="text-xs font-normal text-slate-500 dark:text-slate-400">— plný výpis: akcie, kapitál, historie</span>
+                  </h4>
+                  <div class="relative" x-data="{ open: false }" @click.outside="open = false">
+                    <button type="button" @click.stop="open = !open" class="text-slate-400 hover:text-slate-600 text-base" title="Zdroj">ⓘ</button>
+                    <div x-show="open" x-cloak x-transition class="absolute right-0 mt-1 w-72 bg-white dark:bg-slate-800 border dark:border-slate-700 rounded-lg shadow-lg p-3 text-xs z-30 text-left">
+                      <p class="font-semibold">Zdroj: Veřejný rejstřík (OR)</p>
+                      <p class="text-slate-600 dark:text-slate-400 mt-1">Ministerstvo spravedlnosti ČR — z. č. 304/2013 Sb. o veřejných rejstřících. Nový portál v ověřovacím provozu (data totožná s or.justice.cz).</p>
+                      <p class="mt-2">Licence: volné užití veřejných údajů z OR</p>
+                      <p class="mt-1"><a class="underline" href="https://verejnerejstriky.msp.gov.cz/" target="_blank" rel="noopener">🔗 verejnerejstriky.msp.gov.cz</a></p>
+                    </div>
+                  </div>
+                </div>
+                <template x-if="loading">
+                  <p class="text-xs text-slate-500 dark:text-slate-400">Načítám plný výpis z OR…</p>
+                </template>
+                <template x-if="vrError">
+                  <p class="text-xs text-amber-700 dark:text-amber-400" x-text="vrError"></p>
+                </template>
+                <template x-if="vr && !vr.available">
+                  <p class="text-xs text-slate-500 dark:text-slate-400" x-text="vr.reason"></p>
+                </template>
+                <template x-if="vr && vr.available">
+                  <div class="space-y-3">
+                    <!-- Quick facts grid -->
+                    <dl class="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm">
+                      <div>
+                        <dt class="text-xs text-slate-500 dark:text-slate-400">Spisová značka</dt>
+                        <dd class="font-mono" x-text="vr.spisovaZnacka || '—'"></dd>
+                      </div>
+                      <div>
+                        <dt class="text-xs text-slate-500 dark:text-slate-400">Základní kapitál</dt>
+                        <dd class="font-semibold" x-text="vr.zakladniKapital || '—'"></dd>
+                      </div>
+                      <div>
+                        <dt class="text-xs text-slate-500 dark:text-slate-400">Sídlo (OR)</dt>
+                        <dd x-text="vr.sidlo || '—'"></dd>
+                      </div>
+                      <div>
+                        <dt class="text-xs text-slate-500 dark:text-slate-400">Datum zápisu</dt>
+                        <dd x-text="vr.datumZapisu || '—'"></dd>
+                      </div>
+                    </dl>
+
+                    <!-- Statutární orgán -->
+                    <template x-if="vr.statutarniOrgan && vr.statutarniOrgan.pocet > 0">
+                      <div class="border-l-4 border-violet-400 pl-3 py-1">
+                        <div class="flex items-baseline justify-between gap-2 flex-wrap">
+                          <span class="font-semibold text-sm" x-text="vr.statutarniOrgan.hlavicka || 'Statutární orgán'"></span>
+                          <span class="text-xs text-slate-500 dark:text-slate-400">členů: <span x-text="vr.statutarniOrgan.pocet"></span></span>
+                        </div>
+                        <ul class="text-xs space-y-1 mt-1">
+                          <template x-for="(m, idx) in vr.statutarniOrgan.clenove" :key="idx">
+                            <li>
+                              <template x-if="!m.isLegalEntity && m.datumNarozeni">
+                                <button
+                                  type="button"
+                                  @click="openPersonVazby(m.fullName, m.datumNarozeni)"
+                                  class="font-semibold underline text-emerald-700 dark:text-emerald-400 hover:text-emerald-800 text-left"
+                                  :title="'Najít vazby osoby ' + m.fullName"
+                                >
+                                  <span x-text="m.fullName"></span>
+                                  <span class="text-xs text-slate-400 ml-0.5">🔗</span>
+                                </button>
+                              </template>
+                              <template x-if="m.isLegalEntity || !m.datumNarozeni">
+                                <span class="font-semibold" x-text="m.fullName"></span>
+                              </template>
+                              <span class="text-slate-500 dark:text-slate-400" x-text="m.funkce ? ' — ' + m.funkce : ''"></span>
+                              <template x-if="m.vznikClenstvi">
+                                <span class="text-slate-400" x-text="' (od ' + m.vznikClenstvi + ')'"></span>
+                              </template>
+                            </li>
+                          </template>
+                        </ul>
+                      </div>
+                    </template>
+
+                    <!-- Dozorčí rada -->
+                    <template x-if="vr.dozorciRada && vr.dozorciRada.pocet > 0">
+                      <details class="text-xs">
+                        <summary class="cursor-pointer font-semibold">Dozorčí rada (<span x-text="vr.dozorciRada.pocet"></span>)</summary>
+                        <ul class="mt-1 space-y-1 pl-3">
+                          <template x-for="(m, idx) in vr.dozorciRada.clenove" :key="'dr'+idx">
+                            <li>
+                              <template x-if="!m.isLegalEntity && m.datumNarozeni">
+                                <button
+                                  type="button"
+                                  @click="openPersonVazby(m.fullName, m.datumNarozeni)"
+                                  class="underline text-emerald-700 dark:text-emerald-400 hover:text-emerald-800 text-left"
+                                >
+                                  <span x-text="m.fullName"></span> 🔗
+                                </button>
+                              </template>
+                              <template x-if="m.isLegalEntity || !m.datumNarozeni">
+                                <span x-text="m.fullName"></span>
+                              </template>
+                              <span class="text-slate-500 dark:text-slate-400" x-text="m.funkce ? ' — ' + m.funkce : ''"></span>
+                            </li>
+                          </template>
+                        </ul>
+                      </details>
+                    </template>
+
+                    <!-- Akcionáři -->
+                    <template x-if="vr.akcionar && vr.akcionar.pocet > 0">
+                      <details class="text-xs">
+                        <summary class="cursor-pointer font-semibold">Akcionář / společníci (<span x-text="vr.akcionar.pocet"></span>)</summary>
+                        <ul class="mt-1 space-y-1 pl-3">
+                          <template x-for="(m, idx) in vr.akcionar.clenove" :key="'a'+idx">
+                            <li>
+                              <span class="font-semibold" x-text="m.fullName"></span>
+                              <template x-if="m.ico">
+                                <span class="font-mono text-slate-500 dark:text-slate-400" x-text="' IČO ' + m.ico"></span>
+                              </template>
+                            </li>
+                          </template>
+                        </ul>
+                      </details>
+                    </template>
+
+                    <!-- Akcie -->
+                    <template x-if="vr.akcie && vr.akcie.length > 0">
+                      <details class="text-xs">
+                        <summary class="cursor-pointer font-semibold">Akcie</summary>
+                        <ul class="mt-1 space-y-1 pl-3">
+                          <template x-for="(a, idx) in vr.akcie" :key="'ak'+idx">
+                            <li>
+                              <span x-text="a.pocet + ' ks · ' + (a.typ || '?') + ' · ' + (a.podoba || '?')"></span>
+                              <template x-if="a.hodnotaCZK">
+                                <span class="text-slate-500 dark:text-slate-400" x-text="' · jmenovitá hodnota ' + Number(a.hodnotaCZK).toLocaleString('cs-CZ') + ' Kč'"></span>
+                              </template>
+                              <template x-if="a.text">
+                                <p class="text-slate-500 dark:text-slate-400 italic" x-text="a.text"></p>
+                              </template>
+                            </li>
+                          </template>
+                        </ul>
+                      </details>
+                    </template>
+
+                    <!-- Předmět podnikání -->
+                    <template x-if="vr.predmetPodnikani && vr.predmetPodnikani.length > 0">
+                      <details class="text-xs">
+                        <summary class="cursor-pointer font-semibold">Předmět podnikání (<span x-text="vr.predmetPodnikani.length"></span>)</summary>
+                        <ul class="mt-1 pl-3 list-disc">
+                          <template x-for="(p, idx) in vr.predmetPodnikani" :key="'pp'+idx">
+                            <li x-text="p"></li>
+                          </template>
+                        </ul>
+                      </details>
+                    </template>
+
+                    <!-- Ostatní skutečnosti — historie firmy -->
+                    <template x-if="vr.ostatniSkutecnosti && vr.ostatniSkutecnosti.length > 0">
+                      <details class="text-xs">
+                        <summary class="cursor-pointer font-semibold">📜 Ostatní skutečnosti (<span x-text="vr.ostatniSkutecnosti.length"></span>) — historie firmy</summary>
+                        <ul class="mt-1 space-y-2 pl-3 max-h-80 overflow-y-auto">
+                          <template x-for="(s, idx) in vr.ostatniSkutecnosti" :key="'os'+idx">
+                            <li class="border-l-2 border-slate-300 dark:border-slate-600 pl-2 py-0.5">
+                              <div class="text-slate-500 dark:text-slate-400 text-xs">
+                                <span x-text="s.validFrom || '?'"></span>
+                                <template x-if="!s.isActive">
+                                  <span x-text="' → ' + (s.validTo || '?')"></span>
+                                </template>
+                              </div>
+                              <p class="whitespace-pre-line" x-text="s.value"></p>
+                            </li>
+                          </template>
+                        </ul>
+                      </details>
+                    </template>
+
+                    <p class="text-xs text-slate-400 pt-2 border-t dark:border-slate-700">
+                      Plný výpis v portálu:
+                      <template x-if="vr.portalUrl">
+                        <a class="underline" :href="vr.portalUrl" target="_blank" rel="noopener">
+                          🔗 verejnerejstriky.msp.gov.cz/vypis/<span x-text="vr.subjektId"></span>
+                        </a>
+                      </template>
+                      <span class="ml-2">· vygenerováno <span x-text="vr.datumVygenerovani ? new Date(vr.datumVygenerovani).toLocaleString('cs-CZ') : '—'"></span></span>
+                    </p>
+                  </div>
                 </template>
               </div>
 
@@ -1717,6 +1908,10 @@
             a
             <a class="underline" href="https://www.cnb.cz/cs/dohled-financni-trh/seznamy/Otevrena-data/" target="_blank" rel="noopener">JERRS otevřená data</a>
             (seznamy regulovaných subjektů) — Česká národní banka, otevřená data dle nař. vlády 425/2016 Sb. (volné užití).
+          </li>
+          <li>
+            ⚖️ <a class="underline" href="https://verejnerejstriky.msp.gov.cz/" target="_blank" rel="noopener">Veřejný rejstřík (OR)</a>
+            — Ministerstvo spravedlnosti ČR (z. č. 304/2013 Sb.), nový portál v ověřovacím provozu; volné užití veřejných údajů z OR.
           </li>
           <li>
             🇪🇺 <a class="underline" href="https://data.europa.eu/data/datasets/consolidated-list-of-persons-groups-and-entities-subject-to-eu-financial-sanctions" target="_blank" rel="noopener">EU Consolidated Financial Sanctions List</a>

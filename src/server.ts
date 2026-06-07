@@ -27,6 +27,7 @@ import {
   getPersonVazbyService,
   getResClassificationService,
   getSmlouvyService,
+  getVrDetailService,
   getTradeLicensesService,
   getUboService,
   type InvoiceTarget,
@@ -172,6 +173,16 @@ app.get("/api/search/address", async (req: FastifyRequest, reply) => {
 app.get("/api/cnb/rates", async (_req: FastifyRequest, reply) => {
   try {
     reply.send(await getCnbRatesService());
+  } catch (e) {
+    sendError(reply, e);
+  }
+});
+
+// ─── Veřejný rejstřík (OR) přes verejnerejstriky.msp.gov.cz ──────────────────
+app.get("/api/vr/:ico", async (req: FastifyRequest, reply) => {
+  try {
+    const ico = (req.params as { ico: string }).ico;
+    reply.send(await getVrDetailService(ico));
   } catch (e) {
     sendError(reply, e);
   }

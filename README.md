@@ -88,6 +88,7 @@ Aplikace integruje veřejné datové zdroje. Každý má vlastní licenci a vlas
 | **ADIS** (Finanční správa) | Nespolehlivý plátce DPH + zveřejněné účty | Veřejná data § 96a z. o DPH | „Source: MFČR ADIS" | ✅ |
 | **Hlídač státu** _(v přípravě, vyžaduje token)_ | Veřejné zakázky, smlouvy, UBO, dotace | **CC BY 3.0 CZ** | ⚠️ **POVINNÝ funkční odkaz na hlidacstatu.cz** zobrazený vždy s daty i v patičce | ✅ s atribucí; komerční bez atribuce vyžaduje smlouvu s api@hlidacstatu.cz |
 | **ISIR** (Justice ČR) _(v přípravě)_ | Detail insolvenčního řízení | Veřejná data § 419 z. č. 182/2006 Sb. | „Source: ISIR / MSp ČR" | ✅ pod limitem 3000/den, 50/min |
+| **Veřejný rejstřík (OR)** | Plný strukturovaný výpis: akcie, kapitál, statutární orgán, dozorčí rada, akcionáři, historie firmy (ostatní skutečnosti) | Z. č. 304/2013 Sb. (veřejně přístupné) | „Source: Veřejný rejstřík, MSp ČR" | ✅ |
 | **ČNB — denní kurzy** | CZK→cizí měna widget v headeru, tooltipy převodů | Veřejná data ČNB | „Source: ČNB" | ✅ |
 | **ČNB — JERRS open-data** | Indikátor regulovaného subjektu (banka, směnárna, NPSU…) | Otevřená data dle nař. vlády 425/2016 Sb. | „Source: ČNB" | ✅ |
 | **EU Consolidated Sanctions List** | Screening jmen statutárních orgánů proti EU sankcím | **Commission Decision 2011/833/EU** (free reuse) | „Source: EU Commission — FPI / FSF" | ✅ **včetně komerčního použití** |
