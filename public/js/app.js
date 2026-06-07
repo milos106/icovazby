@@ -475,6 +475,43 @@ function personVazbySection() {
       if (icos.length < 2) return;
       window.dispatchEvent(new CustomEvent("ares-seed-graph", { detail: { icos } }));
     },
+    /**
+     * Uživatel zná IČO další firmy, kde sedí prohlížená osoba.
+     * Spustíme paralelně DD + VR endpointy (oba plní lokální index),
+     * pak rerun vazby. Po úspěšném doplnění vyčistíme input.
+     */
+    addIco: "",
+    addingIco: false,
+    addError: "",
+    async addCompanyAndRefresh() {
+      const raw = (this.addIco || "").trim().replace(/^CZ\s*/i, "").replace(/\s|-|\./g, "");
+      if (!/^\d{7,8}$/.test(raw)) {
+        this.addError = "Zadej platné IČO (7–8 číslic).";
+        return;
+      }
+      this.addError = "";
+      this.addingIco = true;
+      try {
+        const [dd, vr] = await Promise.allSettled([
+          fetch(`/api/dd/${encodeURIComponent(raw)}`),
+          fetch(`/api/vr/${encodeURIComponent(raw)}`),
+        ]);
+        if (dd.status === "rejected" && vr.status === "rejected") {
+          this.addError = "Obě prověrky selhaly. Ověř IČO v ARES.";
+          return;
+        }
+        if (dd.status === "fulfilled" && !dd.value.ok) {
+          this.addError = `ARES DD vrátilo HTTP ${dd.value.status}.`;
+          return;
+        }
+        this.addIco = "";
+        await this.run(); // re-fetch vazby
+      } catch (e) {
+        this.addError = "Doplnění selhalo: " + e.message;
+      } finally {
+        this.addingIco = false;
+      }
+    },
   };
 }
 

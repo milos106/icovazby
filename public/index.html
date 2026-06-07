@@ -1655,6 +1655,37 @@
               </div>
             </template>
 
+            <!-- Quick-add: víš o další firmě? Zadej IČO, naplníme index a osoba
+                 se s ní propojí. Šetří uživateli krok přepnout do hlavního
+                 hledání. Akce zavolá DD + VR endpointy a pak vazby refreshne. -->
+            <details class="border dark:border-slate-700 rounded p-2 text-sm">
+              <summary class="cursor-pointer text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100">
+                💡 Vím o jiné firmě téhle osoby — chci ji doplnit do indexu
+              </summary>
+              <p class="text-xs text-slate-500 dark:text-slate-400 mt-2 mb-2">
+                Žádný veřejný zdroj (ARES, OR portál, Hlídač státu) neumí najít všechny firmy konkrétní fyzické osoby
+                automaticky. Když IČO další firmy znáš, zadej ho sem — ares-web spustí její prověrku a osobu napojí.
+              </p>
+              <div class="flex gap-2 items-center flex-wrap">
+                <input
+                  type="text"
+                  x-model="addIco"
+                  inputmode="numeric"
+                  pattern="\d{7,8}"
+                  placeholder="IČO další firmy (7–8 číslic)"
+                  class="px-2 py-1 border dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100 rounded text-sm font-mono"
+                />
+                <button
+                  type="button"
+                  @click="addCompanyAndRefresh()"
+                  :disabled="addingIco || !/^\d{7,8}$/.test((addIco||'').trim())"
+                  class="px-3 py-1 bg-emerald-600 text-white rounded text-sm hover:bg-emerald-700 disabled:opacity-50"
+                  x-text="addingIco ? 'Načítám…' : 'Přidat a obnovit vazby'"
+                ></button>
+                <span class="text-xs text-rose-700 dark:text-rose-400" x-show="addError" x-text="addError"></span>
+              </div>
+            </details>
+
             <template x-if="result.vazby.length > 0">
               <div class="flex gap-2 items-center flex-wrap">
                 <button
