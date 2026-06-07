@@ -22,6 +22,7 @@ import {
   getCnbRatesService,
   getDotaceService,
   getInsolvenceDetailService,
+  getJerrsService,
   getResClassificationService,
   getSmlouvyService,
   getTradeLicensesService,
@@ -169,6 +170,16 @@ app.get("/api/search/address", async (req: FastifyRequest, reply) => {
 app.get("/api/cnb/rates", async (_req: FastifyRequest, reply) => {
   try {
     reply.send(await getCnbRatesService());
+  } catch (e) {
+    sendError(reply, e);
+  }
+});
+
+// ─── JERRS — regulované subjekty ČNB (open-data) ──────────────────────────────
+app.get("/api/jerrs/:ico", async (req: FastifyRequest, reply) => {
+  try {
+    const ico = (req.params as { ico: string }).ico;
+    reply.send(await getJerrsService(ico));
   } catch (e) {
     sendError(reply, e);
   }

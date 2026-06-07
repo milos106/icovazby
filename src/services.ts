@@ -493,6 +493,35 @@ export async function tryConvert(czkAmount: number, code: string): Promise<numbe
   }
 }
 
+// ─── JERRS (regulované subjekty ČNB, open-data) ───────────────────────────────
+import { JERRS_ATTRIBUTION, lookupJerrsByIco } from "./jerrs/client.js";
+
+export async function getJerrsService(ico: string) {
+  const v = validateIcoFn(ico);
+  if (!v.valid) throw new InvalidInputError(v.reason ?? "Neplatné IČO.");
+  const r = await lookupJerrsByIco(v.normalized);
+  return {
+    ico: r.ico,
+    isRegulated: r.isRegulated,
+    memberships: r.memberships.map((m) => ({
+      categoryCode: m.category.code,
+      categoryLabel: m.category.label,
+      categoryDescription: m.category.description,
+      name: m.name,
+      datumVzniku: m.datumVzniku,
+      address: m.address,
+      obec: m.obec,
+      psc: m.psc,
+      zeme: m.zeme,
+    })),
+    snapshot: {
+      loadedAt: r.loadedAt,
+      totalSubjects: r.totalSubjects,
+    },
+    _attribution: JERRS_ATTRIBUTION,
+  };
+}
+
 // ─── ADIS DPH (nespolehlivý plátce + bankovní účty) ───────────────────────────
 import { fetchPlatceStatus } from "./adis/client.js";
 import {

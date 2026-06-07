@@ -372,6 +372,27 @@ function czkAsEurTooltip(n) {
 }
 window.czkAsEurTooltip = czkAsEurTooltip;
 
+function ddJerrsLoader() {
+  return {
+    jerrs: null,
+    loading: false,
+    jerrsError: "",
+    async load(ico) {
+      if (!ico) return;
+      this.loading = true;
+      this.jerrs = null;
+      this.jerrsError = "";
+      try {
+        this.jerrs = await jsonFetch(`/api/jerrs/${encodeURIComponent(ico)}`);
+      } catch (e) {
+        this.jerrsError = "JERRS index nelze načíst: " + e.message;
+      } finally {
+        this.loading = false;
+      }
+    },
+  };
+}
+
 function ddIsirLoader() {
   return {
     isir: null,
@@ -590,5 +611,6 @@ window.ddUboLoader = ddUboLoader;
 window.ddSmlouvyLoader = ddSmlouvyLoader;
 window.ddDotaceLoader = ddDotaceLoader;
 window.ddIsirLoader = ddIsirLoader;
+window.ddJerrsLoader = ddJerrsLoader;
 window.featuresStatus = featuresStatus;
 window.cnbRatesWidget = cnbRatesWidget;

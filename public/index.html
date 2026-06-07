@@ -950,6 +950,64 @@
                 </div>
               </div>
 
+              <div
+                class="border dark:border-slate-700 rounded-lg p-4"
+                x-data="ddJerrsLoader()"
+                x-init="load(report.ico)"
+              >
+                <h4 class="font-bold mb-2">🏦 ČNB — regulovaný subjekt</h4>
+                <template x-if="loading">
+                  <p class="text-sm text-slate-500 dark:text-slate-400">Načítám JERRS index…</p>
+                </template>
+                <template x-if="jerrsError">
+                  <p class="text-sm text-rose-600 dark:text-rose-400" x-text="jerrsError"></p>
+                </template>
+                <template x-if="jerrs && !jerrs.isRegulated && !loading">
+                  <p class="text-sm text-slate-600 dark:text-slate-400">
+                    Není v seznamech regulovaných subjektů ČNB.
+                    <span class="text-xs text-slate-400 italic block mt-1">
+                      Pokrytí: banky, směnárny, NPSU/SZSU/VZSU/ZVSU/ZZSU spot. úvěru.
+                      Investiční společnosti, pojišťovny a platební instituce v open-data nejsou.
+                    </span>
+                  </p>
+                </template>
+                <template x-if="jerrs && jerrs.isRegulated">
+                  <div class="space-y-2">
+                    <p class="text-sm">
+                      <span class="bg-amber-100 dark:bg-amber-900/40 text-amber-800 dark:text-amber-300 px-2 py-0.5 rounded font-semibold">
+                        ⚠ Regulovaný subjekt
+                      </span>
+                      <span class="text-xs text-slate-500 dark:text-slate-400 ml-2">
+                        — podléhá dohledu ČNB
+                      </span>
+                    </p>
+                    <ul class="space-y-2">
+                      <template x-for="(m, idx) in jerrs.memberships" :key="idx">
+                        <li class="border-l-4 border-amber-400 pl-2">
+                          <div class="font-semibold" x-text="m.categoryLabel"></div>
+                          <div class="text-xs text-slate-600 dark:text-slate-400" x-text="m.categoryDescription"></div>
+                          <div class="text-xs text-slate-500 dark:text-slate-400">
+                            Pod jménem <span class="font-mono" x-text="m.name"></span>
+                            <template x-if="m.datumVzniku">
+                              <span> · zápis <span x-text="m.datumVzniku"></span></span>
+                            </template>
+                          </div>
+                        </li>
+                      </template>
+                    </ul>
+                    <p class="text-xs text-slate-400 mt-2">
+                      Snapshot: <span x-text="jerrs.snapshot.totalSubjects.toLocaleString('cs-CZ')"></span> subjektů,
+                      načteno <span x-text="new Date(jerrs.snapshot.loadedAt).toLocaleString('cs-CZ')"></span>.
+                    </p>
+                  </div>
+                </template>
+                <p class="mt-2 text-xs text-slate-400">
+                  Zdroj:
+                  <a class="underline" href="https://www.cnb.cz/cs/dohled-financni-trh/seznamy/Otevrena-data/" target="_blank" rel="noopener">ČNB otevřená data</a>
+                  · nař. vlády 425/2016 Sb.
+                </p>
+              </div>
+
               <div class="border dark:border-slate-700 rounded-lg p-4">
                 <h4 class="font-bold mb-2">Statutární orgány</h4>
                 <p class="text-sm mb-2">Aktivních členů: <span class="font-bold" x-text="report.statutary.aktivniCount"></span></p>
