@@ -356,6 +356,27 @@ function formatCZK(n) {
 }
 window.formatCZK = formatCZK;
 
+function ddIsirLoader() {
+  return {
+    isir: null,
+    loading: false,
+    isirError: "",
+    async load(ico) {
+      if (!ico) return;
+      this.loading = true;
+      this.isir = null;
+      this.isirError = "";
+      try {
+        this.isir = await jsonFetch(`/api/isir/${encodeURIComponent(ico)}`);
+      } catch (e) {
+        this.isirError = "ISIR detail nelze načíst: " + e.message;
+      } finally {
+        this.loading = false;
+      }
+    },
+  };
+}
+
 function ddDotaceLoader() {
   return {
     dotace: null,
@@ -530,4 +551,5 @@ window.ddAdisLoader = ddAdisLoader;
 window.ddUboLoader = ddUboLoader;
 window.ddSmlouvyLoader = ddSmlouvyLoader;
 window.ddDotaceLoader = ddDotaceLoader;
+window.ddIsirLoader = ddIsirLoader;
 window.featuresStatus = featuresStatus;

@@ -451,10 +451,12 @@ import { fetchPlatceStatus } from "./adis/client.js";
 import {
   HlidacStatuMissingTokenError,
   fetchDotaceByIco,
+  fetchInsolvenceAsDluznik,
   fetchSmlouvyByIco,
   fetchUboByIco,
   hasHlidacToken,
   type RawDotace,
+  type RawInsolvenceRecord,
   type RawSmlouva,
   type RawSmlouvaParty,
   type RawUboRecord,
@@ -500,6 +502,92 @@ function shapeUboRecord(r: RawUboRecord) {
     adresa: r.adresa_text ?? null,
     slovniVyjadreni: r.slovni_vyjadreni ?? null,
   };
+}
+
+// ─── ISIR insolvenční detail (přes Hlídač státu) ──────────────────────────────
+// Status hodnoty viděné v API (KSSEMOS a podobné soudy):
+//   NEVYRIZENA, KONKURS, REORGANIZACE, ODDLUZENI = aktivní (probíhá)
+//   VYRIZENA, PRAVOMOCNA, ZRUSENA, ZRUSEN_KONKURS, ODSKRTNUTA, ZAMITNUTA = uzavřeno
+const ACTIVE_INSOLVENCE_STATES = new Set([
+  "NEVYRIZENA",
+  "KONKURS",
+  "REORGANIZACE",
+  "ODDLUZENI",
+  "OPRAVNE_USNESENI",
+]);
+
+function isActiveInsolvence(stav: string | null | undefined): boolean {
+  if (!stav) return false;
+  return ACTIVE_INSOLVENCE_STATES.has(stav.toUpperCase());
+}
+
+function shapeInsolvenceRecord(r: RawInsolvenceRecord) {
+  const sz = r.spisovaZnacka ?? null;
+  const isirUrl = sz
+    ? `https://isir.justice.cz/isir/ueas/ueas_detail.do?spisova_znacka=${encodeURIComponent(sz)}`
+    : null;
+  return {
+    spisovaZnacka: sz,
+    stav: r.stav ?? null,
+    soud: r.soud ?? null,
+    datumZalozeni: r.datumZalozeni ? r.datumZalozeni.slice(0, 10) : null,
+    posledniZmena: r.posledniZmena ? r.posledniZmena.slice(0, 10) : null,
+    isActive: isActiveInsolvence(r.stav),
+    pocetVeritele: r.veritele?.length ?? 0,
+    pocetDluznici: r.dluznici?.length ?? 0,
+    spravci:
+      r.spravci?.map((s) => ({
+        jmeno: s.plneJmeno ?? null,
+        ico: s.ico ?? null,
+        mesto: s.mesto ?? null,
+      })) ?? [],
+    isirUrl,
+    hlidacUrl: sz
+      ? `https://www.hlidacstatu.cz/insolvencni-rejstrik/${encodeURIComponent(sz)}`
+      : null,
+  };
+}
+
+export async function getInsolvenceDetailService(icoInput: string) {
+  if (!hasHlidacToken()) {
+    return {
+      ico: icoInput,
+      available: false,
+      reason: "HLIDAC_API_TOKEN není nastaven.",
+      _attribution: HLIDAC_ATTRIBUTION,
+    };
+  }
+  const { valid, normalized, reason } = validateIcoFn(icoInput);
+  if (!valid || !normalized) throw new InvalidInputError(`Invalid IČO: ${icoInput}`, { reason });
+  try {
+    const resp = await fetchInsolvenceAsDluznik(normalized);
+    const top = resp.results.map(shapeInsolvenceRecord);
+    const active = top.filter((r) => r.isActive);
+    const recentClosed = top.filter((r) => !r.isActive).slice(0, 5);
+    const mostRecent = top[0] ?? null;
+    return {
+      ico: normalized,
+      available: true,
+      totalAsDluznik: resp.total,
+      activeCount: active.length,
+      mostRecentRecord: mostRecent,
+      activeRecords: active.slice(0, 5),
+      recentClosedRecords: recentClosed,
+      _attribution: HLIDAC_ATTRIBUTION,
+      _legalNote:
+        "ISIR (Insolvenční rejstřík) vede Ministerstvo spravedlnosti dle § 419 zákona č. 182/2006 Sb. o úpadku. Tento výpis ukazuje pouze řízení, kde firma figuruje jako DLUŽNÍK; být věřitelem v cizí insolvenci ≠ vlastní problém.",
+    };
+  } catch (err) {
+    if (err instanceof HlidacStatuMissingTokenError) {
+      return {
+        ico: normalized,
+        available: false,
+        reason: err.message,
+        _attribution: HLIDAC_ATTRIBUTION,
+      };
+    }
+    throw err;
+  }
 }
 
 // ─── Dotace (přes Hlídač státu) ──────────────────────────────────────────────

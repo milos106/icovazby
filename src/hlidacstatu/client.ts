@@ -186,6 +186,66 @@ export interface RawDotaceResponse {
   results: RawDotace[];
 }
 
+// ─── Insolvence (ISIR via Hlídač státu) ──────────────────────────────────────
+// API podporuje strukturované query syntaxe:
+//   ico:X            — kterákoli role
+//   icodluznik:X     — pouze jako dlužník (= v insolvenci sám)
+//   icoveritel:X     — věřitel
+//   icospravce:X     — insolvenční správce
+// Pro DD nás zajímá především icodluznik:.
+
+export interface RawInsolvencePerson {
+  idPuvodce?: string;
+  plneJmeno?: string;
+  ico?: string;
+  role?: string;
+  mesto?: string;
+  psc?: string;
+  zeme?: string;
+  zalozen?: string;
+  odstranen?: string;
+}
+
+export interface RawInsolvenceRecord {
+  isFullRecord?: boolean;
+  spisovaZnacka?: string;
+  stav?: string;
+  soud?: string;
+  datumZalozeni?: string;
+  posledniZmena?: string;
+  vyskrtnuto?: string | null;
+  url?: string | null;
+  dluznici?: RawInsolvencePerson[];
+  veritele?: RawInsolvencePerson[];
+  spravci?: RawInsolvencePerson[];
+  onRadar?: boolean;
+  odstraneny?: boolean;
+  dokumenty?: unknown[];
+  [key: string]: unknown;
+}
+
+export interface RawInsolvenceResponse {
+  total: number;
+  page: number;
+  results: RawInsolvenceRecord[];
+}
+
+export async function fetchInsolvenceAsDluznik(
+  ico: string,
+  options: { strana?: number; razeni?: string } = {},
+): Promise<RawInsolvenceResponse> {
+  const key = ico.replace(/\D/g, "");
+  if (!/^\d{8}$/.test(key)) {
+    throw new Error(`Invalid IČO '${ico}'.`);
+  }
+  const strana = options.strana ?? 1;
+  // newest first — pro aktivní případy vidíme to nejnovější
+  const razeni = options.razeni ?? "datum_desc";
+  return getJson<RawInsolvenceResponse>(
+    `/api/v2/insolvence/hledat?dotaz=icodluznik%3A${key}&strana=${strana}&razeni=${encodeURIComponent(razeni)}`,
+  );
+}
+
 export async function fetchDotaceByIco(
   ico: string,
   options: { strana?: number; razeni?: string } = {},
