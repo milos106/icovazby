@@ -356,6 +356,28 @@ function formatCZK(n) {
 }
 window.formatCZK = formatCZK;
 
+function ddDotaceLoader() {
+  return {
+    dotace: null,
+    loading: false,
+    dotaceError: "",
+    formatCZK,
+    async load(ico) {
+      if (!ico) return;
+      this.loading = true;
+      this.dotace = null;
+      this.dotaceError = "";
+      try {
+        this.dotace = await jsonFetch(`/api/dotace/${encodeURIComponent(ico)}`);
+      } catch (e) {
+        this.dotaceError = "Dotace nelze načíst: " + e.message;
+      } finally {
+        this.loading = false;
+      }
+    },
+  };
+}
+
 function ddSmlouvyLoader() {
   return {
     smlouvy: null,
@@ -507,4 +529,5 @@ window.themeToggle = themeToggle;
 window.ddAdisLoader = ddAdisLoader;
 window.ddUboLoader = ddUboLoader;
 window.ddSmlouvyLoader = ddSmlouvyLoader;
+window.ddDotaceLoader = ddDotaceLoader;
 window.featuresStatus = featuresStatus;

@@ -450,9 +450,11 @@ export async function getResClassificationService(client: AresClient, icoInput: 
 import { fetchPlatceStatus } from "./adis/client.js";
 import {
   HlidacStatuMissingTokenError,
+  fetchDotaceByIco,
   fetchSmlouvyByIco,
   fetchUboByIco,
   hasHlidacToken,
+  type RawDotace,
   type RawSmlouva,
   type RawSmlouvaParty,
   type RawUboRecord,
@@ -498,6 +500,111 @@ function shapeUboRecord(r: RawUboRecord) {
     adresa: r.adresa_text ?? null,
     slovniVyjadreni: r.slovni_vyjadreni ?? null,
   };
+}
+
+// ─── Dotace (přes Hlídač státu) ──────────────────────────────────────────────
+function dotacePaidAmount(d: RawDotace): number | null {
+  if (typeof d.payedAmount === "number" && d.payedAmount > 0) return d.payedAmount;
+  if (typeof d.subsidyAmount === "number" && d.subsidyAmount > 0) return d.subsidyAmount;
+  if (typeof d.assumedAmount === "number" && d.assumedAmount > 0) return d.assumedAmount;
+  return null;
+}
+
+export async function getDotaceService(icoInput: string) {
+  if (!hasHlidacToken()) {
+    return {
+      ico: icoInput,
+      available: false,
+      reason: "HLIDAC_API_TOKEN není nastaven.",
+      _attribution: HLIDAC_ATTRIBUTION,
+    };
+  }
+  const { valid, normalized, reason } = validateIcoFn(icoInput);
+  if (!valid || !normalized) throw new InvalidInputError(`Invalid IČO: ${icoInput}`, { reason });
+  try {
+    const resp = await fetchDotaceByIco(normalized);
+    const top = resp.results;
+    let topPayed = 0;
+    let topPricedCount = 0;
+    let topReturned = 0;
+    const providers = new Map<
+      string,
+      { name: string; ico?: string; sum: number; count: number }
+    >();
+    let minYear: number | null = null;
+    let maxYear: number | null = null;
+
+    for (const d of top) {
+      const paid = dotacePaidAmount(d);
+      if (paid !== null) {
+        topPayed += paid;
+        topPricedCount += 1;
+      }
+      if (typeof d.returnedAmount === "number" && d.returnedAmount > 0) {
+        topReturned += d.returnedAmount;
+      }
+      if (typeof d.approvedYear === "number") {
+        if (minYear === null || d.approvedYear < minYear) minYear = d.approvedYear;
+        if (maxYear === null || d.approvedYear > maxYear) maxYear = d.approvedYear;
+      }
+      const provName = (d.subsidyProvider ?? "(neznámý poskytovatel)").trim() || "(neznámý)";
+      const provIco = d.subsidyProviderIco ?? undefined;
+      const k = `${provIco ?? provName}`;
+      const existing = providers.get(k) ?? {
+        name: provName,
+        ico: provIco,
+        sum: 0,
+        count: 0,
+      };
+      existing.sum += paid ?? 0;
+      existing.count += 1;
+      providers.set(k, existing);
+    }
+
+    const topProviders = [...providers.values()]
+      .sort((a, b) => b.sum - a.sum || b.count - a.count)
+      .slice(0, 5);
+
+    const topDotace = top.slice(0, 10).map((d) => ({
+      id: d.id,
+      projectName: d.projectName ?? d.displayProject ?? d.projectCode ?? null,
+      projectCode: d.projectCode ?? null,
+      programName: d.programName ?? null,
+      payedAmount: dotacePaidAmount(d),
+      returnedAmount: typeof d.returnedAmount === "number" ? d.returnedAmount : null,
+      approvedYear: d.approvedYear ?? null,
+      subsidyProvider: d.subsidyProvider ?? null,
+      subsidyProviderIco: d.subsidyProviderIco ?? null,
+      primaryDataSource: d.primaryDataSource ?? null,
+      odkaz: d.id ? `https://www.hlidacstatu.cz/dotace/${encodeURIComponent(d.id)}` : null,
+    }));
+
+    return {
+      ico: normalized,
+      available: true,
+      totalDotaci: resp.total,
+      shown: top.length,
+      topPayedCZK: topPayed,
+      topPricedCount,
+      topReturnedCZK: topReturned,
+      yearRange: minYear !== null && maxYear !== null ? { from: minYear, to: maxYear } : null,
+      topProviders,
+      topDotace,
+      _attribution: HLIDAC_ATTRIBUTION,
+      _legalNote:
+        "Dotace agregované z CEDR (centrální evidence rozpočtových dotací), MMR, MPSV, MŠMT, Státní zemědělský intervenční fond, EU strukturální fondy. Uvedené částky jsou většinou skutečně vyplacené (payedAmount).",
+    };
+  } catch (err) {
+    if (err instanceof HlidacStatuMissingTokenError) {
+      return {
+        ico: normalized,
+        available: false,
+        reason: err.message,
+        _attribution: HLIDAC_ATTRIBUTION,
+      };
+    }
+    throw err;
+  }
 }
 
 // ─── Smlouvy ze Registru smluv (přes Hlídač státu) ───────────────────────────

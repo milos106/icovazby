@@ -148,6 +148,60 @@ export interface RawSmlouvyResponse {
   results: RawSmlouva[];
 }
 
+// ─── Dotace ───────────────────────────────────────────────────────────────────
+// Data agregovaná Hlídačem státu z CEDR, MMR, MPSV, EU fondů atd. — všechny
+// uvedené dotace státní peníze (přímé i z EU s národní koalsementací).
+
+export interface RawDotaceRecipient {
+  ico?: string;
+  name?: string;
+  hlidacName?: string;
+  displayName?: string;
+  obec?: string;
+}
+
+export interface RawDotace {
+  id?: string;
+  primaryDataSource?: string;
+  assumedAmount?: number | null;
+  subsidyAmount?: number | null;
+  payedAmount?: number | null;
+  returnedAmount?: number | null;
+  approvedYear?: number | null;
+  subsidyProvider?: string | null;
+  subsidyProviderIco?: string | null;
+  programName?: string | null;
+  programCode?: string | null;
+  projectName?: string | null;
+  projectCode?: string | null;
+  projectDescription?: string | null;
+  displayProject?: string | null;
+  recipient?: RawDotaceRecipient | null;
+  [key: string]: unknown;
+}
+
+export interface RawDotaceResponse {
+  total: number;
+  page: number;
+  results: RawDotace[];
+}
+
+export async function fetchDotaceByIco(
+  ico: string,
+  options: { strana?: number; razeni?: string } = {},
+): Promise<RawDotaceResponse> {
+  const key = ico.replace(/\D/g, "");
+  if (!/^\d{8}$/.test(key)) {
+    throw new Error(`Invalid IČO '${ico}'.`);
+  }
+  const strana = options.strana ?? 1;
+  // payed desc — nejvyšší vyplacené první
+  const razeni = options.razeni ?? "payed_desc";
+  return getJson<RawDotaceResponse>(
+    `/api/v2/dotace/hledat?dotaz=ico%3A${key}&strana=${strana}&razeni=${encodeURIComponent(razeni)}`,
+  );
+}
+
 /**
  * Vyhledá smlouvy podle IČO (kterékoli ze stran — platce i příjemce).
  * Řazení podle ceny desc — vrátí nejdražší smlouvy jako první (top hits).
