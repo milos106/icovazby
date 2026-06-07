@@ -204,7 +204,7 @@
         </form>
 
         <template x-if="error">
-          <div class="mt-4 p-3 bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 rounded text-sm text-red-800 dark:text-red-300" x-text="error"></div>
+          <div class="mt-4 p-3 bg-rose-50 dark:bg-rose-900/30 border border-rose-200 dark:border-rose-800 rounded text-sm text-rose-800 dark:text-rose-300" x-text="error"></div>
         </template>
 
         <!-- Single-company profile -->
@@ -250,7 +250,7 @@
                 <dt class="text-slate-500 dark:text-slate-400 text-xs">Stav</dt>
                 <dd>
                   <span
-                    :class="profile.datumZaniku ? 'bg-red-100 dark:bg-red-900/40 text-red-800 dark:text-red-300' : 'bg-emerald-100 dark:bg-emerald-900/40 text-emerald-800 dark:text-emerald-300'"
+                    :class="profile.datumZaniku ? 'bg-rose-100 dark:bg-rose-900/40 text-rose-800 dark:text-rose-300' : 'bg-emerald-100 dark:bg-emerald-900/40 text-emerald-800 dark:text-emerald-300'"
                     class="px-2 py-0.5 rounded text-xs"
                     x-text="profile.datumZaniku ? 'Zanikla ' + profile.datumZaniku : 'Aktivní'"
                   ></span>
@@ -389,7 +389,7 @@
                     </div>
                   </div>
                   <span
-                    :class="r.datumZaniku ? 'bg-red-100 dark:bg-red-900/40 text-red-800 dark:text-red-300' : 'bg-emerald-100 dark:bg-emerald-900/40 text-emerald-800 dark:text-emerald-300'"
+                    :class="r.datumZaniku ? 'bg-rose-100 dark:bg-rose-900/40 text-rose-800 dark:text-rose-300' : 'bg-emerald-100 dark:bg-emerald-900/40 text-emerald-800 dark:text-emerald-300'"
                     class="px-2 py-0.5 rounded text-xs"
                     x-text="r.datumZaniku ? 'zanikla' : 'aktivní'"
                   ></span>
@@ -422,7 +422,7 @@
         </form>
 
         <template x-if="error">
-          <div class="mt-4 p-3 bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 rounded text-sm text-red-800 dark:text-red-300" x-text="error"></div>
+          <div class="mt-4 p-3 bg-rose-50 dark:bg-rose-900/30 border border-rose-200 dark:border-rose-800 rounded text-sm text-rose-800 dark:text-rose-300" x-text="error"></div>
         </template>
 
         <template x-if="report">
@@ -458,22 +458,62 @@
               </div>
             </div>
 
+            <!-- In-page navigation: sticky scroll-spy pro DD report. Sedí pod
+                 globální header (top-0 z-30 h-~64px), proto top-16. -->
+            <nav
+              class="sticky top-16 z-20 -mx-6 px-6 py-2 bg-white/95 dark:bg-slate-800/95 backdrop-blur border-y dark:border-slate-700 text-xs"
+              aria-label="Sekce DD reportu"
+            >
+              <div class="flex gap-1 overflow-x-auto whitespace-nowrap">
+                <a href="#dd-profil" class="px-2 py-1 rounded hover:bg-slate-100 dark:hover:bg-slate-700">👤 Profil</a>
+                <a href="#dd-adis" class="px-2 py-1 rounded hover:bg-slate-100 dark:hover:bg-slate-700">🏦 DPH</a>
+                <a href="#dd-jerrs" class="px-2 py-1 rounded hover:bg-slate-100 dark:hover:bg-slate-700">🏦 ČNB</a>
+                <a href="#dd-sankce" class="px-2 py-1 rounded hover:bg-slate-100 dark:hover:bg-slate-700">🇪🇺 Sankce</a>
+                <a href="#dd-ubo" class="px-2 py-1 rounded hover:bg-slate-100 dark:hover:bg-slate-700">👥 UBO</a>
+                <a href="#dd-dotace" class="px-2 py-1 rounded hover:bg-slate-100 dark:hover:bg-slate-700">💸 Dotace</a>
+                <a href="#dd-smlouvy" class="px-2 py-1 rounded hover:bg-slate-100 dark:hover:bg-slate-700">💰 Smlouvy</a>
+                <a href="#dd-isir" class="px-2 py-1 rounded hover:bg-slate-100 dark:hover:bg-slate-700">⚖️ Insolvence</a>
+                <a href="#dd-zivno" class="px-2 py-1 rounded hover:bg-slate-100 dark:hover:bg-slate-700">🏷️ Živno</a>
+              </div>
+            </nav>
+
             <!-- Sections -->
-            <div class="grid md:grid-cols-2 gap-4">
+            <div id="dd-profil" class="grid md:grid-cols-2 gap-4 scroll-mt-32">
               <div class="border dark:border-slate-700 rounded-lg p-4">
-                <h4 class="font-bold mb-2">Identifikace</h4>
+                <h4 class="font-bold mb-2 flex items-center justify-between gap-2">
+                  <span>Identifikace</span>
+                  <div class="relative" x-data="{ open: false }" @click.outside="open = false">
+                    <button type="button" @click.stop="open = !open" class="text-slate-400 hover:text-slate-600 text-base font-normal" title="Zdroj">ⓘ</button>
+                    <div x-show="open" x-cloak x-transition class="absolute right-0 mt-1 w-64 bg-white dark:bg-slate-800 border dark:border-slate-700 rounded-lg shadow-lg p-3 text-xs font-normal z-30 text-left">
+                      <p class="font-semibold">Zdroj: ARES (MFČR)</p>
+                      <p class="text-slate-600 dark:text-slate-400 mt-1">Administrativní registr ekonomických subjektů.</p>
+                      <p class="mt-2">Licence: <a class="underline" href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener">CC BY 4.0</a></p>
+                      <p class="mt-1"><a class="underline" href="https://ares.gov.cz" target="_blank" rel="noopener">🔗 ares.gov.cz</a></p>
+                    </div>
+                  </div>
+                </h4>
                 <dl class="space-y-1 text-sm">
                   <div><dt class="text-slate-500 dark:text-slate-400 text-xs">Sídlo</dt><dd x-text="report.identification.sidloText || '—'"></dd></div>
                   <div><dt class="text-slate-500 dark:text-slate-400 text-xs">Vznik</dt><dd x-text="report.identification.datumVzniku || '—'"></dd></div>
                   <template x-if="report.identification.datumZaniku">
-                    <div><dt class="text-slate-500 dark:text-slate-400 text-xs">Zánik</dt><dd class="text-red-700 font-semibold" x-text="report.identification.datumZaniku"></dd></div>
+                    <div><dt class="text-slate-500 dark:text-slate-400 text-xs">Zánik</dt><dd class="text-rose-700 font-semibold" x-text="report.identification.datumZaniku"></dd></div>
                   </template>
                   <div><dt class="text-slate-500 dark:text-slate-400 text-xs">Právní forma</dt><dd x-text="report.identification.pravniForma || '—'"></dd></div>
                 </dl>
               </div>
 
               <div class="border dark:border-slate-700 rounded-lg p-4">
-                <h4 class="font-bold mb-2">DPH</h4>
+                <h4 class="font-bold mb-2 flex items-center justify-between gap-2">
+                  <span>DPH</span>
+                  <div class="relative" x-data="{ open: false }" @click.outside="open = false">
+                    <button type="button" @click.stop="open = !open" class="text-slate-400 hover:text-slate-600 text-base font-normal" title="Zdroj">ⓘ</button>
+                    <div x-show="open" x-cloak x-transition class="absolute right-0 mt-1 w-64 bg-white dark:bg-slate-800 border dark:border-slate-700 rounded-lg shadow-lg p-3 text-xs font-normal z-30 text-left">
+                      <p class="font-semibold">Zdroj: ARES (registr plátců DPH)</p>
+                      <p class="text-slate-600 dark:text-slate-400 mt-1">Stav registrace dle § 96a z. č. 235/2004 Sb. o DPH.</p>
+                      <p class="mt-2">Licence: <a class="underline" href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener">CC BY 4.0</a></p>
+                    </div>
+                  </div>
+                </h4>
                 <dl class="space-y-1 text-sm">
                   <div><dt class="text-slate-500 dark:text-slate-400 text-xs">Plátce</dt>
                     <dd>
@@ -494,15 +534,25 @@
                    se seznamem ostatních firem, kde osoba seděla / sedí. -->
               <div class="border dark:border-slate-700 rounded-lg p-4 md:col-span-2 bg-emerald-50/40 dark:bg-emerald-900/10">
                 <div class="flex items-baseline justify-between flex-wrap gap-2 mb-2">
-                  <h4 class="font-bold">
-                    👥 Statutární orgány
+                  <h4 class="font-bold flex items-center gap-2">
+                    <span>👥 Statutární orgány</span>
                     <span class="text-xs font-normal text-slate-500 dark:text-slate-400">
                       — klikni na jméno pro mapu firem osoby
                     </span>
                   </h4>
-                  <p class="text-sm">
-                    Aktivních členů: <span class="font-bold" x-text="report.statutary.aktivniCount"></span>
-                  </p>
+                  <div class="flex items-center gap-3">
+                    <p class="text-sm">
+                      Aktivních členů: <span class="font-bold" x-text="report.statutary.aktivniCount"></span>
+                    </p>
+                    <div class="relative" x-data="{ open: false }" @click.outside="open = false">
+                      <button type="button" @click.stop="open = !open" class="text-slate-400 hover:text-slate-600 text-base" title="Zdroj">ⓘ</button>
+                      <div x-show="open" x-cloak x-transition class="absolute right-0 mt-1 w-64 bg-white dark:bg-slate-800 border dark:border-slate-700 rounded-lg shadow-lg p-3 text-xs z-30 text-left">
+                        <p class="font-semibold">Zdroj: ARES Veřejný rejstřík (VR)</p>
+                        <p class="text-slate-600 dark:text-slate-400 mt-1">Z. č. 304/2013 Sb. o veřejných rejstřících. Aktivní členové statutárního orgánu.</p>
+                        <p class="mt-2">Licence: <a class="underline" href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener">CC BY 4.0</a></p>
+                      </div>
+                    </div>
+                  </div>
                 </div>
                 <template x-if="report.statutary.clenove.length > 0">
                   <ul class="text-sm grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-1 max-h-72 overflow-y-auto">
@@ -532,11 +582,22 @@
                 </template>
               </div>
 
-              <div class="border-2 border-emerald-300 dark:border-emerald-700 rounded-lg p-4 md:col-span-2" x-data="ddDotaceLoader()" x-init="load(report.ico)">
-                <h4 class="font-bold mb-2 flex items-center gap-2">
-                  💸 Dotace
-                  <span class="text-xs font-normal text-slate-500 dark:text-slate-400">— CEDR + EU fondy + MMR/MPSV/MŠMT/SZIF/…</span>
-                </h4>
+              <div id="dd-dotace" class="border-2 border-emerald-300 dark:border-emerald-700 rounded-lg p-4 md:col-span-2 scroll-mt-32" x-data="ddDotaceLoader()" x-init="load(report.ico)">
+                <div class="flex items-baseline justify-between gap-2 mb-2 flex-wrap">
+                  <h4 class="font-bold flex items-center gap-2">
+                    <span>💸 Dotace</span>
+                    <span class="text-xs font-normal text-slate-500 dark:text-slate-400">— CEDR + EU fondy + MMR/MPSV/MŠMT/SZIF/…</span>
+                  </h4>
+                  <div class="relative" x-data="{ open: false }" @click.outside="open = false">
+                    <button type="button" @click.stop="open = !open" class="text-slate-400 hover:text-slate-600 text-base" title="Zdroj">ⓘ</button>
+                    <div x-show="open" x-cloak x-transition class="absolute right-0 mt-1 w-72 bg-white dark:bg-slate-800 border dark:border-slate-700 rounded-lg shadow-lg p-3 text-xs z-30 text-left">
+                      <p class="font-semibold">Zdroj: Hlídač státu — Dotace</p>
+                      <p class="text-slate-600 dark:text-slate-400 mt-1">Agregát CEDR + MMR + MPSV + MŠMT + SZIF + EU fondy s národní koalicementací.</p>
+                      <p class="mt-2">Licence: <a class="underline" href="https://creativecommons.org/licenses/by/3.0/cz/" target="_blank" rel="noopener">CC BY 3.0 CZ</a></p>
+                      <p class="mt-1"><a class="underline" href="https://www.hlidacstatu.cz/dotace" target="_blank" rel="noopener">🔗 hlidacstatu.cz/dotace</a></p>
+                    </div>
+                  </div>
+                </div>
                 <template x-if="loading">
                   <p class="text-xs text-slate-500 dark:text-slate-400">Načítám dotace z Hlídače státu…</p>
                 </template>
@@ -650,11 +711,22 @@
                 </p>
               </div>
 
-              <div class="border-2 border-sky-300 dark:border-sky-700 rounded-lg p-4 md:col-span-2" x-data="ddSmlouvyLoader()" x-init="load(report.ico)">
-                <h4 class="font-bold mb-2 flex items-center gap-2">
-                  💰 Smlouvy se státem
-                  <span class="text-xs font-normal text-slate-500 dark:text-slate-400">— Registr smluv (z. č. 340/2015 Sb.)</span>
-                </h4>
+              <div id="dd-smlouvy" class="border-2 border-sky-300 dark:border-sky-700 rounded-lg p-4 md:col-span-2 scroll-mt-32" x-data="ddSmlouvyLoader()" x-init="load(report.ico)">
+                <div class="flex items-baseline justify-between gap-2 mb-2 flex-wrap">
+                  <h4 class="font-bold flex items-center gap-2">
+                    <span>💰 Smlouvy se státem</span>
+                    <span class="text-xs font-normal text-slate-500 dark:text-slate-400">— Registr smluv (z. č. 340/2015 Sb.)</span>
+                  </h4>
+                  <div class="relative" x-data="{ open: false }" @click.outside="open = false">
+                    <button type="button" @click.stop="open = !open" class="text-slate-400 hover:text-slate-600 text-base" title="Zdroj">ⓘ</button>
+                    <div x-show="open" x-cloak x-transition class="absolute right-0 mt-1 w-72 bg-white dark:bg-slate-800 border dark:border-slate-700 rounded-lg shadow-lg p-3 text-xs z-30 text-left">
+                      <p class="font-semibold">Zdroj: Hlídač státu — Registr smluv</p>
+                      <p class="text-slate-600 dark:text-slate-400 mt-1">Smlouvy uveřejněné dle z. č. 340/2015 Sb. (smluvní strany, hodnota, datum, předmět).</p>
+                      <p class="mt-2">Licence: <a class="underline" href="https://creativecommons.org/licenses/by/3.0/cz/" target="_blank" rel="noopener">CC BY 3.0 CZ</a></p>
+                      <p class="mt-1"><a class="underline" href="https://smlouvy.gov.cz/" target="_blank" rel="noopener">🔗 smlouvy.gov.cz</a></p>
+                    </div>
+                  </div>
+                </div>
                 <template x-if="loading">
                   <p class="text-xs text-slate-500 dark:text-slate-400">Načítám smlouvy z Hlídače státu…</p>
                 </template>
@@ -745,11 +817,22 @@
                 </p>
               </div>
 
-              <div class="border-2 border-indigo-300 dark:border-indigo-700 rounded-lg p-4 md:col-span-2" x-data="ddUboLoader()" x-init="load(report.ico)">
-                <h4 class="font-bold mb-2 flex items-center gap-2">
-                  👥 Skuteční majitelé (UBO)
-                  <span class="text-xs font-normal text-slate-500 dark:text-slate-400">— evidence dle z. č. 37/2021 Sb.</span>
-                </h4>
+              <div id="dd-ubo" class="border-2 border-indigo-300 dark:border-indigo-700 rounded-lg p-4 md:col-span-2 scroll-mt-32" x-data="ddUboLoader()" x-init="load(report.ico)">
+                <div class="flex items-baseline justify-between gap-2 mb-2 flex-wrap">
+                  <h4 class="font-bold flex items-center gap-2">
+                    <span>👥 Skuteční majitelé (UBO)</span>
+                    <span class="text-xs font-normal text-slate-500 dark:text-slate-400">— evidence dle z. č. 37/2021 Sb.</span>
+                  </h4>
+                  <div class="relative" x-data="{ open: false }" @click.outside="open = false">
+                    <button type="button" @click.stop="open = !open" class="text-slate-400 hover:text-slate-600 text-base" title="Zdroj">ⓘ</button>
+                    <div x-show="open" x-cloak x-transition class="absolute right-0 mt-1 w-72 bg-white dark:bg-slate-800 border dark:border-slate-700 rounded-lg shadow-lg p-3 text-xs z-30 text-left">
+                      <p class="font-semibold">Zdroj: Hlídač státu — UBO</p>
+                      <p class="text-slate-600 dark:text-slate-400 mt-1">Evidence skutečných majitelů dle z. č. 37/2021 Sb. (MS ČR), zrcadlená Hlídačem státu.</p>
+                      <p class="mt-2">Licence: <a class="underline" href="https://creativecommons.org/licenses/by/3.0/cz/" target="_blank" rel="noopener">CC BY 3.0 CZ</a></p>
+                      <p class="mt-1"><a class="underline" href="https://esm.justice.cz/" target="_blank" rel="noopener">🔗 esm.justice.cz</a></p>
+                    </div>
+                  </div>
+                </div>
                 <template x-if="loading">
                   <p class="text-xs text-slate-500 dark:text-slate-400">Načítám z Hlídače státu…</p>
                 </template>
@@ -831,8 +914,19 @@
                 </p>
               </div>
 
-              <div class="border dark:border-slate-700 rounded-lg p-4" x-data="ddAdisLoader()" x-init="load(report.ico)">
-                <h4 class="font-bold mb-2">DPH compliance (MFČR)</h4>
+              <div id="dd-adis" class="border dark:border-slate-700 rounded-lg p-4 scroll-mt-32" x-data="ddAdisLoader()" x-init="load(report.ico)">
+                <h4 class="font-bold mb-2 flex items-center justify-between gap-2">
+                  <span>🏦 DPH compliance (MFČR ADIS)</span>
+                  <div class="relative" x-data="{ open: false }" @click.outside="open = false">
+                    <button type="button" @click.stop="open = !open" class="text-slate-400 hover:text-slate-600 text-base font-normal" title="Zdroj">ⓘ</button>
+                    <div x-show="open" x-cloak x-transition class="absolute right-0 mt-1 w-72 bg-white dark:bg-slate-800 border dark:border-slate-700 rounded-lg shadow-lg p-3 text-xs font-normal z-30 text-left">
+                      <p class="font-semibold">Zdroj: MFČR ADIS</p>
+                      <p class="text-slate-600 dark:text-slate-400 mt-1">Nespolehlivý plátce + zveřejněné bankovní účty dle § 96a + § 109a z. č. 235/2004 Sb. o DPH.</p>
+                      <p class="mt-2">Licence: veřejná data zdarma</p>
+                      <p class="mt-1"><a class="underline" href="https://adisspr.mfcr.cz" target="_blank" rel="noopener">🔗 adisspr.mfcr.cz</a></p>
+                    </div>
+                  </div>
+                </h4>
                 <template x-if="loading">
                   <p class="text-xs text-slate-500 dark:text-slate-400">Načítám z MFČR ADIS…</p>
                 </template>
@@ -848,7 +942,7 @@
                       <dt class="text-xs text-slate-500 dark:text-slate-400">Nespolehlivý plátce</dt>
                       <dd>
                         <span
-                          :class="adis.isUnreliable ? 'bg-red-100 dark:bg-red-900/40 text-red-800 dark:text-red-300' : 'bg-emerald-100 dark:bg-emerald-900/40 text-emerald-800 dark:text-emerald-300'"
+                          :class="adis.isUnreliable ? 'bg-rose-100 dark:bg-rose-900/40 text-rose-800 dark:text-rose-300' : 'bg-emerald-100 dark:bg-emerald-900/40 text-emerald-800 dark:text-emerald-300'"
                           class="px-2 py-0.5 rounded text-xs font-semibold"
                           x-text="adis.isUnreliable ? '🚨 ANO — riziko ručení za DPH' : '✅ NE — spolehlivý plátce'"
                         ></span>
@@ -885,13 +979,24 @@
                 </p>
               </div>
 
-              <div class="border dark:border-slate-700 rounded-lg p-4" x-data="ddIsirLoader()" x-init="load(report.ico)">
-                <h4 class="font-bold mb-2">Insolvence</h4>
+              <div id="dd-isir" class="border dark:border-slate-700 rounded-lg p-4 scroll-mt-32" x-data="ddIsirLoader()" x-init="load(report.ico)">
+                <h4 class="font-bold mb-2 flex items-center justify-between gap-2">
+                  <span>⚖️ Insolvence</span>
+                  <div class="relative" x-data="{ open: false }" @click.outside="open = false">
+                    <button type="button" @click.stop="open = !open" class="text-slate-400 hover:text-slate-600 text-base font-normal" title="Zdroj">ⓘ</button>
+                    <div x-show="open" x-cloak x-transition class="absolute right-0 mt-1 w-72 bg-white dark:bg-slate-800 border dark:border-slate-700 rounded-lg shadow-lg p-3 text-xs font-normal z-30 text-left">
+                      <p class="font-semibold">Zdroj: ARES + ISIR (MSp ČR)</p>
+                      <p class="text-slate-600 dark:text-slate-400 mt-1">ARES insolvenční rejstřík flag + detail řízení z ISIR (z. č. 182/2006 Sb. § 419) přes Hlídač státu.</p>
+                      <p class="mt-2">Licence: ARES CC BY 4.0, Hlídač státu CC BY 3.0 CZ</p>
+                      <p class="mt-1"><a class="underline" href="https://isir.justice.cz" target="_blank" rel="noopener">🔗 isir.justice.cz</a></p>
+                    </div>
+                  </div>
+                </h4>
                 <dl class="space-y-1 text-sm">
                   <div><dt class="text-slate-500 dark:text-slate-400 text-xs">ARES — Insolvenční rejstřík</dt>
                     <dd>
                       <span
-                        :class="report.insolvenci.insolvencniRejstrik === 'ACTIVE' ? 'bg-red-100 dark:bg-red-900/40 text-red-800 dark:text-red-300' : 'bg-emerald-100 dark:bg-emerald-900/40 text-emerald-800 dark:text-emerald-300'"
+                        :class="report.insolvenci.insolvencniRejstrik === 'ACTIVE' ? 'bg-rose-100 dark:bg-rose-900/40 text-rose-800 dark:text-rose-300' : 'bg-emerald-100 dark:bg-emerald-900/40 text-emerald-800 dark:text-emerald-300'"
                         class="px-2 py-0.5 rounded text-xs"
                         x-text="report.insolvenci.insolvencniRejstrik"
                       ></span>
@@ -926,7 +1031,7 @@
                           <span class="font-bold" x-text="isir.totalAsDluznik"></span>
                           <span class="text-slate-500 dark:text-slate-400">celkem</span>
                           <template x-if="isir.activeCount > 0">
-                            <span class="ml-1 bg-red-100 dark:bg-red-900/40 text-red-800 dark:text-red-300 px-1.5 py-0.5 rounded font-semibold">
+                            <span class="ml-1 bg-rose-100 dark:bg-rose-900/40 text-rose-800 dark:text-rose-300 px-1.5 py-0.5 rounded font-semibold">
                               🚨 <span x-text="isir.activeCount"></span> aktivní
                             </span>
                           </template>
@@ -936,10 +1041,10 @@
                       <template x-if="isir.activeRecords.length > 0">
                         <ul class="space-y-2">
                           <template x-for="r in isir.activeRecords" :key="r.spisovaZnacka">
-                            <li class="bg-red-50 dark:bg-red-900/20 border-l-4 border-red-500 dark:border-red-600 rounded p-2">
+                            <li class="bg-rose-50 dark:bg-rose-900/20 border-l-4 border-rose-500 dark:border-rose-600 rounded p-2">
                               <div class="flex justify-between items-baseline gap-1 flex-wrap">
                                 <span class="font-mono font-semibold text-xs" x-text="r.spisovaZnacka"></span>
-                                <span class="bg-red-100 dark:bg-red-900/40 text-red-800 dark:text-red-300 px-1.5 py-0.5 rounded text-xs font-semibold" x-text="r.stav"></span>
+                                <span class="bg-rose-100 dark:bg-rose-900/40 text-rose-800 dark:text-rose-300 px-1.5 py-0.5 rounded text-xs font-semibold" x-text="r.stav"></span>
                               </div>
                               <div class="text-xs text-slate-600 dark:text-slate-300 mt-1 space-x-1">
                                 <span x-text="'Soud: ' + (r.soud || '—')"></span>
@@ -994,11 +1099,23 @@
               </div>
 
               <div
-                class="border dark:border-slate-700 rounded-lg p-4"
+                id="dd-jerrs"
+                class="border dark:border-slate-700 rounded-lg p-4 scroll-mt-32"
                 x-data="ddJerrsLoader()"
                 x-init="load(report.ico)"
               >
-                <h4 class="font-bold mb-2">🏦 ČNB — regulovaný subjekt</h4>
+                <h4 class="font-bold mb-2 flex items-center justify-between gap-2">
+                  <span>🏦 ČNB — regulovaný subjekt</span>
+                  <div class="relative" x-data="{ open: false }" @click.outside="open = false">
+                    <button type="button" @click.stop="open = !open" class="text-slate-400 hover:text-slate-600 text-base font-normal" title="Zdroj">ⓘ</button>
+                    <div x-show="open" x-cloak x-transition class="absolute right-0 mt-1 w-72 bg-white dark:bg-slate-800 border dark:border-slate-700 rounded-lg shadow-lg p-3 text-xs font-normal z-30 text-left">
+                      <p class="font-semibold">Zdroj: ČNB — JERRS otevřená data</p>
+                      <p class="text-slate-600 dark:text-slate-400 mt-1">Indexované seznamy bank, směnárny + NPSU/SZSU/VZSU/ZVSU/ZZSU spot. úvěru.</p>
+                      <p class="mt-2">Licence: otevřená data dle nař. vlády 425/2016 Sb.</p>
+                      <p class="mt-1"><a class="underline" href="https://www.cnb.cz/cs/dohled-financni-trh/seznamy/Otevrena-data/" target="_blank" rel="noopener">🔗 ČNB Otevřená data</a></p>
+                    </div>
+                  </div>
+                </h4>
                 <template x-if="loading">
                   <p class="text-sm text-slate-500 dark:text-slate-400">Načítám JERRS index…</p>
                 </template>
@@ -1052,11 +1169,23 @@
               </div>
 
               <div
-                class="border dark:border-slate-700 rounded-lg p-4"
+                id="dd-sankce"
+                class="border dark:border-slate-700 rounded-lg p-4 scroll-mt-32"
                 x-data="ddEuSanctionsLoader()"
                 x-init="screen(report)"
               >
-                <h4 class="font-bold mb-2">🇪🇺 Screening EU sankcí</h4>
+                <h4 class="font-bold mb-2 flex items-center justify-between gap-2">
+                  <span>🇪🇺 Screening EU sankcí</span>
+                  <div class="relative" x-data="{ open: false }" @click.outside="open = false">
+                    <button type="button" @click.stop="open = !open" class="text-slate-400 hover:text-slate-600 text-base font-normal" title="Zdroj">ⓘ</button>
+                    <div x-show="open" x-cloak x-transition class="absolute right-0 mt-1 w-72 bg-white dark:bg-slate-800 border dark:border-slate-700 rounded-lg shadow-lg p-3 text-xs font-normal z-30 text-left">
+                      <p class="font-semibold">Zdroj: EU Consolidated FSF</p>
+                      <p class="text-slate-600 dark:text-slate-400 mt-1">Konsolidovaný seznam osob/firem pod EU finančními sankcemi (FPI). ~6 000 entit.</p>
+                      <p class="mt-2">Licence: <a class="underline" href="https://eur-lex.europa.eu/eli/dec/2011/833/oj" target="_blank" rel="noopener">Commission Decision 2011/833/EU</a> (free reuse, vč. komerčního)</p>
+                      <p class="mt-1"><a class="underline" href="https://data.europa.eu/data/datasets/consolidated-list-of-persons-groups-and-entities-subject-to-eu-financial-sanctions" target="_blank" rel="noopener">🔗 EU Open Data</a></p>
+                    </div>
+                  </div>
+                </h4>
                 <template x-if="loading">
                   <p class="text-sm text-slate-500 dark:text-slate-400">Načítám konsolidovaný EU sankční list…</p>
                 </template>
@@ -1129,8 +1258,19 @@
 
             <!-- Trade licenses as part of DD (we already have the data) -->
             <template x-if="report.trade_licenses && report.trade_licenses.total > 0">
-              <div class="border dark:border-slate-700 rounded-lg p-4">
-                <h4 class="font-bold mb-2">🏷️ Živnostenská oprávnění</h4>
+              <div id="dd-zivno" class="border dark:border-slate-700 rounded-lg p-4 scroll-mt-32">
+                <h4 class="font-bold mb-2 flex items-center justify-between gap-2">
+                  <span>🏷️ Živnostenská oprávnění</span>
+                  <div class="relative" x-data="{ open: false }" @click.outside="open = false">
+                    <button type="button" @click.stop="open = !open" class="text-slate-400 hover:text-slate-600 text-base font-normal" title="Zdroj">ⓘ</button>
+                    <div x-show="open" x-cloak x-transition class="absolute right-0 mt-1 w-72 bg-white dark:bg-slate-800 border dark:border-slate-700 rounded-lg shadow-lg p-3 text-xs font-normal z-30 text-left">
+                      <p class="font-semibold">Zdroj: RŽP — Registr živnostenského podnikání</p>
+                      <p class="text-slate-600 dark:text-slate-400 mt-1">Aktivní + ukončená živnostenská oprávnění dle z. č. 455/1991 Sb.</p>
+                      <p class="mt-2">Licence: ARES CC BY 4.0</p>
+                      <p class="mt-1"><a class="underline" href="https://www.rzp.cz" target="_blank" rel="noopener">🔗 rzp.cz</a></p>
+                    </div>
+                  </div>
+                </h4>
                 <p class="text-sm mb-2">
                   Celkem <span class="font-bold" x-text="report.trade_licenses.total"></span>
                   (aktivních <span class="font-bold" x-text="report.trade_licenses.aktivni"></span>)
@@ -1363,7 +1503,7 @@
         </form>
 
         <template x-if="error">
-          <div class="mt-4 p-3 bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 rounded text-sm text-red-800 dark:text-red-300" x-text="error"></div>
+          <div class="mt-4 p-3 bg-rose-50 dark:bg-rose-900/30 border border-rose-200 dark:border-rose-800 rounded text-sm text-rose-800 dark:text-rose-300" x-text="error"></div>
         </template>
 
         <template x-if="result">
@@ -1444,7 +1584,7 @@
         </form>
 
         <template x-if="error">
-          <div class="mt-4 p-3 bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 rounded text-sm text-red-800 dark:text-red-300" x-text="error"></div>
+          <div class="mt-4 p-3 bg-rose-50 dark:bg-rose-900/30 border border-rose-200 dark:border-rose-800 rounded text-sm text-rose-800 dark:text-rose-300" x-text="error"></div>
         </template>
 
         <template x-if="result">
@@ -1461,7 +1601,7 @@
                 Na adrese <strong x-text="result.adresa"></strong> sídlí
                 <strong class="text-xl" x-text="result.celkemNalezeno"></strong> firem.
                 <template x-if="result.shellLevel === 'high'">
-                  <span class="font-semibold text-red-800">🚨 Velmi pravděpodobně virtuální adresa.</span>
+                  <span class="font-semibold text-rose-800">🚨 Velmi pravděpodobně virtuální adresa.</span>
                 </template>
                 <template x-if="result.shellLevel === 'medium'">
                   <span class="font-semibold text-amber-800">⚠️ Sdílená business adresa (regus / virtual office).</span>
