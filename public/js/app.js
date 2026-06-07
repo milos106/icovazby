@@ -230,6 +230,11 @@ function ddSection() {
         this.exportNotice = `Export selhal: ${e.message}`;
       }
     },
+    openPersonVazby(jmeno, datumNarozeni) {
+      window.dispatchEvent(new CustomEvent("ares-open-person-vazby", {
+        detail: { jmeno, datumNarozeni },
+      }));
+    },
   };
 }
 
@@ -304,6 +309,121 @@ function graphSection() {
       } finally {
         this.loading = false;
       }
+    },
+    /** Aktivováno custom eventem z personVazbySection — pre-fill IČO a spustit. */
+    async seed(icos) {
+      if (!Array.isArray(icos) || icos.length < 2) return;
+      this.raw = icos.join("\n");
+      await this.run();
+      document.getElementById("graph")?.scrollIntoView({ behavior: "smooth", block: "start" });
+    },
+    /** Vyvolá vazby ze sharedPersons listu. */
+    openPersonVazby(jmeno, datumNarozeni) {
+      window.dispatchEvent(new CustomEvent("ares-open-person-vazby", {
+        detail: { jmeno, datumNarozeni },
+      }));
+    },
+  };
+}
+
+function personVazbySection() {
+  return {
+    visible: false,
+    loading: false,
+    vazbyError: "",
+    result: null,
+    selected: new Set(),
+    form: {
+      jmeno: "",
+      datumNarozeni: "",
+      includeHistorical: true,
+    },
+    init() {
+      window.addEventListener("ares-open-person-vazby", (e) => {
+        const { jmeno, datumNarozeni } = e.detail || {};
+        if (!jmeno || !datumNarozeni) return;
+        this.form.jmeno = jmeno;
+        this.form.datumNarozeni = datumNarozeni;
+        this.visible = true;
+        // Necháme Alpine rerenderovat než scrollneme.
+        Promise.resolve().then(() => {
+          document.getElementById("vazby")?.scrollIntoView({ behavior: "smooth", block: "start" });
+          this.run();
+        });
+      });
+    },
+    close() {
+      this.visible = false;
+      this.result = null;
+      this.selected = new Set();
+    },
+    async run() {
+      this.vazbyError = "";
+      this.result = null;
+      this.selected = new Set();
+      if (!this.form.jmeno || !this.form.datumNarozeni) {
+        this.vazbyError = "Vyplň jméno a datum narození.";
+        return;
+      }
+      this.loading = true;
+      try {
+        const r = await fetch("/api/persons/vazby", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({
+            jmeno: this.form.jmeno,
+            datumNarozeni: this.form.datumNarozeni,
+            includeHistorical: this.form.includeHistorical,
+            resolveIco: true,
+          }),
+        });
+        if (!r.ok) {
+          const e = await r.json().catch(() => ({ message: "HTTP " + r.status }));
+          throw new Error(e.message || ("HTTP " + r.status));
+        }
+        this.result = await r.json();
+      } catch (e) {
+        this.vazbyError = "Vazby nelze načíst: " + e.message;
+      } finally {
+        this.loading = false;
+      }
+    },
+    toggleIco(ico) {
+      if (!ico) return;
+      const next = new Set(this.selected);
+      if (next.has(ico)) next.delete(ico);
+      else next.add(ico);
+      this.selected = next;
+    },
+    allResolvedSelected() {
+      if (!this.result) return false;
+      const uniqueResolvable = new Set();
+      for (const v of this.result.vazby) {
+        if (v.resolvedIco && v.ambiguousMatchCount <= 1) uniqueResolvable.add(v.resolvedIco);
+      }
+      if (uniqueResolvable.size === 0) return false;
+      for (const ico of uniqueResolvable) if (!this.selected.has(ico)) return false;
+      return true;
+    },
+    toggleAllResolved() {
+      if (!this.result) return;
+      if (this.allResolvedSelected()) {
+        this.selected = new Set();
+      } else {
+        const next = new Set();
+        for (const v of this.result.vazby) {
+          if (v.resolvedIco && v.ambiguousMatchCount <= 1) next.add(v.resolvedIco);
+        }
+        this.selected = next;
+      }
+    },
+    selectedIcos() {
+      return [...this.selected];
+    },
+    seedGraph() {
+      const icos = this.selectedIcos();
+      if (icos.length < 2) return;
+      window.dispatchEvent(new CustomEvent("ares-seed-graph", { detail: { icos } }));
     },
   };
 }
@@ -652,5 +772,6 @@ window.ddDotaceLoader = ddDotaceLoader;
 window.ddIsirLoader = ddIsirLoader;
 window.ddJerrsLoader = ddJerrsLoader;
 window.ddEuSanctionsLoader = ddEuSanctionsLoader;
+window.personVazbySection = personVazbySection;
 window.featuresStatus = featuresStatus;
 window.cnbRatesWidget = cnbRatesWidget;

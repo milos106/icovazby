@@ -1015,7 +1015,20 @@
                   <ul class="text-sm space-y-1 max-h-40 overflow-y-auto">
                     <template x-for="c in report.statutary.clenove.slice(0, 12)" :key="(c.jmeno||'') + (c.datumZapisu||'')">
                       <li class="text-xs">
-                        <span class="font-semibold" x-text="c.jmeno || '—'"></span>
+                        <template x-if="c.jmeno && c.datumNarozeni">
+                          <button
+                            type="button"
+                            @click="openPersonVazby(c.jmeno, c.datumNarozeni)"
+                            class="font-semibold underline text-emerald-700 dark:text-emerald-400 hover:text-emerald-800 text-left"
+                            :title="'Najít vazby osoby ' + c.jmeno"
+                          >
+                            <span x-text="c.jmeno"></span>
+                            <span class="text-xs text-slate-400 ml-0.5">🔗</span>
+                          </button>
+                        </template>
+                        <template x-if="!c.jmeno || !c.datumNarozeni">
+                          <span class="font-semibold" x-text="c.jmeno || '—'"></span>
+                        </template>
                         <span class="text-slate-500 dark:text-slate-400" x-text="c.funkce ? ' — ' + c.funkce : ''"></span>
                       </li>
                     </template>
@@ -1138,8 +1151,177 @@
         </template>
       </section>
 
+      <!-- ─── Vazby osoby ──────────────────────────────────────────── -->
+      <section
+        id="vazby"
+        x-data="personVazbySection()"
+        x-init="init()"
+        x-show="visible"
+        x-cloak
+        class="bg-white dark:bg-slate-800 dark:border-slate-700 rounded-2xl shadow-sm border p-6"
+      >
+        <div class="flex items-start justify-between mb-2">
+          <h2 class="text-lg font-bold">🔗 Vazby osoby</h2>
+          <button @click="close()" class="text-slate-400 hover:text-slate-600 text-xl leading-none" title="Zavřít">✕</button>
+        </div>
+        <p class="text-sm text-slate-500 dark:text-slate-400 mb-4">
+          Dohledá ve kterých firmách osoba seděla — aktuálně i historicky. Zdroj: Hlídač státu
+          (CC BY 3.0 CZ); IČO se dořeší z ARES podle názvu firmy.
+        </p>
+
+        <form @submit.prevent="run()" class="space-y-2 mb-4 bg-slate-50 dark:bg-slate-900/40 p-3 rounded">
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
+            <div>
+              <label class="text-xs text-slate-500 dark:text-slate-400">Jméno (+ tituly)</label>
+              <input
+                type="text"
+                x-model="form.jmeno"
+                required
+                class="w-full px-2 py-1.5 border dark:border-slate-600 dark:bg-slate-900 rounded text-sm"
+                placeholder="Ing. ANDREJ BABIŠ"
+              />
+            </div>
+            <div>
+              <label class="text-xs text-slate-500 dark:text-slate-400">Datum narození</label>
+              <input
+                type="date"
+                x-model="form.datumNarozeni"
+                required
+                class="w-full px-2 py-1.5 border dark:border-slate-600 dark:bg-slate-900 rounded text-sm"
+              />
+            </div>
+            <div class="flex items-end">
+              <button
+                type="submit"
+                :disabled="loading"
+                class="px-4 py-1.5 bg-emerald-600 text-white rounded hover:bg-emerald-700 disabled:opacity-50 text-sm"
+                x-text="loading ? 'Hledám…' : 'Najít vazby'"
+              ></button>
+            </div>
+          </div>
+          <label class="flex items-center gap-2 text-sm">
+            <input type="checkbox" x-model="form.includeHistorical" class="rounded" />
+            Včetně historických (datumDo vyplněno)
+          </label>
+        </form>
+
+        <template x-if="vazbyError">
+          <div class="mb-4 p-3 bg-rose-50 dark:bg-rose-900/30 border border-rose-200 dark:border-rose-800 rounded text-sm text-rose-800 dark:text-rose-300" x-text="vazbyError"></div>
+        </template>
+
+        <template x-if="result">
+          <div class="space-y-3">
+            <div class="grid grid-cols-3 gap-3 text-center">
+              <div class="border dark:border-slate-700 rounded-lg p-3">
+                <div class="text-2xl font-bold" x-text="result.totalUnique"></div>
+                <div class="text-xs text-slate-500 dark:text-slate-400">unikátních organizací</div>
+              </div>
+              <div class="border dark:border-slate-700 rounded-lg p-3">
+                <div class="text-2xl font-bold text-emerald-600 dark:text-emerald-400" x-text="result.resolved"></div>
+                <div class="text-xs text-slate-500 dark:text-slate-400">IČO vyřešeno</div>
+              </div>
+              <div class="border dark:border-slate-700 rounded-lg p-3">
+                <div class="text-2xl font-bold" x-text="result.vazby.length"></div>
+                <div class="text-xs text-slate-500 dark:text-slate-400">vazeb celkem</div>
+              </div>
+            </div>
+
+            <div class="border dark:border-slate-700 rounded p-3 bg-slate-50 dark:bg-slate-900/40">
+              <p class="text-sm">
+                <span class="font-semibold" x-text="(result.person.titulPred ? result.person.titulPred + ' ' : '') + result.person.jmeno + ' ' + result.person.prijmeni + (result.person.titulPo ? ', ' + result.person.titulPo : '')"></span>
+                <span class="text-slate-500 dark:text-slate-400 text-xs ml-2">nar. <span x-text="result.person.narozeni"></span></span>
+                <a :href="result.person.profileUrl" target="_blank" rel="noopener" class="underline text-emerald-700 dark:text-emerald-400 ml-2 text-xs">🔗 Hlídač státu</a>
+              </p>
+            </div>
+
+            <div class="flex gap-2 items-center flex-wrap">
+              <button
+                @click="toggleAllResolved()"
+                class="text-xs px-2 py-1 border dark:border-slate-600 rounded hover:bg-slate-100 dark:hover:bg-slate-700"
+                x-text="allResolvedSelected() ? 'Odznačit všechny' : 'Vybrat všechny s IČO'"
+              ></button>
+              <button
+                @click="seedGraph()"
+                :disabled="selectedIcos().length < 2"
+                class="text-sm px-3 py-1.5 bg-emerald-600 text-white rounded hover:bg-emerald-700 disabled:opacity-50"
+              >
+                🌐 Vykreslit graf ze <span x-text="selectedIcos().length"></span> IČO
+              </button>
+              <span class="text-xs text-slate-500 dark:text-slate-400" x-show="result.truncated">
+                ⚠ Zobrazeno prvních 50 unikátních firem (osoba má víc).
+              </span>
+            </div>
+
+            <div class="overflow-x-auto">
+              <table class="w-full text-sm">
+                <thead class="text-xs text-slate-500 dark:text-slate-400 border-b dark:border-slate-700">
+                  <tr>
+                    <th class="text-left py-1 pr-2"><input type="checkbox" disabled /></th>
+                    <th class="text-left py-1 pr-2">Organizace</th>
+                    <th class="text-left py-1 pr-2">Role</th>
+                    <th class="text-left py-1 pr-2">Od → Do</th>
+                    <th class="text-left py-1 pr-2">IČO</th>
+                    <th class="text-left py-1 pr-2">Typ</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <template x-for="(v, idx) in result.vazby" :key="idx">
+                    <tr class="border-b dark:border-slate-700 align-top">
+                      <td class="py-1 pr-2">
+                        <input
+                          type="checkbox"
+                          :disabled="!v.resolvedIco || v.ambiguousMatchCount > 1"
+                          :checked="v.resolvedIco && selected.has(v.resolvedIco)"
+                          @change="toggleIco(v.resolvedIco)"
+                        />
+                      </td>
+                      <td class="py-1 pr-2">
+                        <span class="font-semibold" x-text="v.organizace"></span>
+                        <template x-if="v.resolvedName && v.resolvedName !== v.organizace">
+                          <div class="text-xs text-slate-500 dark:text-slate-400" x-text="'ARES: ' + v.resolvedName"></div>
+                        </template>
+                      </td>
+                      <td class="py-1 pr-2 text-xs" x-text="v.role || '—'"></td>
+                      <td class="py-1 pr-2 text-xs">
+                        <span x-text="v.datumOd || '?'"></span>
+                        →
+                        <template x-if="v.isActive">
+                          <span class="text-emerald-600 dark:text-emerald-400 font-semibold">aktivní</span>
+                        </template>
+                        <template x-if="!v.isActive">
+                          <span x-text="v.datumDo || '?'"></span>
+                        </template>
+                      </td>
+                      <td class="py-1 pr-2 text-xs">
+                        <template x-if="v.resolvedIco && v.ambiguousMatchCount <= 1">
+                          <a class="font-mono underline" :href="'/?ico=' + v.resolvedIco + '&action=dd'" target="_blank" x-text="v.resolvedIco"></a>
+                        </template>
+                        <template x-if="v.resolvedIco && v.ambiguousMatchCount > 1">
+                          <span class="font-mono text-amber-700 dark:text-amber-400" :title="v.ambiguousMatchCount + ' match'">
+                            <span x-text="v.resolvedIco"></span> ⚠
+                          </span>
+                        </template>
+                        <template x-if="!v.resolvedIco">
+                          <span class="text-slate-400 italic">—</span>
+                        </template>
+                      </td>
+                      <td class="py-1 pr-2 text-xs text-slate-500 dark:text-slate-400" x-text="v.typ"></td>
+                    </tr>
+                  </template>
+                </tbody>
+              </table>
+            </div>
+
+            <p class="text-xs text-slate-400">
+              Zdroj vazeb: <a class="underline" href="https://www.hlidacstatu.cz" target="_blank" rel="noopener">Hlídač státu</a> (CC BY 3.0 CZ).
+              IČO se hledá v ARES podle obchodního jména — ⚠ znamená ambiguózní match (víc firem stejného jména).
+            </p>
+          </div>
+        </template>
+      </section>
+
       <!-- ─── Cross-company graph ──────────────────────────────────── -->
-      <section id="graph" x-data="graphSection()" x-init="init()" class="bg-white dark:bg-slate-800 dark:border-slate-700 rounded-2xl shadow-sm border p-6">
+      <section id="graph" x-data="graphSection()" x-init="init()" @ares-seed-graph.window="seed($event.detail.icos)" class="bg-white dark:bg-slate-800 dark:border-slate-700 rounded-2xl shadow-sm border p-6">
         <h2 class="text-lg font-bold mb-1">🌐 Mapa propojení přes statutáry</h2>
         <p class="text-sm text-slate-500 dark:text-slate-400 mb-4">
           Zadej 2–50 IČO (každé na nový řádek nebo oddělené čárkou). Najdu osoby, které sedí ve více firmách najednou.
@@ -1187,7 +1369,20 @@
                 <ul class="space-y-2">
                   <template x-for="p in result.sharedPersons" :key="p.jmeno">
                     <li class="border dark:border-slate-700 rounded-lg p-3">
-                      <div class="font-semibold" x-text="p.jmeno"></div>
+                      <template x-if="p.datumNarozeni && !p.isLegalEntity">
+                        <button
+                          type="button"
+                          @click="openPersonVazby(p.jmeno, p.datumNarozeni)"
+                          class="font-semibold underline text-emerald-700 dark:text-emerald-400 hover:text-emerald-800 text-left"
+                          :title="'Najít vazby osoby ' + p.jmeno"
+                        >
+                          <span x-text="p.jmeno"></span>
+                          <span class="text-xs text-slate-400 ml-0.5">🔗</span>
+                        </button>
+                      </template>
+                      <template x-if="!p.datumNarozeni || p.isLegalEntity">
+                        <div class="font-semibold" x-text="p.jmeno"></div>
+                      </template>
                       <template x-if="p.datumNarozeni">
                         <div class="text-xs text-slate-500 dark:text-slate-400">nar. <span x-text="p.datumNarozeni"></span></div>
                       </template>

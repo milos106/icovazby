@@ -281,6 +281,61 @@ export async function fetchSmlouvyByIco(
   );
 }
 
+// ─── Osoby (lookup + detail) ──────────────────────────────────────────────────
+// /api/v2/osoby/hledat vyžaduje Jmeno + Prijmeni + DatumNarozeni (YYYY-MM-DD).
+// Bez všech tří API odmítne 400 "Jmeno, prijmeni i datum narozeni jsou povinne."
+
+export interface RawOsobaHlidacMatch {
+  titulPred?: string | null;
+  jmeno?: string;
+  prijmeni?: string;
+  titulPo?: string | null;
+  narozeni?: string | null;
+  nameId: string;
+  profile: string;
+}
+
+export interface RawOsobaUdalost {
+  typ?: string;
+  organizace?: string;
+  role?: string | null;
+  castka?: number;
+  datumOd?: string | null;
+  datumDo?: string | null;
+}
+
+export interface RawOsobaDetail {
+  titulPred?: string | null;
+  jmeno?: string;
+  prijmeni?: string;
+  titulPo?: string | null;
+  narozeni?: string | null;
+  nameId: string;
+  profile: string;
+  politickaStrana?: unknown;
+  sponzoring?: unknown[];
+  udalosti?: RawOsobaUdalost[];
+  socialniSite?: unknown[];
+}
+
+export async function searchOsoby(
+  jmeno: string,
+  prijmeni: string,
+  datumNarozeni: string,
+): Promise<RawOsobaHlidacMatch[]> {
+  const qs = new URLSearchParams({
+    Jmeno: jmeno,
+    Prijmeni: prijmeni,
+    DatumNarozeni: datumNarozeni,
+  });
+  return getJson<RawOsobaHlidacMatch[]>(`/api/v2/osoby/hledat?${qs.toString()}`);
+}
+
+export async function fetchOsobaDetail(nameId: string): Promise<RawOsobaDetail> {
+  const safe = encodeURIComponent(nameId);
+  return getJson<RawOsobaDetail>(`/api/v2/osoby/${safe}`);
+}
+
 /** Vrátí Hlídač státu token status bez sahnutí na API. */
 export function hasHlidacToken(): boolean {
   return Boolean(process.env.HLIDAC_API_TOKEN?.trim());

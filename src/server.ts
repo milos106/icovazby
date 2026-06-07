@@ -24,6 +24,7 @@ import {
   getEuSanctionsScreenService,
   getInsolvenceDetailService,
   getJerrsService,
+  getPersonVazbyService,
   getResClassificationService,
   getSmlouvyService,
   getTradeLicensesService,
@@ -181,6 +182,26 @@ app.get("/api/jerrs/:ico", async (req: FastifyRequest, reply) => {
   try {
     const ico = (req.params as { ico: string }).ico;
     reply.send(await getJerrsService(ico));
+  } catch (e) {
+    sendError(reply, e);
+  }
+});
+
+// ─── Person vazby (Hlídač státu osoby + ARES IČO resolve) ─────────────────────
+const personVazbySchema = z.object({
+  jmeno: z.string().min(1),
+  prijmeni: z.string().optional(),
+  datumNarozeni: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  includeHistorical: z.boolean().optional(),
+  resolveIco: z.boolean().optional(),
+});
+app.post("/api/persons/vazby", async (req: FastifyRequest, reply) => {
+  try {
+    const parsed = personVazbySchema.safeParse(req.body);
+    if (!parsed.success) {
+      return reply.status(400).send({ error: "INVALID_INPUT", message: parsed.error.message });
+    }
+    reply.send(await getPersonVazbyService(client, parsed.data));
   } catch (e) {
     sendError(reply, e);
   }

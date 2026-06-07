@@ -517,6 +517,9 @@ export async function tryConvert(czkAmount: number, code: string): Promise<numbe
   }
 }
 
+// ─── Person vazby (HS osoby + ARES IČO resolve) ───────────────────────────────
+export { getPersonVazbyService } from "./persons/service.js";
+
 // ─── EU consolidated financial sanctions list ─────────────────────────────────
 import { EU_SANCTIONS_ATTRIBUTION, screenEuSanctions } from "./eu_sanctions/client.js";
 
