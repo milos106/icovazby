@@ -339,7 +339,11 @@
                 <p class="text-xs text-slate-500 dark:text-slate-400 mb-1">CZ-NACE</p>
                 <div class="flex flex-wrap gap-1">
                   <template x-for="kod in profile.czNace.slice(0, 12)" :key="kod">
-                    <span class="px-2 py-0.5 bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-200 rounded text-xs font-mono" x-text="kod"></span>
+                    <span
+                      class="px-2 py-0.5 bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-200 rounded text-xs font-mono cursor-help"
+                      x-text="kod"
+                      :title="$store.nace.describe(kod)"
+                    ></span>
                   </template>
                   <template x-if="profile.czNace.length > 12">
                     <span class="text-xs text-slate-400" x-text="`+ ${profile.czNace.length - 12} dalších`"></span>
@@ -402,7 +406,7 @@
                   </div>
                   <div>
                     <dt class="text-xs text-slate-500 dark:text-slate-400">Převažující CZ-NACE</dt>
-                    <dd class="text-xs font-mono" x-text="resData.czNacePrevazujici || '—'"></dd>
+                    <dd class="text-xs font-mono cursor-help" x-text="resData.czNacePrevazujici || '—'" :title="resData.czNacePrevazujici ? $store.nace.describe(resData.czNacePrevazujici) : ''"></dd>
                   </div>
                   <div>
                     <dt class="text-xs text-slate-500 dark:text-slate-400">NUTS region</dt>
@@ -551,7 +555,7 @@
                 <a href="#dd-isir" class="px-2 py-1 rounded hover:bg-slate-100 dark:hover:bg-slate-700">⚖️ Insolvence</a>
                 <a href="#dd-jerrs" class="px-2 py-1 rounded hover:bg-slate-100 dark:hover:bg-slate-700">🏦 ČNB</a>
                 <a href="#dd-sankce" class="px-2 py-1 rounded hover:bg-slate-100 dark:hover:bg-slate-700">🇪🇺 Sankce</a>
-                <a href="#dd-zivno" class="px-2 py-1 rounded hover:bg-slate-100 dark:hover:bg-slate-700">🏷️ Živno</a>
+                <a href="#dd-zivno" class="px-2 py-1 rounded hover:bg-slate-100 dark:hover:bg-slate-700">🏷️ Živnosti</a>
                 <span class="mx-2 text-slate-300 dark:text-slate-600">|</span>
                 <button
                   type="button"

@@ -13,7 +13,40 @@ const RECENT_LIMIT = 10;
 // Klíč = id karty (např. "dd-adis"). Default chování: dd-profil je VŽDY
 // rozbalený a nelze ho sbalit; ostatní jsou defaultně sbalené (uživatel
 // si je rozbalí kliknutím na hlavičku). Toggle se ukládá hned.
+// CZ-NACE číselník — bundled jako /data/cz-nace.json (sekce A–U +
+// kódy 2/3/4/5 znaků). Načítáme jednou při alpine:init; pokud kód
+// není v indexu, zkusíme hierarchický fallback (delší prefix se
+// zkrátí o jeden znak až do nalezení nadřazené úrovně).
 document.addEventListener("alpine:init", () => {
+  window.Alpine.store("nace", {
+    table: {},
+    loaded: false,
+    async ensureLoaded() {
+      if (this.loaded) return;
+      try {
+        const r = await fetch("/data/cz-nace.json");
+        if (r.ok) this.table = await r.json();
+      } catch {
+        /* ignore — fallback bude jen kód */
+      }
+      this.loaded = true;
+    },
+    describe(kod) {
+      // Lazy load při prvním volání. Alpine title binding přečte
+      // aktuální hodnotu při hover, takže opožděné naplnění je OK.
+      if (!this.loaded) this.ensureLoaded();
+      if (!kod) return "";
+      const k = String(kod).trim();
+      if (this.table[k]) return `${k} — ${this.table[k]}`;
+      // Hierarchický fallback: zkrátit kód o jeden znak a zkusit znovu.
+      for (let i = k.length - 1; i >= 1; i--) {
+        const cut = k.slice(0, i);
+        if (this.table[cut]) return `${k} (nadřazené ${cut} — ${this.table[cut]})`;
+      }
+      return `${k} (kód není v číselníku CZ-NACE)`;
+    },
+  });
+
   window.Alpine.store("ddCollapse", {
     state: (() => {
       try {
