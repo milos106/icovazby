@@ -20,7 +20,8 @@ import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 import pLimit from "p-limit";
 import type { AresClient } from "../ares/client.js";
-import { upsertSubject } from "../persons_index/store.js";
+import { flattenMembers, memberDisplayName } from "../ares/vr.js";
+import { upsertMembership, upsertSubject } from "../persons_index/store.js";
 
 interface SeedEntry {
   ico: string;
@@ -57,6 +58,8 @@ export async function preseedTopCompanies(client: AresClient): Promise<{ added: 
   const limit = pLimit(2); // šetrně k ARES rate limit
   let added = 0;
   let skipped = 0;
+  let memberships = 0;
+  const deepSeed = process.env.PRESEED_DEEP !== "0";
 
   await Promise.all(
     list.map((s) =>
@@ -64,8 +67,39 @@ export async function preseedTopCompanies(client: AresClient): Promise<{ added: 
         try {
           const subject = await client.getEconomicSubject(s.ico);
           // ARES je authoritativní — preferuj jeho jméno před naším hand-listem
-          upsertSubject(s.ico, subject.obchodniJmeno ?? s.obchodniJmeno);
+          const name = subject.obchodniJmeno ?? s.obchodniJmeno;
+          upsertSubject(s.ico, name);
           added++;
+
+          // Deep seed: pro každou firmu načíst VR a uložit jednatele do
+          // persons_index. Tím holding discovery najde sdílené statutáry
+          // mezi firmami i bez user history. Vypnutí: PRESEED_DEEP=0.
+          if (deepSeed) {
+            try {
+              const vr = await client.getVrRecord(s.ico);
+              for (const m of flattenMembers(vr, { activeOnly: true })) {
+                const fo = m.fyzickaOsoba;
+                if (!fo?.jmeno || !fo.prijmeni || !fo.datumNarozeni) continue;
+                upsertMembership({
+                  jmeno: fo.jmeno,
+                  prijmeni: fo.prijmeni,
+                  titulPred: fo.titulPredJmenem ?? null,
+                  displayName: memberDisplayName(m),
+                  datumNarozeni: fo.datumNarozeni,
+                  ico: s.ico,
+                  obchodniJmeno: name,
+                  funkce: m.funkce ?? null,
+                  organ: m.organName ?? null,
+                  datumZapisu: m.datumZapisu ?? null,
+                  datumVymazu: null,
+                  source: "ARES_VR",
+                });
+                memberships++;
+              }
+            } catch {
+              /* VR neexistuje (OSVČ apod.) — skip */
+            }
+          }
         } catch {
           // NOT_FOUND nebo síťová chyba — jen skip
           skipped++;
@@ -74,5 +108,5 @@ export async function preseedTopCompanies(client: AresClient): Promise<{ added: 
     ),
   );
 
-  return { added, skipped, total: list.length };
+  return { added, skipped, total: list.length, memberships };
 }

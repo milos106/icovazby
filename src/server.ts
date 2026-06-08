@@ -605,8 +605,10 @@ try {
   // jediná cesta, ARES dělá whole-word match).
   if (process.env.PRESEED_TOP_CZ !== "0") {
     preseedTopCompanies(client)
-      .then(({ added, skipped, total }) =>
-        app.log.info(`preseed: ${added}/${total} firem nahráno do subjects (${skipped} skip)`),
+      .then(({ added, skipped, total, memberships }) =>
+        app.log.info(
+          `preseed: ${added}/${total} firem + ${memberships} jednatelů nahráno (${skipped} skip)`,
+        ),
       )
       .catch((e) => app.log.warn({ err: e }, "preseed failed"));
   }

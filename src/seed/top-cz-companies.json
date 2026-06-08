@@ -1,91 +1,2090 @@
 [
-  { "ico": "26185610", "obchodniJmeno": "AGROFERT, a.s." },
-  { "ico": "45274649", "obchodniJmeno": "ČEZ, a.s." },
-  { "ico": "00177041", "obchodniJmeno": "ŠKODA AUTO a.s." },
-  { "ico": "45317054", "obchodniJmeno": "Komerční banka, a.s." },
-  { "ico": "00001350", "obchodniJmeno": "Československá obchodní banka, a.s." },
-  { "ico": "45244782", "obchodniJmeno": "Česká spořitelna, a.s." },
-  { "ico": "29045371", "obchodniJmeno": "T-Mobile Czech Republic a.s." },
-  { "ico": "60193336", "obchodniJmeno": "O2 Czech Republic a.s." },
-  { "ico": "25788001", "obchodniJmeno": "Vodafone Czech Republic a.s." },
-  { "ico": "47114983", "obchodniJmeno": "PENNY MARKET s.r.o." },
-  { "ico": "26720153", "obchodniJmeno": "Albert Česká republika, s.r.o." },
-  { "ico": "44012373", "obchodniJmeno": "Tesco Stores ČR a.s." },
-  { "ico": "47114983", "obchodniJmeno": "Lidl Česká republika v.o.s." },
-  { "ico": "25110161", "obchodniJmeno": "Kaufland Česká republika v.o.s." },
-  { "ico": "00685976", "obchodniJmeno": "BILLA, spol. s r.o." },
-  { "ico": "47909241", "obchodniJmeno": "Globus ČR, k.s." },
-  { "ico": "25085000", "obchodniJmeno": "dm drogerie markt s.r.o." },
-  { "ico": "27084231", "obchodniJmeno": "IKEA Česká republika, s.r.o." },
-  { "ico": "26133122", "obchodniJmeno": "Alza.cz a.s." },
-  { "ico": "63080249", "obchodniJmeno": "DATART INTERNATIONAL, a.s." },
-  { "ico": "63992888", "obchodniJmeno": "Bauhaus k.s." },
-  { "ico": "60470968", "obchodniJmeno": "OBI Česká republika s.r.o." },
-  { "ico": "47114983", "obchodniJmeno": "HORNBACH Baumarkt CS spol. s r.o." },
-  { "ico": "27243319", "obchodniJmeno": "MOUNTFIELD a.s." },
-  { "ico": "45192790", "obchodniJmeno": "Air Bank a.s." },
-  { "ico": "61858374", "obchodniJmeno": "PPF a.s." },
-  { "ico": "47672234", "obchodniJmeno": "Home Credit a.s." },
-  { "ico": "45193258", "obchodniJmeno": "Liberty Ostrava a.s." },
-  { "ico": "29220695", "obchodniJmeno": "Vítkovice Holding a.s." },
-  { "ico": "18050646", "obchodniJmeno": "Třinecké železárny, a.s." },
-  { "ico": "62623753", "obchodniJmeno": "ŠKODA TRANSPORTATION a.s." },
-  { "ico": "45272956", "obchodniJmeno": "Tatra Trucks a.s." },
-  { "ico": "00012287", "obchodniJmeno": "Pražská energetika, a.s." },
-  { "ico": "47116901", "obchodniJmeno": "Pražská plynárenská, a.s." },
-  { "ico": "60193913", "obchodniJmeno": "Pražská vodohospodářská společnost a.s." },
-  { "ico": "63998510", "obchodniJmeno": "Dopravní podnik hl. m. Prahy, akciová společnost" },
-  { "ico": "70994234", "obchodniJmeno": "Letiště Václava Havla Praha, a.s." },
-  { "ico": "60193336", "obchodniJmeno": "České dráhy, a.s." },
-  { "ico": "62934357", "obchodniJmeno": "Czech Airlines a.s." },
-  { "ico": "25663135", "obchodniJmeno": "Smartwings a.s." },
-  { "ico": "27408071", "obchodniJmeno": "ČSA Czech Airlines a.s." },
-  { "ico": "26743982", "obchodniJmeno": "RegioJet a.s." },
-  { "ico": "47715840", "obchodniJmeno": "LEO Express Global a.s." },
-  { "ico": "27179795", "obchodniJmeno": "FlixBus CZ s.r.o." },
-  { "ico": "27935189", "obchodniJmeno": "Student Agency k.s." },
-  { "ico": "26165974", "obchodniJmeno": "Czech Press Group a.s." },
-  { "ico": "00164836", "obchodniJmeno": "Česká pošta, s.p." },
-  { "ico": "26156685", "obchodniJmeno": "Český rozhlas" },
-  { "ico": "00027383", "obchodniJmeno": "Česká televize" },
-  { "ico": "26173427", "obchodniJmeno": "Seznam.cz, a.s." },
-  { "ico": "27082440", "obchodniJmeno": "Mall Group a.s." },
-  { "ico": "29413890", "obchodniJmeno": "Heureka Group a.s." },
-  { "ico": "01556858", "obchodniJmeno": "Rohlík.cz, s.r.o." },
-  { "ico": "26468021", "obchodniJmeno": "Mafra, a.s." },
-  { "ico": "27082440", "obchodniJmeno": "Czech News Center a.s." },
-  { "ico": "44794570", "obchodniJmeno": "FNM ČR (Fond národního majetku)" },
-  { "ico": "00006947", "obchodniJmeno": "Ministerstvo financí" },
-  { "ico": "00006963", "obchodniJmeno": "Ministerstvo spravedlnosti" },
-  { "ico": "00164801", "obchodniJmeno": "Generální finanční ředitelství" },
-  { "ico": "48136450", "obchodniJmeno": "Česká národní banka" },
-  { "ico": "47114983", "obchodniJmeno": "ŠKODA JS a.s." },
-  { "ico": "25938509", "obchodniJmeno": "Plzeňský Prazdroj, a. s." },
-  { "ico": "47115424", "obchodniJmeno": "Budějovický Budvar, n. p." },
-  { "ico": "63192231", "obchodniJmeno": "Heineken Česká republika, a.s." },
-  { "ico": "26210482", "obchodniJmeno": "Pivovary Staropramen s.r.o." },
-  { "ico": "44569483", "obchodniJmeno": "Kofola ČeskoSlovensko a.s." },
-  { "ico": "61057398", "obchodniJmeno": "MADETA a.s." },
-  { "ico": "47914890", "obchodniJmeno": "Coca-Cola HBC Česko a Slovensko, s.r.o." },
-  { "ico": "27395567", "obchodniJmeno": "Penam, a.s." },
-  { "ico": "29045371", "obchodniJmeno": "Hamé, a.s." },
-  { "ico": "47281203", "obchodniJmeno": "Vodňanské kuře a.s." },
-  { "ico": "46900411", "obchodniJmeno": "Kostelecké uzeniny a.s." },
-  { "ico": "62582283", "obchodniJmeno": "Vodňanská drůbež, a.s." },
-  { "ico": "60193336", "obchodniJmeno": "ČD Cargo, a.s." },
-  { "ico": "70994234", "obchodniJmeno": "Správa železnic, státní organizace" },
-  { "ico": "60193336", "obchodniJmeno": "ŘSD ČR" },
-  { "ico": "47675762", "obchodniJmeno": "Diamo, státní podnik" },
-  { "ico": "29148335", "obchodniJmeno": "MND a.s." },
-  { "ico": "27442195", "obchodniJmeno": "ORLEN Unipetrol, a.s." },
-  { "ico": "60193913", "obchodniJmeno": "PALABA, akciová společnost" },
-  { "ico": "45272956", "obchodniJmeno": "ŠKODA ELECTRIC a.s." },
-  { "ico": "47114983", "obchodniJmeno": "ŠKODA POWER a.s." },
-  { "ico": "00153443", "obchodniJmeno": "Severočeská energetika, a.s." },
-  { "ico": "60193336", "obchodniJmeno": "VEOLIA ČESKÁ REPUBLIKA, a.s." },
-  { "ico": "47114983", "obchodniJmeno": "AVAST Software s.r.o." },
-  { "ico": "27082440", "obchodniJmeno": "Avast a.s." },
-  { "ico": "29148335", "obchodniJmeno": "JetBrains s.r.o." },
-  { "ico": "26173427", "obchodniJmeno": "Mews Systems s.r.o." },
-  { "ico": "26468021", "obchodniJmeno": "Productboard, s.r.o." }
+  {
+    "ico": "01731530",
+    "obchodniJmeno": "ŠKODA DIGITAL s.r.o."
+  },
+  {
+    "ico": "01825739",
+    "obchodniJmeno": "Dining Digital s.r.o."
+  },
+  {
+    "ico": "02010160",
+    "obchodniJmeno": "Digital Assets Consulting s.r.o."
+  },
+  {
+    "ico": "02629275",
+    "obchodniJmeno": "Digital rabbit s.r.o."
+  },
+  {
+    "ico": "02856662",
+    "obchodniJmeno": "Digital Manufacturing Services s.r.o."
+  },
+  {
+    "ico": "03021351",
+    "obchodniJmeno": "Digital Consulting s.r.o."
+  },
+  {
+    "ico": "03108902",
+    "obchodniJmeno": "Trend Digital Marketing s.r.o., v likvidaci"
+  },
+  {
+    "ico": "04376358",
+    "obchodniJmeno": "Onli Digital Marketing s. r. o."
+  },
+  {
+    "ico": "04898923",
+    "obchodniJmeno": "Digital Trading Strategies s.r.o."
+  },
+  {
+    "ico": "04953657",
+    "obchodniJmeno": "JK Digital Consulting s.r.o."
+  },
+  {
+    "ico": "06178243",
+    "obchodniJmeno": "H&L Digital Trading, s.r.o."
+  },
+  {
+    "ico": "06263712",
+    "obchodniJmeno": "Dax Digital Marketing Ltd s.r.o."
+  },
+  {
+    "ico": "06641415",
+    "obchodniJmeno": "Digital Intelligence Mining s.r.o. \"v likvidaci\""
+  },
+  {
+    "ico": "07122055",
+    "obchodniJmeno": "AERA Digital Consulting a.s."
+  },
+  {
+    "ico": "14408431",
+    "obchodniJmeno": "Nightingale Press s.r.o."
+  },
+  {
+    "ico": "17269211",
+    "obchodniJmeno": "Morning press s.r.o."
+  },
+  {
+    "ico": "23531215",
+    "obchodniJmeno": "Petit Printing Press, a.s."
+  },
+  {
+    "ico": "27110117",
+    "obchodniJmeno": "Press Publishing Group s.r.o."
+  },
+  {
+    "ico": "28409329",
+    "obchodniJmeno": "European Press Holding a.s."
+  },
+  {
+    "ico": "14385473",
+    "obchodniJmeno": "Screenprinting Technology Vaiarelli Česko s.r.o."
+  },
+  {
+    "ico": "19245491",
+    "obchodniJmeno": "Brüning Group Česko s.r.o."
+  },
+  {
+    "ico": "14062488",
+    "obchodniJmeno": "KOMERČNÍ MORAVSKÁ DŮLNÍ DIVIZE s.r.o. v likvidaci"
+  },
+  {
+    "ico": "06907211",
+    "obchodniJmeno": "Ing. Medek - Moravský zeměvrtný závod s.r.o."
+  },
+  {
+    "ico": "25362470",
+    "obchodniJmeno": "Slezská komerční společnost - SKS s.r.o. \"v likvidaci\""
+  },
+  {
+    "ico": "00548502",
+    "obchodniJmeno": "První pražská komerční a právní kancelář s.r.o."
+  },
+  {
+    "ico": "04201183",
+    "obchodniJmeno": "Pražský Catering Group s.r.o."
+  },
+  {
+    "ico": "25954733",
+    "obchodniJmeno": "Pražský INGBAU s.r.o."
+  },
+  {
+    "ico": "49455737",
+    "obchodniJmeno": "První brněnská strojírna Holding,a.s. - v likvidaci"
+  },
+  {
+    "ico": "05261988",
+    "obchodniJmeno": "Aulinger - Most s.r.o. v likvidaci"
+  },
+  {
+    "ico": "01560069",
+    "obchodniJmeno": "TEPLICE MARKETING, s.r.o."
+  },
+  {
+    "ico": "25844849",
+    "obchodniJmeno": "STAVING Frýdek s.r.o."
+  },
+  {
+    "ico": "03669564",
+    "obchodniJmeno": "Veolia Energie Praha, a.s."
+  },
+  {
+    "ico": "19185111",
+    "obchodniJmeno": "MP Energie Heating s.r.o."
+  },
+  {
+    "ico": "23145561",
+    "obchodniJmeno": "ENERGIE Consulting s.r.o."
+  },
+  {
+    "ico": "02444321",
+    "obchodniJmeno": "Ing. Martin Divišek Doprava s.r.o."
+  },
+  {
+    "ico": "02835401",
+    "obchodniJmeno": "ZELINGER - DOPRAVA, s.r.o."
+  },
+  {
+    "ico": "14236095",
+    "obchodniJmeno": "Trading doprava s.r.o."
+  },
+  {
+    "ico": "03962172",
+    "obchodniJmeno": "WM & LOGISTIC CONSULTING s.r.o."
+  },
+  {
+    "ico": "05078407",
+    "obchodniJmeno": "Servis Logistic and Outsourcing s.r.o."
+  },
+  {
+    "ico": "25894749",
+    "obchodniJmeno": "Horizont marketing - finance - logistika, s.r.o."
+  },
+  {
+    "ico": "05009090",
+    "obchodniJmeno": "Levné potraviny holding s.r.o."
+  },
+  {
+    "ico": "05791308",
+    "obchodniJmeno": "Potraviny - drogerie U Františáků s.r.o."
+  },
+  {
+    "ico": "09614010",
+    "obchodniJmeno": "Pivovar Thrills Brewing, s.r.o."
+  },
+  {
+    "ico": "26359201",
+    "obchodniJmeno": "Česká mlékárna holding s.r.o."
+  },
+  {
+    "ico": "26511037",
+    "obchodniJmeno": "Tatranská mlékárna - Bohemia spol. s r.o."
+  },
+  {
+    "ico": "03298663",
+    "obchodniJmeno": "Moto Racing Group s.r.o."
+  },
+  {
+    "ico": "03621766",
+    "obchodniJmeno": "LION MOTO RACING s.r.o."
+  },
+  {
+    "ico": "05910196",
+    "obchodniJmeno": "Moto Training s.r.o."
+  },
+  {
+    "ico": "07638761",
+    "obchodniJmeno": "JM Racing - moto oil s.r.o."
+  },
+  {
+    "ico": "04777972",
+    "obchodniJmeno": "Ing. Pavla Wolfová  oceňování nemovitostí s.r.o."
+  },
+  {
+    "ico": "25672720",
+    "obchodniJmeno": "MONETA Money Bank, a.s."
+  },
+  {
+    "ico": "29045371",
+    "obchodniJmeno": "Air Bank a.s."
+  },
+  {
+    "ico": "64948242",
+    "obchodniJmeno": "UniCredit Bank Czech Republic and Slovakia, a.s."
+  },
+  {
+    "ico": "05912385",
+    "obchodniJmeno": "CREDIT holding s.r.o."
+  },
+  {
+    "ico": "22069411",
+    "obchodniJmeno": "JJ CREDIT holding s.r.o."
+  },
+  {
+    "ico": "23769734",
+    "obchodniJmeno": "Nottingham Credit a.s."
+  },
+  {
+    "ico": "01527134",
+    "obchodniJmeno": "MONETON ASSET MANAGEMENT s.r.o."
+  },
+  {
+    "ico": "01737236",
+    "obchodniJmeno": "DANTEM Asset Tracking s.r.o."
+  },
+  {
+    "ico": "03207366",
+    "obchodniJmeno": "Kappa Asset Consulting s.r.o."
+  },
+  {
+    "ico": "04829735",
+    "obchodniJmeno": "ASSET GLOBAL CONSULTING s.r.o."
+  },
+  {
+    "ico": "05263492",
+    "obchodniJmeno": "Growing Asset s.r.o."
+  },
+  {
+    "ico": "06135706",
+    "obchodniJmeno": "IC - Asset Management Czech Republic Holding s.r.o."
+  },
+  {
+    "ico": "07457677",
+    "obchodniJmeno": "Future Farming Asset s.r.o."
+  },
+  {
+    "ico": "08288950",
+    "obchodniJmeno": "Future Mining Asset s.r.o."
+  },
+  {
+    "ico": "08491135",
+    "obchodniJmeno": "MPG Asset Holding a.s."
+  },
+  {
+    "ico": "17253021",
+    "obchodniJmeno": "Asset Management & Consulting s.r.o."
+  },
+  {
+    "ico": "01408933",
+    "obchodniJmeno": "MEDLING s.r.o."
+  },
+  {
+    "ico": "06891306",
+    "obchodniJmeno": "Hospital Catering Solutions CZ s.r.o."
+  },
+  {
+    "ico": "25564935",
+    "obchodniJmeno": "HOSPITAL ENGINEERING CZ, s.r.o."
+  },
+  {
+    "ico": "09616462",
+    "obchodniJmeno": "Královské lesy holding a.s."
+  },
+  {
+    "ico": "03146073",
+    "obchodniJmeno": "Fischer holding s.r.o."
+  },
+  {
+    "ico": "26185610",
+    "obchodniJmeno": "AGROFERT, a.s."
+  },
+  {
+    "ico": "00177041",
+    "obchodniJmeno": "Škoda Auto a.s."
+  },
+  {
+    "ico": "00213101",
+    "obchodniJmeno": "ŠKODA a.s."
+  },
+  {
+    "ico": "05976359",
+    "obchodniJmeno": "Škoda X s.r.o."
+  },
+  {
+    "ico": "06322468",
+    "obchodniJmeno": "MUDr. Škoda, s.r.o."
+  },
+  {
+    "ico": "08088764",
+    "obchodniJmeno": "Škoda Communication, s.r.o."
+  },
+  {
+    "ico": "09195335",
+    "obchodniJmeno": "Škoda Travel s.r.o."
+  },
+  {
+    "ico": "09403141",
+    "obchodniJmeno": "Stavební společnost Škoda s.r.o."
+  },
+  {
+    "ico": "14070421",
+    "obchodniJmeno": "Škoda a.s."
+  },
+  {
+    "ico": "01882732",
+    "obchodniJmeno": "Komerční SAF s.r.o."
+  },
+  {
+    "ico": "02631041",
+    "obchodniJmeno": "Právní & komerční servis spol. s r.o."
+  },
+  {
+    "ico": "04543475",
+    "obchodniJmeno": "Komerční park Jesenice s.r.o."
+  },
+  {
+    "ico": "04716078",
+    "obchodniJmeno": "Komerční Park Nehvizdy s.r.o."
+  },
+  {
+    "ico": "05193915",
+    "obchodniJmeno": "Komerční Portál Praha s.r.o."
+  },
+  {
+    "ico": "05403821",
+    "obchodniJmeno": "Komerční spisovna Brno s.r.o."
+  },
+  {
+    "ico": "05612357",
+    "obchodniJmeno": "Komerční park Rudná s.r.o."
+  },
+  {
+    "ico": "05729726",
+    "obchodniJmeno": "NV Komerční s.r.o."
+  },
+  {
+    "ico": "06135854",
+    "obchodniJmeno": "Komerční park Dobřejovice I s.r.o."
+  },
+  {
+    "ico": "06135994",
+    "obchodniJmeno": "Komerční park Dobřejovice II s.r.o."
+  },
+  {
+    "ico": "06674208",
+    "obchodniJmeno": "Komerční Park Velká Dobrá s.r.o."
+  },
+  {
+    "ico": "07191928",
+    "obchodniJmeno": "Komerční Park Znojmo s.r.o."
+  },
+  {
+    "ico": "07227434",
+    "obchodniJmeno": "Komerční park Zápy s.r.o."
+  },
+  {
+    "ico": "07245301",
+    "obchodniJmeno": "Komerční spisovna Krnsko s.r.o."
+  },
+  {
+    "ico": "07301243",
+    "obchodniJmeno": "Komerční prostor Polská s.r.o."
+  },
+  {
+    "ico": "07570309",
+    "obchodniJmeno": "Komerční park Roztoky s.r.o."
+  },
+  {
+    "ico": "07925255",
+    "obchodniJmeno": "KOMERČNÍ REALITY POLNÁ s.r.o."
+  },
+  {
+    "ico": "10732349",
+    "obchodniJmeno": "DVB Komerční nemovitosti s.r.o."
+  },
+  {
+    "ico": "10941835",
+    "obchodniJmeno": "Komerční park Býkev s.r.o."
+  },
+  {
+    "ico": "11762772",
+    "obchodniJmeno": "KOMERČNÍ ZÓNA OTROKOVICE, s.r.o."
+  },
+  {
+    "ico": "11857838",
+    "obchodniJmeno": "Komerční prostor Poděbradská, s.r.o."
+  },
+  {
+    "ico": "14188872",
+    "obchodniJmeno": "Chrášťany komerční areál a.s."
+  },
+  {
+    "ico": "17828490",
+    "obchodniJmeno": "Komerční park Valašské Meziříčí s.r.o."
+  },
+  {
+    "ico": "18024050",
+    "obchodniJmeno": "SPM KOMERČNÍ s.r.o."
+  },
+  {
+    "ico": "19507291",
+    "obchodniJmeno": "Komerční obchodní společnost s.r.o."
+  },
+  {
+    "ico": "21949000",
+    "obchodniJmeno": "KOMERČNÍ KANCELÁŘ - daňové, účetní, finanční a ekonomické poradenství s.r.o."
+  },
+  {
+    "ico": "22159291",
+    "obchodniJmeno": "SPM KOMERČNÍ II s.r.o."
+  },
+  {
+    "ico": "23054077",
+    "obchodniJmeno": "Komerční jednotky Kuřim s.r.o."
+  },
+  {
+    "ico": "23948027",
+    "obchodniJmeno": "WHITE HOUSE KOMERČNÍ CENTRUM OSTRAVA s.r.o."
+  },
+  {
+    "ico": "23971606",
+    "obchodniJmeno": "V&B Komerční správa s.r.o."
+  },
+  {
+    "ico": "24090263",
+    "obchodniJmeno": "Komerční park Kolín s.r.o."
+  },
+  {
+    "ico": "24425605",
+    "obchodniJmeno": "Komerční pozemek Velké Albrechtice s.r.o."
+  },
+  {
+    "ico": "24794783",
+    "obchodniJmeno": "Komerční a stavební s.r.o."
+  },
+  {
+    "ico": "24848689",
+    "obchodniJmeno": "Komerční nemovitosti - Morava, s.r.o."
+  },
+  {
+    "ico": "25124706",
+    "obchodniJmeno": "Pražská poradenská a komerční společnost,společnost s ručením omezeným"
+  },
+  {
+    "ico": "25371592",
+    "obchodniJmeno": "P&P Komerční, spol. s r.o."
+  },
+  {
+    "ico": "25414194",
+    "obchodniJmeno": "DCFK komerční spol. s r.o."
+  },
+  {
+    "ico": "25530399",
+    "obchodniJmeno": "1. INTERNETOVÁ KOMERČNÍ, spol. s r.o."
+  },
+  {
+    "ico": "25850211",
+    "obchodniJmeno": "PROSPERITA STAVEBNÍ A KOMERČNÍ s.r.o."
+  },
+  {
+    "ico": "26022907",
+    "obchodniJmeno": "Budějovická komerční, s.r.o."
+  },
+  {
+    "ico": "26343924",
+    "obchodniJmeno": "Komerční a stavební centrum Rokycany a.s."
+  },
+  {
+    "ico": "26771179",
+    "obchodniJmeno": "Komerční Areál BRANFORD s.r.o."
+  },
+  {
+    "ico": "26859491",
+    "obchodniJmeno": "Komerční spisovna Ostrava, s.r.o."
+  },
+  {
+    "ico": "27343154",
+    "obchodniJmeno": "Komerční realitní s.r.o."
+  },
+  {
+    "ico": "27348148",
+    "obchodniJmeno": "Komerční stavby s.r.o."
+  },
+  {
+    "ico": "27404447",
+    "obchodniJmeno": "KOMERČNÍ CENTRUM s.r.o."
+  },
+  {
+    "ico": "27722201",
+    "obchodniJmeno": "Komerční nemovitosti, s.r.o."
+  },
+  {
+    "ico": "27904733",
+    "obchodniJmeno": "Finep Komerční 2, a.s."
+  },
+  {
+    "ico": "27904946",
+    "obchodniJmeno": "FINEP KOMERČNÍ a.s."
+  },
+  {
+    "ico": "27912621",
+    "obchodniJmeno": "Komerční park Hostouň s.r.o."
+  },
+  {
+    "ico": "27913562",
+    "obchodniJmeno": "Komerční park Pardubice s.r.o."
+  },
+  {
+    "ico": "27926681",
+    "obchodniJmeno": "Společnost pro komerční rozhodčí řízení ČR, spol. s r.o. v likvidaci"
+  },
+  {
+    "ico": "28208587",
+    "obchodniJmeno": "Komerční zóna Nehvizdy, a.s."
+  },
+  {
+    "ico": "28220382",
+    "obchodniJmeno": "KOMERČNÍ PARK NUPAKY s.r.o."
+  },
+  {
+    "ico": "28227051",
+    "obchodniJmeno": "KOMERČNÍ PARK NERATOVICE s.r.o."
+  },
+  {
+    "ico": "28328671",
+    "obchodniJmeno": "Komerční prostory Bohunice, s.r.o."
+  },
+  {
+    "ico": "28728921",
+    "obchodniJmeno": "Komerční a realitní kancelář s.r.o."
+  },
+  {
+    "ico": "28777379",
+    "obchodniJmeno": "Komerční spisovna, s.r.o."
+  },
+  {
+    "ico": "28783999",
+    "obchodniJmeno": "Komerční slévárna Turnov a.s."
+  },
+  {
+    "ico": "28889754",
+    "obchodniJmeno": "Středočeská Komerční s.r.o."
+  },
+  {
+    "ico": "28945620",
+    "obchodniJmeno": "1. Komerční s.r.o."
+  },
+  {
+    "ico": "28995376",
+    "obchodniJmeno": "Komerční Park Čestlice s.r.o."
+  },
+  {
+    "ico": "29511097",
+    "obchodniJmeno": "Divišov komerční pozemek s.r.o."
+  },
+  {
+    "ico": "29628172",
+    "obchodniJmeno": "Komerční prostory Hrdinů 4 s.r.o."
+  },
+  {
+    "ico": "43226574",
+    "obchodniJmeno": "Všeobecná komerční agentura, spol. s r.o. v likvidaci"
+  },
+  {
+    "ico": "45317054",
+    "obchodniJmeno": "Komerční banka, a.s."
+  },
+  {
+    "ico": "46353402",
+    "obchodniJmeno": "Česká realitní komerční spol. s r.o. v likvidaci"
+  },
+  {
+    "ico": "48041424",
+    "obchodniJmeno": "Komerční železniční výzkum, spol. s r.o."
+  },
+  {
+    "ico": "48390453",
+    "obchodniJmeno": "KOMERČNÍ DOMY ROŽNOV, spol. s r.o."
+  },
+  {
+    "ico": "60192275",
+    "obchodniJmeno": "První česká komerční, a.s."
+  },
+  {
+    "ico": "62419668",
+    "obchodniJmeno": "Komerční kancelář KKK,s.r.o."
+  },
+  {
+    "ico": "63080214",
+    "obchodniJmeno": "Technicko - komerční centrum a.s. v likvidaci"
+  },
+  {
+    "ico": "63998017",
+    "obchodniJmeno": "Komerční pojišťovna, a.s."
+  },
+  {
+    "ico": "64575357",
+    "obchodniJmeno": "UNOFIN, komerční a obchodní spol. s r.o."
+  },
+  {
+    "ico": "45244782",
+    "obchodniJmeno": "Česká spořitelna, a.s."
+  },
+  {
+    "ico": "47115289",
+    "obchodniJmeno": "MONETA Stavební Spořitelna, a.s."
+  },
+  {
+    "ico": "49241257",
+    "obchodniJmeno": "Raiffeisen stavební spořitelna a.s."
+  },
+  {
+    "ico": "49241397",
+    "obchodniJmeno": "ČSOB Stavební spořitelna, a.s."
+  },
+  {
+    "ico": "60192852",
+    "obchodniJmeno": "Modrá pyramida stavební spořitelna, a.s."
+  },
+  {
+    "ico": "60197609",
+    "obchodniJmeno": "Stavební spořitelna České spořitelny, a.s."
+  },
+  {
+    "ico": "61672033",
+    "obchodniJmeno": "Česká spořitelna - penzijní společnost, a.s."
+  },
+  {
+    "ico": "13584324",
+    "obchodniJmeno": "ČSOB Hypoteční banka, a.s."
+  },
+  {
+    "ico": "25677888",
+    "obchodniJmeno": "ČSOB Asset Management, a.s., investiční společnost"
+  },
+  {
+    "ico": "27081907",
+    "obchodniJmeno": "ČSOB Advisory, a.s."
+  },
+  {
+    "ico": "27151221",
+    "obchodniJmeno": "ČSOB Pojišťovací makléř, s.r.o."
+  },
+  {
+    "ico": "27479714",
+    "obchodniJmeno": "ČSOB Pojišťovací servis, s.r.o., člen holdingu ČSOB"
+  },
+  {
+    "ico": "45534306",
+    "obchodniJmeno": "ČSOB Pojišťovna, a. s., člen holdingu ČSOB"
+  },
+  {
+    "ico": "45794278",
+    "obchodniJmeno": "ČSOB Factoring, a.s."
+  },
+  {
+    "ico": "61859265",
+    "obchodniJmeno": "ČSOB Penzijní společnost, a. s., člen skupiny ČSOB"
+  },
+  {
+    "ico": "63998980",
+    "obchodniJmeno": "ČSOB Leasing, a.s."
+  },
+  {
+    "ico": "25788001",
+    "obchodniJmeno": "Vodafone Czech Republic a.s."
+  },
+  {
+    "ico": "27082440",
+    "obchodniJmeno": "Alza.cz a.s."
+  },
+  {
+    "ico": "46960643",
+    "obchodniJmeno": "MS - alza, s.r.o."
+  },
+  {
+    "ico": "06279589",
+    "obchodniJmeno": "Kovovýroba Rohlík s.r.o."
+  },
+  {
+    "ico": "01865790",
+    "obchodniJmeno": "Mall Invest, s.r.o."
+  },
+  {
+    "ico": "02102706",
+    "obchodniJmeno": "Mall Investment, s.r.o."
+  },
+  {
+    "ico": "04472080",
+    "obchodniJmeno": "REALITY MALL s.r.o."
+  },
+  {
+    "ico": "05737486",
+    "obchodniJmeno": "KN MALL s.r.o."
+  },
+  {
+    "ico": "06138209",
+    "obchodniJmeno": "DIGI Mall, s.r.o."
+  },
+  {
+    "ico": "06502156",
+    "obchodniJmeno": "Balentes Mall s.r.o."
+  },
+  {
+    "ico": "06536387",
+    "obchodniJmeno": "Lorde Mall s.r.o. v likvidaci"
+  },
+  {
+    "ico": "06679978",
+    "obchodniJmeno": "Mall Vienna Brno a.s."
+  },
+  {
+    "ico": "07175469",
+    "obchodniJmeno": "Dream Mall s.r.o."
+  },
+  {
+    "ico": "07346212",
+    "obchodniJmeno": "JOY MALL s.r.o."
+  },
+  {
+    "ico": "08104069",
+    "obchodniJmeno": "Shopping Mall Plzeň s.r.o."
+  },
+  {
+    "ico": "08166129",
+    "obchodniJmeno": "GALAXY MALL s.r.o."
+  },
+  {
+    "ico": "08323348",
+    "obchodniJmeno": "Attractive Mall s.r.o."
+  },
+  {
+    "ico": "08361771",
+    "obchodniJmeno": "Plus4U Mall s.r.o."
+  },
+  {
+    "ico": "08394768",
+    "obchodniJmeno": "Mall Advisors s.r.o."
+  },
+  {
+    "ico": "08489581",
+    "obchodniJmeno": "Mall REVOLUTION s.r.o. v likvidaci"
+  },
+  {
+    "ico": "08589615",
+    "obchodniJmeno": "CLIMAX MALL s.r.o. v likvidaci"
+  },
+  {
+    "ico": "08598207",
+    "obchodniJmeno": "SIMPLY MALL s.r.o."
+  },
+  {
+    "ico": "08735395",
+    "obchodniJmeno": "WONDERFUL MALL s.r.o."
+  },
+  {
+    "ico": "08856249",
+    "obchodniJmeno": "Forefront Mall s.r.o."
+  },
+  {
+    "ico": "09043071",
+    "obchodniJmeno": "Minute Mall s.r.o."
+  },
+  {
+    "ico": "09930485",
+    "obchodniJmeno": "All Mall s.r.o."
+  },
+  {
+    "ico": "09975608",
+    "obchodniJmeno": "Lucia Mall s.r.o."
+  },
+  {
+    "ico": "09977147",
+    "obchodniJmeno": "Stanley Mall s.r.o."
+  },
+  {
+    "ico": "09989439",
+    "obchodniJmeno": "LITTLE BIG MALL s.r.o."
+  },
+  {
+    "ico": "10708952",
+    "obchodniJmeno": "CLEARVIEW MALL s.r.o."
+  },
+  {
+    "ico": "10731784",
+    "obchodniJmeno": "Shopping Mall Karlovy Vary s.r.o."
+  },
+  {
+    "ico": "10731792",
+    "obchodniJmeno": "Shopping Mall Ostrava s.r.o."
+  },
+  {
+    "ico": "10731806",
+    "obchodniJmeno": "Shopping Mall Opava s.r.o."
+  },
+  {
+    "ico": "10731814",
+    "obchodniJmeno": "Shopping Mall Chrudim s.r.o."
+  },
+  {
+    "ico": "10731822",
+    "obchodniJmeno": "Shopping Mall Eden s.r.o."
+  },
+  {
+    "ico": "10787755",
+    "obchodniJmeno": "Pure ECO Mall s.r.o."
+  },
+  {
+    "ico": "14065720",
+    "obchodniJmeno": "URBAN MALL s.r.o. v likvidaci"
+  },
+  {
+    "ico": "14206293",
+    "obchodniJmeno": "Top Shop Mall s.r.o."
+  },
+  {
+    "ico": "22298886",
+    "obchodniJmeno": "APA MALL group a.s."
+  },
+  {
+    "ico": "25118498",
+    "obchodniJmeno": "Street mall concept a.s."
+  },
+  {
+    "ico": "25890174",
+    "obchodniJmeno": "24 mall s.r.o."
+  },
+  {
+    "ico": "26161478",
+    "obchodniJmeno": "Euro Mall Brno Real Estate, s.r.o."
+  },
+  {
+    "ico": "27085414",
+    "obchodniJmeno": "Property Mall a.s."
+  },
+  {
+    "ico": "27439348",
+    "obchodniJmeno": "MALL s.r.o."
+  },
+  {
+    "ico": "27864600",
+    "obchodniJmeno": "Euro Mall City s.r.o."
+  },
+  {
+    "ico": "28459466",
+    "obchodniJmeno": "Benešov Shopping Mall, a.s."
+  },
+  {
+    "ico": "49282417",
+    "obchodniJmeno": "Úpavan mall s.r.o."
+  },
+  {
+    "ico": "27250423",
+    "obchodniJmeno": "HEUREKA Brokerage & Consulting, s.r.o."
+  },
+  {
+    "ico": "01673408",
+    "obchodniJmeno": "Seznam.cz datová centra, s.r.o."
+  },
+  {
+    "ico": "02238586",
+    "obchodniJmeno": "Seznam.cz investiční, s.r.o."
+  },
+  {
+    "ico": "03562662",
+    "obchodniJmeno": "Seznam firem Czech s.r.o."
+  },
+  {
+    "ico": "06387233",
+    "obchodniJmeno": "Seznam.cz TV, s.r.o."
+  },
+  {
+    "ico": "06501524",
+    "obchodniJmeno": "seznam dluhů s.r.o."
+  },
+  {
+    "ico": "11937653",
+    "obchodniJmeno": "Seznam.cz média, a.s."
+  },
+  {
+    "ico": "13974475",
+    "obchodniJmeno": "Seznam Zprávy, a.s."
+  },
+  {
+    "ico": "24378348",
+    "obchodniJmeno": "SEZNAM FIREM s.r.o."
+  },
+  {
+    "ico": "24820652",
+    "obchodniJmeno": "SEZNAM.TAXI s.r.o."
+  },
+  {
+    "ico": "26168685",
+    "obchodniJmeno": "Seznam.cz, a.s."
+  },
+  {
+    "ico": "14106027",
+    "obchodniJmeno": "MaFra Gerüstbau s.r.o."
+  },
+  {
+    "ico": "25717421",
+    "obchodniJmeno": "MAFRA, spol. s r.o."
+  },
+  {
+    "ico": "25932519",
+    "obchodniJmeno": "MAFRA Trans s.r.o. v likvidaci"
+  },
+  {
+    "ico": "45313351",
+    "obchodniJmeno": "MAFRA, a.s."
+  },
+  {
+    "ico": "24261980",
+    "obchodniJmeno": "Kofola ČeskoSlovensko a.s."
+  },
+  {
+    "ico": "27767680",
+    "obchodniJmeno": "Kofola a.s."
+  },
+  {
+    "ico": "02179075",
+    "obchodniJmeno": "Plzeňský TEN EXPRES Zbůch s.r.o."
+  },
+  {
+    "ico": "04085299",
+    "obchodniJmeno": "Plzeňský SOMMELIER s.r.o."
+  },
+  {
+    "ico": "04788621",
+    "obchodniJmeno": "Moderní fotbal Plzeňský, s.r.o."
+  },
+  {
+    "ico": "06111696",
+    "obchodniJmeno": "Plzeňský bandita s.r.o."
+  },
+  {
+    "ico": "07597274",
+    "obchodniJmeno": "Plzeňský úklid s.r.o."
+  },
+  {
+    "ico": "08258155",
+    "obchodniJmeno": "PLZEŇSKÝ ŠENK s.r.o."
+  },
+  {
+    "ico": "09114408",
+    "obchodniJmeno": "Plzeňský Perník s.r.o."
+  },
+  {
+    "ico": "11636017",
+    "obchodniJmeno": "Plzeňský obchůdek s.r.o."
+  },
+  {
+    "ico": "11785811",
+    "obchodniJmeno": "Plzeňský Skleník s.r.o."
+  },
+  {
+    "ico": "11793678",
+    "obchodniJmeno": "Plzeňský úklid Plus s.r.o."
+  },
+  {
+    "ico": "14078503",
+    "obchodniJmeno": "Plzeňský bagr s.r.o."
+  },
+  {
+    "ico": "23217430",
+    "obchodniJmeno": "Plzeňský kutil s.r.o."
+  },
+  {
+    "ico": "25202448",
+    "obchodniJmeno": "Plzeňský lesprojekt, a.s."
+  },
+  {
+    "ico": "25205307",
+    "obchodniJmeno": "Plzeňský TEN EXPRES s.r.o."
+  },
+  {
+    "ico": "25210653",
+    "obchodniJmeno": "Plzeňský konzum s.r.o. \"v likvidaci\""
+  },
+  {
+    "ico": "25211901",
+    "obchodniJmeno": "Plzeňský ATAC-IN s.r.o."
+  },
+  {
+    "ico": "25231871",
+    "obchodniJmeno": "PLZEŇSKÝ \"K\" KLUB, spol. s r.o. v likvidaci"
+  },
+  {
+    "ico": "25244426",
+    "obchodniJmeno": "PLZEŇSKÝ DVŮR a.s."
+  },
+  {
+    "ico": "26315483",
+    "obchodniJmeno": "Plzeňský SPPS s.r.o."
+  },
+  {
+    "ico": "26334372",
+    "obchodniJmeno": "Plzeňský nábytek s.r.o."
+  },
+  {
+    "ico": "26336588",
+    "obchodniJmeno": "PLZEŇSKÝ GOLF PARK, a.s."
+  },
+  {
+    "ico": "26356333",
+    "obchodniJmeno": "PLZEŇSKÝ TOPGAS, s. r. o."
+  },
+  {
+    "ico": "26382881",
+    "obchodniJmeno": "PLZEŇSKÝ IKUS s.r.o."
+  },
+  {
+    "ico": "29110513",
+    "obchodniJmeno": "PLZEŇSKÝ VELBLOUD s.r.o."
+  },
+  {
+    "ico": "45357340",
+    "obchodniJmeno": "Plzeňský projektový atelier a. s."
+  },
+  {
+    "ico": "45357366",
+    "obchodniJmeno": "Plzeňský Prazdroj, a. s."
+  },
+  {
+    "ico": "47053313",
+    "obchodniJmeno": "P.R.I.plzeňský Real-Invest s.r.o."
+  },
+  {
+    "ico": "61171395",
+    "obchodniJmeno": "Plzeňský Elektroodbyt, spol. s r.o."
+  },
+  {
+    "ico": "61172405",
+    "obchodniJmeno": "Plzeňský VOTOP s.r.o."
+  },
+  {
+    "ico": "64357350",
+    "obchodniJmeno": "Plzeňský skart a.s."
+  },
+  {
+    "ico": "64835359",
+    "obchodniJmeno": "Plzeňský servis, s.r.o."
+  },
+  {
+    "ico": "24240711",
+    "obchodniJmeno": "Pivovary Staropramen s.r.o."
+  },
+  {
+    "ico": "04935004",
+    "obchodniJmeno": "Lidl E-Commerce Logistics s.r.o."
+  },
+  {
+    "ico": "08750084",
+    "obchodniJmeno": "Lidl International Holding s.r.o."
+  },
+  {
+    "ico": "26135094",
+    "obchodniJmeno": "Lidl Holding s.r.o."
+  },
+  {
+    "ico": "26178541",
+    "obchodniJmeno": "Lidl Česká republika s.r.o."
+  },
+  {
+    "ico": "07757352",
+    "obchodniJmeno": "Kaufland eCommerce Fulfillment CZ s.r.o."
+  },
+  {
+    "ico": "25080181",
+    "obchodniJmeno": "Kaufland Management ČR s.r.o."
+  },
+  {
+    "ico": "04621611",
+    "obchodniJmeno": "Tesco Franchise Stores ČR s.r.o."
+  },
+  {
+    "ico": "25892533",
+    "obchodniJmeno": "TESCO SW a.s."
+  },
+  {
+    "ico": "29147506",
+    "obchodniJmeno": "Tesco Mobile ČR s.r.o."
+  },
+  {
+    "ico": "42634300",
+    "obchodniJmeno": "Tesco trading, spol. s r.o."
+  },
+  {
+    "ico": "45308314",
+    "obchodniJmeno": "Tesco Stores ČR a.s."
+  },
+  {
+    "ico": "02673142",
+    "obchodniJmeno": "Albert Michler distillery Int. s.r.o."
+  },
+  {
+    "ico": "03844218",
+    "obchodniJmeno": "MUDr. Michal Albert s.r.o."
+  },
+  {
+    "ico": "04329741",
+    "obchodniJmeno": "Standbild Galerie Wenzel Morzin & Albert Králiček s.r.o."
+  },
+  {
+    "ico": "06271600",
+    "obchodniJmeno": "Albert Group s.r.o."
+  },
+  {
+    "ico": "06440037",
+    "obchodniJmeno": "ARIALBI - Albert Zefaj s.r.o."
+  },
+  {
+    "ico": "09088164",
+    "obchodniJmeno": "Chaty Albert s.r.o."
+  },
+  {
+    "ico": "00685976",
+    "obchodniJmeno": "BILLA, spol. s r. o."
+  },
+  {
+    "ico": "14042673",
+    "obchodniJmeno": "Billa Clean s.r.o."
+  },
+  {
+    "ico": "41603575",
+    "obchodniJmeno": "Billa Reality spol. s r.o."
+  },
+  {
+    "ico": "06283659",
+    "obchodniJmeno": "Penny Lane - jazyková škola, s.r.o."
+  },
+  {
+    "ico": "08037698",
+    "obchodniJmeno": "Money Penny Agency s.r.o."
+  },
+  {
+    "ico": "09639365",
+    "obchodniJmeno": "REALIA Penny s.r.o."
+  },
+  {
+    "ico": "19805098",
+    "obchodniJmeno": "BD ZA PENNY UNIČOV s.r.o."
+  },
+  {
+    "ico": "25122223",
+    "obchodniJmeno": "Penny Trans, s.r.o. v likvidaci"
+  },
+  {
+    "ico": "25576224",
+    "obchodniJmeno": "Penny Lane, s.r.o."
+  },
+  {
+    "ico": "44125763",
+    "obchodniJmeno": "PENNY, spol. s r.o."
+  },
+  {
+    "ico": "61536911",
+    "obchodniJmeno": "PENNY MUSIC CZ s.r.o."
+  },
+  {
+    "ico": "64945880",
+    "obchodniJmeno": "Penny Market s.r.o."
+  },
+  {
+    "ico": "00570729",
+    "obchodniJmeno": "GLOBUS INTERNATIONAL,spol. s r.o."
+  },
+  {
+    "ico": "04555066",
+    "obchodniJmeno": "KARLSBAD GLOBUS s.r.o."
+  },
+  {
+    "ico": "05513511",
+    "obchodniJmeno": "DK GLOBUS, s.r.o."
+  },
+  {
+    "ico": "07480890",
+    "obchodniJmeno": "GLOBUS TECH s.r.o."
+  },
+  {
+    "ico": "08218544",
+    "obchodniJmeno": "Globus Travel International s.r.o."
+  },
+  {
+    "ico": "21020124",
+    "obchodniJmeno": "Globus pallidus s.r.o."
+  },
+  {
+    "ico": "25074181",
+    "obchodniJmeno": "GLOBUS group, spol.s.r.o. v likvidaci"
+  },
+  {
+    "ico": "25522647",
+    "obchodniJmeno": "GLOBUS bytové družstvo v Prostějově, družstvo"
+  },
+  {
+    "ico": "26355710",
+    "obchodniJmeno": "GLOBUS team s.r.o., v likvidaci"
+  },
+  {
+    "ico": "26357879",
+    "obchodniJmeno": "TANA GLOBUS s.r.o."
+  },
+  {
+    "ico": "27118398",
+    "obchodniJmeno": "GLOBUS SOLINGER s.r.o."
+  },
+  {
+    "ico": "27367509",
+    "obchodniJmeno": "GLOBUS CAR - SERVICE, s.r.o."
+  },
+  {
+    "ico": "27636160",
+    "obchodniJmeno": "GLOBUS TOUR CZ spol. s r.o."
+  },
+  {
+    "ico": "27900371",
+    "obchodniJmeno": "Globus Trade Group, spol. s r.o."
+  },
+  {
+    "ico": "28739094",
+    "obchodniJmeno": "GLOBUS TRAVEL s.r.o."
+  },
+  {
+    "ico": "28749642",
+    "obchodniJmeno": "GLOBUS makléřská společnost s.r.o."
+  },
+  {
+    "ico": "29010357",
+    "obchodniJmeno": "HOTEL GLOBUS, a.s."
+  },
+  {
+    "ico": "47125497",
+    "obchodniJmeno": "GLOBUS, spol. s r.o."
+  },
+  {
+    "ico": "47975156",
+    "obchodniJmeno": "GLOBUS GUINÉE s. r. o."
+  },
+  {
+    "ico": "48906972",
+    "obchodniJmeno": "GLOBUS Holešov, spol. s r.o. v likvidaci"
+  },
+  {
+    "ico": "60320575",
+    "obchodniJmeno": "Knihkupectví GLOBUS s.r.o."
+  },
+  {
+    "ico": "61169030",
+    "obchodniJmeno": "GLOBUS - TRAPP, s.r.o."
+  },
+  {
+    "ico": "63073871",
+    "obchodniJmeno": "Globus Management s.r.o."
+  },
+  {
+    "ico": "63508893",
+    "obchodniJmeno": "RB GLOBUS s.r.o."
+  },
+  {
+    "ico": "18628664",
+    "obchodniJmeno": "IKEA Purchasing Services (Czech Republic) spol. s r.o."
+  },
+  {
+    "ico": "27081052",
+    "obchodniJmeno": "IKEA Česká republika, s.r.o."
+  },
+  {
+    "ico": "24451444",
+    "obchodniJmeno": "Datart Servis Limited s.r.o."
+  },
+  {
+    "ico": "27162303",
+    "obchodniJmeno": "SC - Datart s.r.o."
+  },
+  {
+    "ico": "48589209",
+    "obchodniJmeno": "BAUHAUS - správa podniků, spol. s r.o."
+  },
+  {
+    "ico": "26698129",
+    "obchodniJmeno": "HORNBACH Immobilien HK s.r.o."
+  },
+  {
+    "ico": "47117559",
+    "obchodniJmeno": "HORNBACH BAUMARKT CS spol. s r.o."
+  },
+  {
+    "ico": "01916441",
+    "obchodniJmeno": "Mountfield HK, a.s."
+  },
+  {
+    "ico": "10889353",
+    "obchodniJmeno": "SC Mountfield Kolín s.r.o."
+  },
+  {
+    "ico": "23798823",
+    "obchodniJmeno": "Mountfield Sportovní s.r.o."
+  },
+  {
+    "ico": "25620991",
+    "obchodniJmeno": "Mountfield a.s."
+  },
+  {
+    "ico": "10907718",
+    "obchodniJmeno": "PPF Financial Holdings a.s."
+  },
+  {
+    "ico": "24225657",
+    "obchodniJmeno": "PPF RE Consulting s.r.o."
+  },
+  {
+    "ico": "24908151",
+    "obchodniJmeno": "PPF Holdings a.s."
+  },
+  {
+    "ico": "26978636",
+    "obchodniJmeno": "Home Credit a.s."
+  },
+  {
+    "ico": "60192666",
+    "obchodniJmeno": "Home Credit International a.s."
+  },
+  {
+    "ico": "02415143",
+    "obchodniJmeno": "LIBERTY reality s.r.o."
+  },
+  {
+    "ico": "02542226",
+    "obchodniJmeno": "LIBERTY MB s. r. o."
+  },
+  {
+    "ico": "02791366",
+    "obchodniJmeno": "Liberty charter s.r.o."
+  },
+  {
+    "ico": "03302318",
+    "obchodniJmeno": "Liberty Rent Car s.r.o."
+  },
+  {
+    "ico": "04859626",
+    "obchodniJmeno": "Liberty Market s.r.o."
+  },
+  {
+    "ico": "05275474",
+    "obchodniJmeno": "Liberty Balaton s.r.o. v likvidaci"
+  },
+  {
+    "ico": "06196730",
+    "obchodniJmeno": "Liberty foods a.s."
+  },
+  {
+    "ico": "06737013",
+    "obchodniJmeno": "Liberty Design s.r.o."
+  },
+  {
+    "ico": "07220634",
+    "obchodniJmeno": "WEDOMWILL Liberty s.r.o."
+  },
+  {
+    "ico": "07452241",
+    "obchodniJmeno": "price of liberty s.r.o."
+  },
+  {
+    "ico": "07920474",
+    "obchodniJmeno": "Liberty Steel Czech Republic (Bidco), s.r.o."
+  },
+  {
+    "ico": "08553840",
+    "obchodniJmeno": "Liberty eMpire s.r.o."
+  },
+  {
+    "ico": "08884455",
+    "obchodniJmeno": "Liberty Ratio s.r.o."
+  },
+  {
+    "ico": "08885508",
+    "obchodniJmeno": "Liberty International Caribbean s.r.o."
+  },
+  {
+    "ico": "08944008",
+    "obchodniJmeno": "Liberty Trade s.r.o."
+  },
+  {
+    "ico": "08973750",
+    "obchodniJmeno": "Liberty Hand s.r.o."
+  },
+  {
+    "ico": "09417923",
+    "obchodniJmeno": "Miss Liberty s.r.o."
+  },
+  {
+    "ico": "09492461",
+    "obchodniJmeno": "LIBERTY CLEAN s.r.o."
+  },
+  {
+    "ico": "10794581",
+    "obchodniJmeno": "Perfect Liberty Company s.r.o."
+  },
+  {
+    "ico": "11676868",
+    "obchodniJmeno": "LIBERTY OF THE SEAS s.r.o. \"v likvidaci\""
+  },
+  {
+    "ico": "14396840",
+    "obchodniJmeno": "Stomatologie Liberty s.r.o."
+  },
+  {
+    "ico": "17541255",
+    "obchodniJmeno": "Liberty Int. Invest s.r.o."
+  },
+  {
+    "ico": "17569281",
+    "obchodniJmeno": "Liberty ochrana bohatství, s.r.o."
+  },
+  {
+    "ico": "19271697",
+    "obchodniJmeno": "Liberty Community Management Agency s.r.o."
+  },
+  {
+    "ico": "19320515",
+    "obchodniJmeno": "Liberty Metal Recycling Czech s.r.o."
+  },
+  {
+    "ico": "19356757",
+    "obchodniJmeno": "Auto Liberty s.r.o."
+  },
+  {
+    "ico": "19642636",
+    "obchodniJmeno": "Land of Liberty s.r.o."
+  },
+  {
+    "ico": "21108978",
+    "obchodniJmeno": "Liberty Real Estate s.r.o."
+  },
+  {
+    "ico": "21246963",
+    "obchodniJmeno": "Liberty Agency s.r.o."
+  },
+  {
+    "ico": "21666954",
+    "obchodniJmeno": "Liberty Finance s.r.o."
+  },
+  {
+    "ico": "21704881",
+    "obchodniJmeno": "Liberty Estate s.r.o."
+  },
+  {
+    "ico": "21809453",
+    "obchodniJmeno": "Liberty Capital s.r.o."
+  },
+  {
+    "ico": "21889228",
+    "obchodniJmeno": "Liberty Holding s.r.o."
+  },
+  {
+    "ico": "22018034",
+    "obchodniJmeno": "Real Estate Liberty s.r.o."
+  },
+  {
+    "ico": "22269240",
+    "obchodniJmeno": "V&T Liberty Wealth s.r.o."
+  },
+  {
+    "ico": "22569359",
+    "obchodniJmeno": "Liberty Cafe s.r.o."
+  },
+  {
+    "ico": "23029528",
+    "obchodniJmeno": "Liberty Living s.r.o."
+  },
+  {
+    "ico": "23147342",
+    "obchodniJmeno": "Liberty pest s.r.o."
+  },
+  {
+    "ico": "23439696",
+    "obchodniJmeno": "Liberty Services s.r.o."
+  },
+  {
+    "ico": "23439700",
+    "obchodniJmeno": "Liberty Properties s.r.o."
+  },
+  {
+    "ico": "23793767",
+    "obchodniJmeno": "Liberty Trading s.r.o."
+  },
+  {
+    "ico": "23920912",
+    "obchodniJmeno": "Liberty For You s.r.o."
+  },
+  {
+    "ico": "23940590",
+    "obchodniJmeno": "KLIMA LIBERTY s.r.o."
+  },
+  {
+    "ico": "23997796",
+    "obchodniJmeno": "Liberty Development s.r.o."
+  },
+  {
+    "ico": "24289914",
+    "obchodniJmeno": "Liberty Systems, s.r.o."
+  },
+  {
+    "ico": "24975052",
+    "obchodniJmeno": "Liberty Assets s.r.o."
+  },
+  {
+    "ico": "24975460",
+    "obchodniJmeno": "Liberty Choice s.r.o."
+  },
+  {
+    "ico": "24998915",
+    "obchodniJmeno": "Liberty Apartments s.r.o."
+  },
+  {
+    "ico": "24998940",
+    "obchodniJmeno": "Liberty Residential s.r.o."
+  },
+  {
+    "ico": "25588052",
+    "obchodniJmeno": "LIBERTY ONE CZ s.r.o."
+  },
+  {
+    "ico": "25689355",
+    "obchodniJmeno": "LIBERTY PLAY, s.r.o. v likvidaci"
+  },
+  {
+    "ico": "25745484",
+    "obchodniJmeno": "Liberty Go, s.r.o. v likvidaci"
+  },
+  {
+    "ico": "26140632",
+    "obchodniJmeno": "Liberty Incentives and Congresses spol. s r.o."
+  },
+  {
+    "ico": "26354527",
+    "obchodniJmeno": "LIBERTY - VICTORY s.r.o."
+  },
+  {
+    "ico": "26459426",
+    "obchodniJmeno": "Hotel LIBERTY s.r.o."
+  },
+  {
+    "ico": "26508192",
+    "obchodniJmeno": "Liberty Software s.r.o."
+  },
+  {
+    "ico": "26696801",
+    "obchodniJmeno": "Liberty Fun s.r.o. v likvidaci"
+  },
+  {
+    "ico": "27610004",
+    "obchodniJmeno": "LIBERTY HOMES s.r.o."
+  },
+  {
+    "ico": "28213441",
+    "obchodniJmeno": "Liberty Distribution Ostrava s.r.o."
+  },
+  {
+    "ico": "28902017",
+    "obchodniJmeno": "Liberty group s.r.o. v likvidaci"
+  },
+  {
+    "ico": "29142091",
+    "obchodniJmeno": "Liberty solutions s.r.o."
+  },
+  {
+    "ico": "29496900",
+    "obchodniJmeno": "Liberty Operations s.r.o."
+  },
+  {
+    "ico": "45193258",
+    "obchodniJmeno": "Liberty Ostrava a.s."
+  },
+  {
+    "ico": "62360116",
+    "obchodniJmeno": "Liberty Technotron s.r.o."
+  },
+  {
+    "ico": "62362411",
+    "obchodniJmeno": "Liberty Engineering Products Ostrava s.r.o."
+  },
+  {
+    "ico": "00050806",
+    "obchodniJmeno": "Stavební bytové družstvo Vítkovice"
+  },
+  {
+    "ico": "04962711",
+    "obchodniJmeno": "RK8 REAL Vítkovice s.r.o."
+  },
+  {
+    "ico": "05210011",
+    "obchodniJmeno": "CP partner Vítkovice s.r.o."
+  },
+  {
+    "ico": "05451566",
+    "obchodniJmeno": "VÍTKOVICE MACHINERY TRADE s.r.o."
+  },
+  {
+    "ico": "06199933",
+    "obchodniJmeno": "VÍTKOVICE PRUNÉŘOV s.r.o."
+  },
+  {
+    "ico": "06562451",
+    "obchodniJmeno": "VÍTKOVICE WAGONS GROUP a.s."
+  },
+  {
+    "ico": "06750168",
+    "obchodniJmeno": "Rezidence Vítkovice s.r.o."
+  },
+  {
+    "ico": "06899650",
+    "obchodniJmeno": "Ollies Vítkovice s.r.o."
+  },
+  {
+    "ico": "06955185",
+    "obchodniJmeno": "Psychiatrie Vítkovice s.r.o."
+  },
+  {
+    "ico": "06977731",
+    "obchodniJmeno": "VÍTKOVICE ENERGETICKÉ STROJÍRENSTVÍ a.s."
+  },
+  {
+    "ico": "07370792",
+    "obchodniJmeno": "Taxi Vítkovice s.r.o."
+  },
+  {
+    "ico": "08650357",
+    "obchodniJmeno": "KP Vítkovice s.r.o."
+  },
+  {
+    "ico": "09339175",
+    "obchodniJmeno": "Filmové studio Dolní Vítkovice, s.r.o."
+  },
+  {
+    "ico": "11957638",
+    "obchodniJmeno": "Plotstav - Vítkovice s.r.o."
+  },
+  {
+    "ico": "17180783",
+    "obchodniJmeno": "Nové Vítkovice s.r.o."
+  },
+  {
+    "ico": "19961294",
+    "obchodniJmeno": "Vítkovice Metropolis, s.r.o."
+  },
+  {
+    "ico": "21463387",
+    "obchodniJmeno": "Chalupa Vítkovice s.r.o."
+  },
+  {
+    "ico": "22297324",
+    "obchodniJmeno": "Sportovní služby obce Vítkovice s.r.o."
+  },
+  {
+    "ico": "25269607",
+    "obchodniJmeno": "Služby Vítkovice, s. r. o."
+  },
+  {
+    "ico": "25828258",
+    "obchodniJmeno": "VÍTKOVICE REVMONT a.s."
+  },
+  {
+    "ico": "25849026",
+    "obchodniJmeno": "VÍTKOVICE CYLINDERS a.s."
+  },
+  {
+    "ico": "25870556",
+    "obchodniJmeno": "VÍTKOVICE TESTING CENTER s. r. o."
+  },
+  {
+    "ico": "25871587",
+    "obchodniJmeno": "VÍTKOVICE MECHANIKA a. s."
+  },
+  {
+    "ico": "25877950",
+    "obchodniJmeno": "VÍTKOVICE HEAVY MACHINERY a.s."
+  },
+  {
+    "ico": "25911368",
+    "obchodniJmeno": "VÍTKOVICE ARÉNA, a.s."
+  },
+  {
+    "ico": "26805910",
+    "obchodniJmeno": "STROJÍRNA Vítkovice, s.r.o."
+  },
+  {
+    "ico": "26823357",
+    "obchodniJmeno": "VÍTKOVICE POWER ENGINEERING a.s."
+  },
+  {
+    "ico": "26861836",
+    "obchodniJmeno": "HC VÍTKOVICE RIDERA a.s."
+  },
+  {
+    "ico": "26862026",
+    "obchodniJmeno": "VÍTKOVICE KCK s.r.o."
+  },
+  {
+    "ico": "27677257",
+    "obchodniJmeno": "Vítkovice - výzkum a vývoj - technické aplikace a. s."
+  },
+  {
+    "ico": "27801454",
+    "obchodniJmeno": "VÍTKOVICE STEEL, a. s."
+  },
+  {
+    "ico": "27807088",
+    "obchodniJmeno": "VÍTKOVICE HAMMERING a.s."
+  },
+  {
+    "ico": "27821323",
+    "obchodniJmeno": "VÍTKOVICE ACCOUNTING a.s."
+  },
+  {
+    "ico": "27845206",
+    "obchodniJmeno": "VÍTKOVICE NP a.s."
+  },
+  {
+    "ico": "27910628",
+    "obchodniJmeno": "MLÝN - VÍTKOVICE a.s."
+  },
+  {
+    "ico": "28594193",
+    "obchodniJmeno": "Městský fotbalový klub Vítkovice a.s."
+  },
+  {
+    "ico": "28606582",
+    "obchodniJmeno": "VÍTKOVICE IT SOLUTIONS a.s."
+  },
+  {
+    "ico": "28647491",
+    "obchodniJmeno": "UCED Vítkovice a.s."
+  },
+  {
+    "ico": "41033116",
+    "obchodniJmeno": "Veterinární klinika Vítkovice, s.r.o."
+  },
+  {
+    "ico": "45193070",
+    "obchodniJmeno": "VÍTKOVICE, a.s."
+  },
+  {
+    "ico": "47683741",
+    "obchodniJmeno": "TSČ Vítkovice s. r. o."
+  },
+  {
+    "ico": "49814974",
+    "obchodniJmeno": "AGROTRANS spol. s r.o. Vítkovice v Krkonoších"
+  },
+  {
+    "ico": "61972941",
+    "obchodniJmeno": "TENISOVÝ KLUB VÍTKOVICE - TK VÍTKOVICE, spol. s r.o."
+  },
+  {
+    "ico": "18050646",
+    "obchodniJmeno": "TŘINECKÉ ŽELEZÁRNY, a. s."
+  },
+  {
+    "ico": "25838148",
+    "obchodniJmeno": "Třinecké gastroslužby, s.r.o."
+  },
+  {
+    "ico": "01482840",
+    "obchodniJmeno": "TATRA TRUCKS a.s."
+  },
+  {
+    "ico": "03667952",
+    "obchodniJmeno": "TATRA METALURGIE a.s."
+  },
+  {
+    "ico": "03999203",
+    "obchodniJmeno": "TATRA AVIATION a.s."
+  },
+  {
+    "ico": "05127394",
+    "obchodniJmeno": "TATRA MANUFACTURE a.s."
+  },
+  {
+    "ico": "08501858",
+    "obchodniJmeno": "Tatra kolem světa 2 s.r.o."
+  },
+  {
+    "ico": "08993289",
+    "obchodniJmeno": "TATRA DEFENCE SYSTEMS s.r.o."
+  },
+  {
+    "ico": "13994271",
+    "obchodniJmeno": "TATRA ENGINEERING s.r.o."
+  },
+  {
+    "ico": "14316226",
+    "obchodniJmeno": "TATRA DEFENCE PROJECTS s.r.o."
+  },
+  {
+    "ico": "14364255",
+    "obchodniJmeno": "TATRA MACHINERY s.r.o."
+  },
+  {
+    "ico": "17120209",
+    "obchodniJmeno": "TATRA a.s."
+  },
+  {
+    "ico": "17652049",
+    "obchodniJmeno": "Tatra Capital Invest a.s."
+  },
+  {
+    "ico": "19210221",
+    "obchodniJmeno": "TATRA CLASSIC s.r.o."
+  },
+  {
+    "ico": "23922753",
+    "obchodniJmeno": "Tatra Asset Management SICAV a.s."
+  },
+  {
+    "ico": "24152269",
+    "obchodniJmeno": "TATRA DEFENCE VEHICLE a.s."
+  },
+  {
+    "ico": "24689378",
+    "obchodniJmeno": "Tatra Invest s.r.o."
+  },
+  {
+    "ico": "25651013",
+    "obchodniJmeno": "TATRA BAU CZ, spol. s r.o."
+  },
+  {
+    "ico": "25716948",
+    "obchodniJmeno": "TATRA REAL s.r.o."
+  },
+  {
+    "ico": "25858874",
+    "obchodniJmeno": "HOTEL TATRA KOPŘIVNICE, s.r.o."
+  },
+  {
+    "ico": "27388816",
+    "obchodniJmeno": "TATRA EXPORT s.r.o."
+  },
+  {
+    "ico": "27388913",
+    "obchodniJmeno": "TATRA Holdings s.r.o."
+  },
+  {
+    "ico": "28303717",
+    "obchodniJmeno": "Tatra Capital Slovakia s.r.o."
+  },
+  {
+    "ico": "07544014",
+    "obchodniJmeno": "RegioJet ÚK a.s."
+  },
+  {
+    "ico": "07555831",
+    "obchodniJmeno": "RegioJet Pool a.s."
+  },
+  {
+    "ico": "08014639",
+    "obchodniJmeno": "RegioJet Finance a.s."
+  },
+  {
+    "ico": "08509123",
+    "obchodniJmeno": "RegioJet MD a.s."
+  },
+  {
+    "ico": "08509140",
+    "obchodniJmeno": "RegioJet EU a.s."
+  },
+  {
+    "ico": "13994824",
+    "obchodniJmeno": "RegioJet Finance 2 a.s."
+  },
+  {
+    "ico": "28333187",
+    "obchodniJmeno": "RegioJet a.s."
+  },
+  {
+    "ico": "29379261",
+    "obchodniJmeno": "RegioJet holding a.s."
+  },
+  {
+    "ico": "08894981",
+    "obchodniJmeno": "STUDENT AGENCY holding a.s."
+  },
+  {
+    "ico": "17164800",
+    "obchodniJmeno": "Smart Student Agency s.r.o."
+  },
+  {
+    "ico": "01823752",
+    "obchodniJmeno": "EPG Letiště servis s.r.o."
+  },
+  {
+    "ico": "01932144",
+    "obchodniJmeno": "Přeprava na letiště s.r.o."
+  },
+  {
+    "ico": "02810891",
+    "obchodniJmeno": "Taxi letiště, s.r.o. v likvidaci"
+  },
+  {
+    "ico": "03923185",
+    "obchodniJmeno": "LETIŠTĚ MILOVICE a.s."
+  },
+  {
+    "ico": "04451821",
+    "obchodniJmeno": "Letiště Kunětice s.r.o."
+  },
+  {
+    "ico": "07031696",
+    "obchodniJmeno": "Letiště Slušovice s.r.o."
+  },
+  {
+    "ico": "07131470",
+    "obchodniJmeno": "Letiště Chrášťany s.r.o."
+  },
+  {
+    "ico": "07718241",
+    "obchodniJmeno": "EGM Letiště služby s.r.o."
+  },
+  {
+    "ico": "07840284",
+    "obchodniJmeno": "LETIŠTĚ KAPLICE s.r.o."
+  },
+  {
+    "ico": "08767190",
+    "obchodniJmeno": "Letiště Praha-Milovice holding a.s."
+  },
+  {
+    "ico": "09026975",
+    "obchodniJmeno": "Letiště Milovice Holding a.s."
+  },
+  {
+    "ico": "17389682",
+    "obchodniJmeno": "Operátor Letiště Vrchlabí s.r.o."
+  },
+  {
+    "ico": "19527977",
+    "obchodniJmeno": "Letiště Mariánské Lázně, s.r.o. v likvidaci"
+  },
+  {
+    "ico": "21333408",
+    "obchodniJmeno": "Letiště VD 1 s.r.o."
+  },
+  {
+    "ico": "21333424",
+    "obchodniJmeno": "Letiště VD 2 s.r.o."
+  },
+  {
+    "ico": "21333467",
+    "obchodniJmeno": "Letiště VD 3 s.r.o."
+  },
+  {
+    "ico": "22125388",
+    "obchodniJmeno": "MAX FITNESS LETIŠTĚ RUZYNĚ s.r.o."
+  },
+  {
+    "ico": "23480611",
+    "obchodniJmeno": "Byty u letiště s.r.o."
+  },
+  {
+    "ico": "24156973",
+    "obchodniJmeno": "Letiště Velká Dobrá s.r.o."
+  },
+  {
+    "ico": "24678350",
+    "obchodniJmeno": "Letiště Praha Letňany, s.r.o."
+  },
+  {
+    "ico": "25222767",
+    "obchodniJmeno": "LETIŠTĚ TACHOV s.r.o."
+  },
+  {
+    "ico": "25270427",
+    "obchodniJmeno": "Bytové družstvo U Letiště"
+  },
+  {
+    "ico": "25494180",
+    "obchodniJmeno": "RH - parkování u letiště  s.r.o."
+  },
+  {
+    "ico": "26002345",
+    "obchodniJmeno": "LETIŠTĚ HRADEC KRÁLOVÉ, s.r.o."
+  },
+  {
+    "ico": "46900411",
+    "obchodniJmeno": "Kostelecké uzeniny a.s."
+  },
+  {
+    "ico": "45148210",
+    "obchodniJmeno": "ZZN Polabí, a.s."
+  },
+  {
+    "ico": "49100262",
+    "obchodniJmeno": "Lovochemie, a.s."
+  },
+  {
+    "ico": "46967851",
+    "obchodniJmeno": "PENAM, a.s."
+  },
+  {
+    "ico": "47114983",
+    "obchodniJmeno": "Česká pošta, s.p."
+  },
+  {
+    "ico": "45274649",
+    "obchodniJmeno": "ČEZ, a. s."
+  },
+  {
+    "ico": "27232433",
+    "obchodniJmeno": "ČEZ Prodej, a.s."
+  },
+  {
+    "ico": "61858374",
+    "obchodniJmeno": "Fio banka, a.s."
+  },
+  {
+    "ico": "47672234",
+    "obchodniJmeno": "Česká průmyslová zdravotní pojišťovna"
+  },
+  {
+    "ico": "00001350",
+    "obchodniJmeno": "Československá obchodní banka, a. s."
+  },
+  {
+    "ico": "26077655",
+    "obchodniJmeno": "Společenství vlastníků domu Plešivec 288 v Českém Krumlově"
+  },
+  {
+    "ico": "60193336",
+    "obchodniJmeno": "O2 Czech Republic a.s."
+  },
+  {
+    "ico": "44012373",
+    "obchodniJmeno": "Albert Česká republika, s.r.o."
+  },
+  {
+    "ico": "25110161",
+    "obchodniJmeno": "Kaufland Česká republika v.o.s."
+  },
+  {
+    "ico": "63080249",
+    "obchodniJmeno": "Kongresové centrum Praha, a.s."
+  },
+  {
+    "ico": "47115424",
+    "obchodniJmeno": "DEMOPHA,a.s. \" v likvidaci\""
+  },
+  {
+    "ico": "61057398",
+    "obchodniJmeno": "LUNA DEVELOPMENT, s.r.o."
+  },
+  {
+    "ico": "62623753",
+    "obchodniJmeno": "ŠKODA TRANSPORTATION a.s."
+  },
+  {
+    "ico": "45272956",
+    "obchodniJmeno": "Generali Česká pojišťovna a.s."
+  },
+  {
+    "ico": "47116901",
+    "obchodniJmeno": "Vodohospodářský rozvoj a výstavba a.s."
+  },
+  {
+    "ico": "27442195",
+    "obchodniJmeno": "2FRESH s.r.o."
+  },
+  {
+    "ico": "25938509",
+    "obchodniJmeno": "BMJ Krkonoše Bau s.r.o."
+  }
 ]
