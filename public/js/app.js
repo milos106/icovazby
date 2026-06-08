@@ -1,12 +1,12 @@
 /**
- * ares-web — Alpine.js controllers and API glue.
+ * icovazby — Alpine.js controllers and API glue.
  * Vanilla, no build step. Loaded from /public/js/app.js.
  */
 
 const ICO_RE = /^\d{7,8}$/;
-const STORAGE_RECENT = "ares-web:recent";
-const STORAGE_BOOKMARKS = "ares-web:bookmarks";
-const STORAGE_DD_COLLAPSE = "ares-web:dd-collapsed";
+const STORAGE_RECENT = "icovazby:recent";
+const STORAGE_BOOKMARKS = "icovazby:bookmarks";
+const STORAGE_DD_COLLAPSE = "icovazby:dd-collapsed";
 const RECENT_LIMIT = 10;
 
 // Alpine store pro stav rozbalení DD karet — persistovaný v localStorage.
@@ -84,7 +84,7 @@ document.addEventListener("alpine:init", () => {
   });
 });
 
-const STORAGE_HS_TOKEN = "ares-web:hs-token";
+const STORAGE_HS_TOKEN = "icovazby:hs-token";
 
 /**
  * Wrapped fetch: ke každému API requestu přidá X-Hlidac-Token hlavičku,
@@ -1130,7 +1130,7 @@ function themeToggle() {
       this.isDark = !this.isDark;
       document.documentElement.classList.toggle("dark", this.isDark);
       try {
-        localStorage.setItem("ares-web:theme", this.isDark ? "dark" : "light");
+        localStorage.setItem("icovazby:theme", this.isDark ? "dark" : "light");
       } catch {
         /* private mode, ignore */
       }

@@ -8,11 +8,25 @@
       name="description"
       content="Bezplatný nástroj pro prověrku českých firem a jejich propojení: profil, risk skóre, mapa propojení statutárů, holding discovery, detekce virtuálních adres."
     />
-    <!-- FOUC-free theme init: must run before any styles render -->
+    <!-- FOUC-free theme init: must run před any styles render.
+         Plus migrace localStorage: ares-web:* → icovazby:* (rename projektu). -->
     <script>
       (function () {
         try {
-          var saved = localStorage.getItem("ares-web:theme");
+          // Migrace starých klíčů, pokud uživatel přišel z verze před renamem
+          var legacyKeys = ["theme", "recent", "bookmarks", "dd-collapsed", "hs-token"];
+          for (var i = 0; i < legacyKeys.length; i++) {
+            var old = "ares-web:" + legacyKeys[i];
+            var fresh = "icovazby:" + legacyKeys[i];
+            if (localStorage.getItem(fresh) === null) {
+              var v = localStorage.getItem(old);
+              if (v !== null) localStorage.setItem(fresh, v);
+            }
+            localStorage.removeItem(old);
+          }
+        } catch (e) {}
+        try {
+          var saved = localStorage.getItem("icovazby:theme");
           var prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
           if (saved === "dark" || (saved !== "light" && prefersDark)) {
             document.documentElement.classList.add("dark");
