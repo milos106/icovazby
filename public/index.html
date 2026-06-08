@@ -1596,29 +1596,42 @@
             </template>
 
             <!-- Holding discovery: rozkrýt subsidiaries → seed do Mapy
-                 propojení. BFS po jednatelích + akcionářích, depth volitelná. -->
-            <div class="border-t dark:border-slate-700 pt-3" x-data="holdingDiscovery()">
+                 propojení. Auto-trigger pro a.s. s ≥5 jednateli (ares-report-
+                 loaded event). Depth selector skryt pod Pokročilé. -->
+            <div class="border-t dark:border-slate-700 pt-3" x-data="holdingDiscovery()" x-init="init()">
               <div class="flex items-center gap-2 flex-wrap">
-                <span class="text-sm font-semibold">🔍 Rozkrýt holding:</span>
-                <label class="text-xs flex items-center gap-1">
-                  Hloubka
-                  <select x-model.number="depth" class="px-2 py-1 border dark:border-slate-600 dark:bg-slate-900 rounded text-xs">
-                    <option value="1">1 — přímé subsidiaries</option>
-                    <option value="2">2 — i pod-subsidiaries (default)</option>
-                    <option value="3">3 — hluboko (pomalé)</option>
-                  </select>
-                </label>
+                <span class="text-sm font-semibold">🔍 Rozkrýt holding</span>
+                <template x-if="autoTriggered">
+                  <span class="text-xs px-1.5 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
+                    auto
+                  </span>
+                </template>
                 <button
                   @click="run(report.ico)"
                   :disabled="loading"
-                  class="px-3 py-1.5 bg-purple-600 text-white rounded text-sm hover:bg-purple-700 disabled:opacity-50"
-                  x-text="loading ? 'Hledám…' : 'Rozkrýt a vykreslit'"
+                  class="px-3 py-1.5 bg-purple-600 text-white rounded-lg text-sm hover:bg-purple-700 active:bg-purple-800 disabled:opacity-50 transition-colors"
+                  x-text="loading ? 'Hledám…' : (result ? 'Znovu rozkrýt' : 'Rozkrýt a vykreslit')"
                 ></button>
+                <button
+                  type="button"
+                  @click="showAdvanced = !showAdvanced"
+                  class="text-xs text-slate-500 dark:text-slate-400 underline hover:text-slate-700 dark:hover:text-slate-200"
+                  x-text="showAdvanced ? '✕ Skrýt pokročilé' : 'Pokročilé'"
+                ></button>
+                <label x-show="showAdvanced" x-cloak class="text-xs flex items-center gap-1">
+                  Hloubka
+                  <select x-model.number="depth" class="px-2 py-1 border dark:border-slate-600 dark:bg-slate-900 rounded text-xs">
+                    <option value="1">1 — přímé</option>
+                    <option value="2">2 — default</option>
+                    <option value="3">3 — hluboko</option>
+                  </select>
+                </label>
                 <span class="text-xs text-slate-500 dark:text-slate-400" x-show="result">
                   Nalezeno <span class="font-semibold" x-text="result?.totalIcos"></span> firem
-                  (high: <span x-text="result?.discovered?.filter(c=>c.confidence==='high').length"></span>,
-                  med: <span x-text="result?.discovered?.filter(c=>c.confidence==='medium').length"></span>,
-                  low: <span x-text="result?.discovered?.filter(c=>c.confidence==='low').length"></span>),
+                  (<span class="text-emerald-700 dark:text-emerald-400 font-medium" x-text="result?.discovered?.filter(c=>c.confidence==='high').length"></span>
+                  high<template x-if="result?.discovered?.filter(c=>c.confidence==='medium').length">
+                    <span>, <span x-text="result?.discovered?.filter(c=>c.confidence==='medium').length"></span> med</span>
+                  </template>),
                   prošlo <span x-text="result?.walkedFirms"></span> firem za <span x-text="elapsed"></span>&nbsp;s
                 </span>
                 <span class="text-xs text-rose-700 dark:text-rose-400" x-show="error" x-text="error"></span>

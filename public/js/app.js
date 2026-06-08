@@ -328,6 +328,17 @@ function ddSection() {
         recordVisit({ ico: this.report.ico, obchodniJmeno: this.report.obchodniJmeno });
         updateUrl({ ico: this.report.ico, action: "profil" });
         document.getElementById("profil")?.scrollIntoView({ behavior: "smooth", block: "start" });
+        // Ulož „latest profile" na window, ať holdingDiscovery, který se
+        // vyrenderuje až po template x-if="report", ho mohl číst při init().
+        // (Bare event dispatch by se mohl ztratit — Alpine ještě nestihla
+        // template vyrenderovat, takže listener není zaregistrován.)
+        const reportDetail = {
+          ico: this.report.ico,
+          pravniForma: this.report.identification?.pravniForma,
+          aktivniCount: this.report.statutary?.aktivniCount || 0,
+        };
+        window.__aresLatestReport = reportDetail;
+        window.dispatchEvent(new CustomEvent("ares-report-loaded", { detail: reportDetail }));
       } catch (e) {
         this.error = e.message;
       } finally {
@@ -742,6 +753,34 @@ function holdingDiscovery() {
     error: "",
     result: null,
     elapsed: 0,
+    showAdvanced: false,
+    lastRunIco: null,
+    autoTriggered: false,
+    /**
+     * Init: poslouchá ares-report-loaded event (z ddSection.run()).
+     * Pokud je firma „holding-likely" (a.s. s ≥5 aktivními jednateli),
+     * automaticky spustí Rozkrýt. Pro OSVČ / drobné s.r.o. skip.
+     */
+    init() {
+      window.addEventListener("ares-report-loaded", (e) => this.maybeAutoRun(e.detail));
+      // Recovery: pokud ddSection už event vystřelila ještě než se
+      // holdingDiscovery zaregistroval, vezmeme cached snapshot z windowu.
+      if (window.__aresLatestReport) {
+        this.maybeAutoRun(window.__aresLatestReport);
+      }
+    },
+    maybeAutoRun(detail) {
+      if (!detail?.ico) return;
+      if (this.lastRunIco === detail.ico) return;
+      // Heuristika: a.s. (ARES kód 121, ale akceptujeme i textovou variantu
+      // „AS") s ≥5 aktivními členy představenstva. Tipicky parent holdingu.
+      const pf = String(detail.pravniForma || "");
+      const isAS = pf === "121" || pf === "AS" || /^121$/.test(pf);
+      const isLikelyHolding = isAS && (detail.aktivniCount || 0) >= 5;
+      if (!isLikelyHolding) return;
+      this.autoTriggered = true;
+      this.run(detail.ico);
+    },
     async run(parentIco) {
       if (!parentIco) return;
       this.loading = true;
