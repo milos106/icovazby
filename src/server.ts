@@ -204,6 +204,7 @@ app.get("/demo/:ico", async (req: FastifyRequest, reply) => {
 import { subscribe, verify, unsubscribe } from "./alerts/store.js";
 import { sendMail } from "./alerts/mailer.js";
 import { startScheduler } from "./alerts/checker.js";
+import { preseedTopCompanies } from "./seed/preseed.js";
 
 const subscribeSchema = z.object({
   email: z.string().email(),
@@ -598,6 +599,17 @@ try {
   logStartupBanner();
   void warmup();
   startScheduler(client);
+
+  // Pre-seed lokálního subjects inventory s top českými firmami — bez tohoto
+  // by `agrofer` nenašel Agrofert na čerstvé instanci (lokální fallback je
+  // jediná cesta, ARES dělá whole-word match).
+  if (process.env.PRESEED_TOP_CZ !== "0") {
+    preseedTopCompanies(client)
+      .then(({ added, skipped, total }) =>
+        app.log.info(`preseed: ${added}/${total} firem nahráno do subjects (${skipped} skip)`),
+      )
+      .catch((e) => app.log.warn({ err: e }, "preseed failed"));
+  }
 } catch (err) {
   app.log.error(err as Error);
   process.exit(1);
