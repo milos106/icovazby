@@ -160,6 +160,13 @@ function renderMermaid(
     const label = escapeMermaid(`${c.obchodniJmeno ?? "(unknown)"}\\n${c.ico}`);
     lines.push(`  C_${c.ico}["${label}"]:::company`);
   }
+
+  // Index of dashed edges — používáme `linkStyle N` na konci grafu pro
+  // amber stroke + dasharray. Mermaid `-.-` syntax sám o sobě dělá tečkovaný
+  // ale konzistence vzhledu chce vlastní stroke.
+  const dashedEdgeIndices: number[] = [];
+  let edgeIdx = -1;
+
   shared.forEach((p, idx) => {
     const pid = `P_${idx}`;
     const isLegal = p.personKey.startsWith("LEGAL|");
@@ -167,14 +174,51 @@ function renderMermaid(
     const shape = isLegal ? `${pid}["${label}"]` : `${pid}(["${label}"])`;
     const cls = isLegal ? "legal" : "person";
     lines.push(`  ${shape}:::${cls}`);
-    const seen = new Set<string>();
+
+    // Group memberships podle IČO — pro každý vztah osoba→firma chceme
+    // jednu hranu reprezentující buď aktuální pozici (preferred), nebo
+    // (pokud aktuální není) nejnovější historickou pozici.
+    const byIco = new Map<string, typeof p.memberships>();
     for (const m of p.memberships) {
-      if (seen.has(m.ico)) continue;
-      seen.add(m.ico);
-      const label = escapeMermaid(m.funkce ?? "člen");
-      lines.push(`  ${pid} ---|"${label}"| C_${m.ico}`);
+      const arr = byIco.get(m.ico);
+      if (arr) arr.push(m);
+      else byIco.set(m.ico, [m]);
+    }
+
+    for (const [ico, members] of byIco) {
+      // Preferuj aktuální (datumVymazu=null), jinak nejnovější historickou.
+      const active = members.find((m) => !m.datumVymazu);
+      let funkce: string;
+      let datumLabel: string;
+      let isHistorical: boolean;
+      if (active) {
+        funkce = active.funkce ?? "člen";
+        const startYear = active.datumZapisu?.slice(0, 4);
+        datumLabel = startYear ? `od ${startYear}` : "aktivní";
+        isHistorical = false;
+      } else {
+        // Sort by datumVymazu desc — pick the latest ended membership
+        const latest = [...members].sort((a, b) =>
+          (b.datumVymazu || "").localeCompare(a.datumVymazu || ""),
+        )[0]!;
+        funkce = latest.funkce ?? "člen";
+        const sy = latest.datumZapisu?.slice(0, 4) || "?";
+        const ey = latest.datumVymazu?.slice(0, 4) || "?";
+        datumLabel = `${sy}–${ey}`;
+        isHistorical = true;
+      }
+      const edgeLabel = escapeMermaid(`${funkce}\\n(${datumLabel})`);
+      edgeIdx++;
+      if (isHistorical) {
+        // -.- = dashed in Mermaid; navíc přidáme linkStyle pro amber barvu
+        lines.push(`  ${pid} -. "${edgeLabel}" .- C_${ico}`);
+        dashedEdgeIndices.push(edgeIdx);
+      } else {
+        lines.push(`  ${pid} ---|"${edgeLabel}"| C_${ico}`);
+      }
     }
   });
+
   // Důležité: explicit color: musí být v classDef, jinak Mermaid renderuje
   // foreignObject text se !important inline ze themeVariables (defaultně bílé
   // v dark mode → neviditelné na pastelovém fillu). Tmavý text na pastel
@@ -182,5 +226,11 @@ function renderMermaid(
   lines.push("  classDef company fill:#e0f7fa,stroke:#006064,stroke-width:2px,color:#0f172a;");
   lines.push("  classDef person fill:#fff3e0,stroke:#bf360c,stroke-width:2px,color:#0f172a;");
   lines.push("  classDef legal fill:#f3e5f5,stroke:#4a148c,stroke-width:2px,color:#0f172a;");
+
+  // Amber barva pro historické (dashed) hrany
+  for (const i of dashedEdgeIndices) {
+    lines.push(`  linkStyle ${i} stroke:#d97706,stroke-width:1.5px,stroke-dasharray: 5 4;`);
+  }
+
   return lines.join("\n");
 }
