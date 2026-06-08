@@ -165,8 +165,12 @@ function renderMermaid(
       lines.push(`  ${pid} ---|"${label}"| C_${m.ico}`);
     }
   });
-  lines.push("  classDef company fill:#e0f7fa,stroke:#006064,stroke-width:2px;");
-  lines.push("  classDef person fill:#fff3e0,stroke:#bf360c,stroke-width:2px;");
-  lines.push("  classDef legal fill:#f3e5f5,stroke:#4a148c,stroke-width:2px;");
+  // Důležité: explicit color: musí být v classDef, jinak Mermaid renderuje
+  // foreignObject text se !important inline ze themeVariables (defaultně bílé
+  // v dark mode → neviditelné na pastelovém fillu). Tmavý text na pastel
+  // funguje vždy v obou režimech.
+  lines.push("  classDef company fill:#e0f7fa,stroke:#006064,stroke-width:2px,color:#0f172a;");
+  lines.push("  classDef person fill:#fff3e0,stroke:#bf360c,stroke-width:2px,color:#0f172a;");
+  lines.push("  classDef legal fill:#f3e5f5,stroke:#4a148c,stroke-width:2px,color:#0f172a;");
   return lines.join("\n");
 }

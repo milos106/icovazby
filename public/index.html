@@ -81,31 +81,22 @@
       .dark .risk-green { background: linear-gradient(135deg, #022c22, #064e3b); border-color: #34d399; color: #d1fae5; }
       [x-cloak] { display: none !important; }
       .mermaid svg { max-width: 100%; height: auto; }
-      /* Mermaid kontrast: graf má někdy bledé výchozí styly i s themeVariables.
-         Tady vynucujeme tmavý text v nodech a tlustší font v label spans. */
+      /* Mermaid kontrast: text v nodech je nastaven přes classDef color:
+         na serveru (pastelové fill + slate-900 text fungují v obou režimech).
+         Edge labely a font-weight musíme ale řídit z CSS protože v Mermaid
+         classDef pro hrany nejsou. */
       .mermaid .nodeLabel, .mermaid .edgeLabel, .mermaid .label {
         font-weight: 500;
       }
-      :not(.dark) .mermaid .nodeLabel,
-      :not(.dark) .mermaid .nodeLabel * {
-        color: #0f172a !important;
-        fill: #0f172a !important;
-      }
-      .dark .mermaid .nodeLabel,
-      .dark .mermaid .nodeLabel * {
-        color: #f1f5f9 !important;
-        fill: #f1f5f9 !important;
-      }
-      :not(.dark) .mermaid .edgeLabel {
-        background-color: rgba(255, 255, 255, 0.9) !important;
+      :not(.dark) .mermaid .edgeLabel,
+      :not(.dark) .mermaid .edgeLabel * {
+        background-color: rgba(255, 255, 255, 0.95) !important;
         color: #0f172a !important;
       }
-      .dark .mermaid .edgeLabel {
-        background-color: rgba(15, 23, 42, 0.9) !important;
+      .dark .mermaid .edgeLabel,
+      .dark .mermaid .edgeLabel * {
+        background-color: rgba(15, 23, 42, 0.92) !important;
         color: #f1f5f9 !important;
-      }
-      .mermaid .node rect, .mermaid .node circle, .mermaid .node ellipse, .mermaid .node polygon {
-        stroke-width: 2px;
       }
       /* DD karty: rozbalovací stav řízený přes :data-collapsed atribut.
          Když je karta sbalená, schováme všechno UVNITŘ kromě hlavičky
