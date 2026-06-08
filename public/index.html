@@ -350,12 +350,6 @@
                   </template>
                 </p>
               </div>
-              <div class="flex gap-2 flex-wrap">
-                <button
-                  @click="$dispatch('open-dd', { ico: profile.ico })"
-                  class="px-3 py-1.5 bg-emerald-600 text-white rounded text-sm hover:bg-emerald-700"
-                >🛡️ Hloubková prověrka</button>
-              </div>
             </div>
             <dl class="grid grid-cols-2 md:grid-cols-4 gap-3 mt-4 text-sm">
               <div>
@@ -538,22 +532,22 @@
       <section id="dd" x-data="ddSection()" x-init="init()" @open-dd.window="run($event.detail.ico)" class="bg-white dark:bg-slate-800 dark:border-slate-700 rounded-2xl shadow-sm border p-6">
         <h2 class="text-lg font-bold mb-1">🛡️ Hloubková prověrka</h2>
         <p class="text-sm text-slate-500 dark:text-slate-400 mb-4">
-          Jeden klik = kompletní report: profil + jednatelé + DPH + insolvence + risk skóre 🟢🟡🔴.
+          Kompletní report: profil + jednatelé + DPH + insolvence + risk skóre 🟢🟡🔴.
+          <span x-show="!report && !loading">Spouští se automaticky po vyhledání firmy v sekci nahoře.</span>
         </p>
-        <form @submit.prevent="run(ico)" class="flex gap-2 flex-wrap">
-          <input
-            type="text"
-            x-model="ico"
-            placeholder="IČO (8 číslic)"
-            class="flex-1 min-w-[200px] px-4 py-2 border dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none"
-          />
-          <button
-            type="submit"
-            class="px-6 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 disabled:opacity-50"
-            :disabled="loading"
-            x-text="loading ? 'Probíhá kontrola…' : 'Spustit prověrku'"
-          ></button>
-        </form>
+
+        <template x-if="loading">
+          <div class="p-4 text-sm text-slate-500 dark:text-slate-400 flex items-center gap-2">
+            <span class="inline-block w-4 h-4 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin"></span>
+            Probíhá kontrola…
+          </div>
+        </template>
+
+        <template x-if="!report && !loading && !error">
+          <div class="p-4 text-sm text-slate-500 dark:text-slate-400 italic">
+            Žádná prověrka ještě neběží. Použij vyhledávač nahoře 🔎 — po vybrání firmy se prověrka spustí sama.
+          </div>
+        </template>
 
         <template x-if="error">
           <div class="mt-4 p-3 bg-rose-50 dark:bg-rose-900/30 border border-rose-200 dark:border-rose-800 rounded text-sm text-rose-800 dark:text-rose-300" x-text="error"></div>
