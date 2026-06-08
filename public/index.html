@@ -3,10 +3,10 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>ARES Check — rychlá hloubková prověrka českých firem</title>
+    <title>IČO vazby — prověrka českých firem a jejich propojení</title>
     <meta
       name="description"
-      content="Bezplatný nástroj pro ověření českých firem: profil, hloubková prověrka s risk skóre, mapa propojení statutárů, detekce virtuálních adres. Data z veřejného ARES."
+      content="Bezplatný nástroj pro prověrku českých firem a jejich propojení: profil, risk skóre, mapa propojení statutárů, holding discovery, detekce virtuálních adres."
     />
     <!-- FOUC-free theme init: must run before any styles render -->
     <script>
@@ -71,7 +71,7 @@
       window.__mermaid = mermaid;
       window.__mermaidReinit = initMermaid;
     </script>
-    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E🛡️%3C/text%3E%3C/svg%3E" />
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E🔗%3C/text%3E%3C/svg%3E" />
     <style>
       .risk-red { background: linear-gradient(135deg, #fee2e2, #fecaca); border-color: #dc2626; }
       .risk-yellow { background: linear-gradient(135deg, #fef3c7, #fde68a); border-color: #d97706; }
@@ -111,67 +111,19 @@
     <header class="bg-white dark:bg-slate-800 border-b dark:border-slate-700 sticky top-0 z-30" x-data="historyBar()" x-init="init()">
       <div class="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between gap-3 flex-wrap">
         <div class="flex items-center gap-3">
-          <span class="text-3xl">🛡️</span>
+          <span class="text-3xl">🔗</span>
           <div>
-            <h1 class="text-xl font-bold">ARES Check</h1>
-            <p class="text-xs text-slate-500 dark:text-slate-400 dark:text-slate-400">Rychlá hloubková prověrka českých firem</p>
+            <h1 class="text-xl font-bold">IČO vazby</h1>
+            <p class="text-xs text-slate-500 dark:text-slate-400 dark:text-slate-400">Prověrka českých firem a jejich propojení</p>
           </div>
         </div>
         <nav class="hidden md:flex gap-4 text-sm text-slate-600 dark:text-slate-400">
           <a href="#search" class="hover:text-slate-900 dark:hover:text-white">Hledat</a>
-          <a href="#dd" class="hover:text-slate-900 dark:hover:text-white">Hloubková prověrka</a>
+          <a href="#profil" class="hover:text-slate-900 dark:hover:text-white">Profil firmy</a>
           <a href="#graph" class="hover:text-slate-900 dark:hover:text-white">Mapa propojení</a>
           <a href="#address" class="hover:text-slate-900 dark:hover:text-white">Podle adresy</a>
         </nav>
         <div class="flex items-center gap-2 flex-wrap">
-          <!-- ČNB kurz widget -->
-          <div
-            x-data="cnbRatesWidget()"
-            x-init="init()"
-            class="relative"
-            @click.outside="open = false"
-          >
-            <button
-              @click="open = !open"
-              class="px-3 py-1.5 border dark:border-slate-600 rounded text-xs hover:bg-slate-50 dark:hover:bg-slate-700 font-mono"
-              :title="rates ? 'Kurzy ČNB k ' + rates.validFor : 'Načítám kurz ČNB…'"
-            >
-              <template x-if="rates && rates.core && rates.core.EUR">
-                <span>
-                  €<span x-text="rates.core.EUR.rate.toFixed(2)"></span>
-                  · $<span x-text="rates.core.USD ? rates.core.USD.rate.toFixed(2) : '—'"></span>
-                </span>
-              </template>
-              <template x-if="!rates">
-                <span class="text-slate-400">💱 ...</span>
-              </template>
-            </button>
-            <div
-              x-show="open && rates"
-              x-cloak
-              x-transition
-              class="absolute right-0 mt-2 w-72 bg-white dark:bg-slate-800 border dark:border-slate-700 rounded-lg shadow-lg z-40 p-3"
-            >
-              <p class="text-xs text-slate-500 dark:text-slate-400 mb-2">
-                Kurzy ČNB k <span class="font-semibold" x-text="rates && rates.validFor"></span>
-              </p>
-              <table class="w-full text-xs font-mono">
-                <tbody>
-                  <template x-for="(r, code) in (rates && rates.core) || {}" :key="code">
-                    <tr class="border-b dark:border-slate-700 last:border-0">
-                      <td class="py-1" x-text="code"></td>
-                      <td class="py-1 text-slate-500 dark:text-slate-400" x-text="r.country"></td>
-                      <td class="py-1 text-right font-semibold" x-text="r.rate.toFixed(3) + ' Kč'"></td>
-                    </tr>
-                  </template>
-                </tbody>
-              </table>
-              <p class="mt-2 text-xs text-slate-400">
-                <a class="underline" href="https://www.cnb.cz/cs/financni-trhy/devizovy-trh/" target="_blank" rel="noopener">Zdroj: ČNB</a>
-              </p>
-            </div>
-          </div>
-
           <!-- HS token settings: každý user si zadá vlastní token, aby
                nesdílel rate limit s ostatními. Token žije v localStorage,
                odesílá se jako X-Hlidac-Token hlavička. -->
@@ -337,164 +289,14 @@
           <div class="mt-4 p-3 bg-rose-50 dark:bg-rose-900/30 border border-rose-200 dark:border-rose-800 rounded text-sm text-rose-800 dark:text-rose-300" x-text="error"></div>
         </template>
 
-        <!-- Single-company profile -->
+        <!-- Po nálezu jediné firmy (přes IČO nebo jediný name match) se profil
+             firmy načte v sekci níže (autotrigger open-dd v searchSection.run).
+             Tady už nic samostatně nevykreslujeme. -->
         <template x-if="profile">
-          <div class="mt-6 p-5 border dark:border-slate-700 rounded-xl">
-            <div class="flex items-start justify-between gap-2 flex-wrap">
-              <div>
-                <h3 class="text-xl font-bold" x-text="profile.obchodniJmeno"></h3>
-                <p class="text-sm text-slate-500 dark:text-slate-400">
-                  IČO <span x-text="profile.ico" class="font-mono"></span>
-                  <template x-if="profile.dic">
-                    · DIČ <span x-text="profile.dic" class="font-mono"></span>
-                  </template>
-                </p>
-              </div>
-            </div>
-            <dl class="grid grid-cols-2 md:grid-cols-4 gap-3 mt-4 text-sm">
-              <div>
-                <dt class="text-slate-500 dark:text-slate-400 text-xs">Sídlo</dt>
-                <dd x-text="profile.sidloText || '—'"></dd>
-              </div>
-              <div>
-                <dt class="text-slate-500 dark:text-slate-400 text-xs">Vznik</dt>
-                <dd x-text="profile.datumVzniku || '—'"></dd>
-              </div>
-              <div>
-                <dt class="text-slate-500 dark:text-slate-400 text-xs">DPH</dt>
-                <dd>
-                  <span
-                    :class="profile.platceDph ? 'bg-emerald-100 dark:bg-emerald-900/40 text-emerald-800 dark:text-emerald-300' : 'bg-slate-100 text-slate-700'"
-                    class="px-2 py-0.5 rounded text-xs"
-                    x-text="profile.platceDph ? 'plátce' : 'neplátce'"
-                  ></span>
-                </dd>
-              </div>
-              <div>
-                <dt class="text-slate-500 dark:text-slate-400 text-xs">Stav</dt>
-                <dd>
-                  <span
-                    :class="profile.datumZaniku ? 'bg-rose-100 dark:bg-rose-900/40 text-rose-800 dark:text-rose-300' : 'bg-emerald-100 dark:bg-emerald-900/40 text-emerald-800 dark:text-emerald-300'"
-                    class="px-2 py-0.5 rounded text-xs"
-                    x-text="profile.datumZaniku ? 'Zanikla ' + profile.datumZaniku : 'Aktivní'"
-                  ></span>
-                </dd>
-              </div>
-            </dl>
-            <template x-if="profile.czNace && profile.czNace.length > 0">
-              <div class="mt-4">
-                <p class="text-xs text-slate-500 dark:text-slate-400 mb-1">CZ-NACE</p>
-                <div class="flex flex-wrap gap-1">
-                  <template x-for="kod in profile.czNace.slice(0, 12)" :key="kod">
-                    <span
-                      class="px-2 py-0.5 bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-200 rounded text-xs font-mono cursor-help"
-                      x-text="kod"
-                      :title="$store.nace.describe(kod)"
-                    ></span>
-                  </template>
-                  <template x-if="profile.czNace.length > 12">
-                    <span class="text-xs text-slate-400" x-text="`+ ${profile.czNace.length - 12} dalších`"></span>
-                  </template>
-                </div>
-              </div>
-            </template>
-
-            <!-- Detail buttons row -->
-            <div class="mt-4 pt-4 border-t flex flex-wrap gap-2 text-sm">
-              <button
-                @click="toggleRes(profile.ico)"
-                class="px-3 py-1.5 border dark:border-slate-600 rounded hover:bg-slate-50 dark:hover:bg-slate-700"
-                x-text="resData ? '✕ Skrýt klasifikaci' : '📊 Klasifikace (RES)'"
-              ></button>
-              <button
-                @click="toggleLicenses(profile.ico)"
-                class="px-3 py-1.5 border dark:border-slate-600 rounded hover:bg-slate-50 dark:hover:bg-slate-700"
-                x-text="licensesData ? '✕ Skrýt živnosti' : '🏷️ Živnosti (RŽP)'"
-              ></button>
-              <div class="ml-auto flex gap-2 items-center">
-                <span class="text-xs text-slate-500 dark:text-slate-400">Export:</span>
-                <button @click="exportTo(profile.ico, 'fakturoid')" class="px-3 py-1.5 bg-amber-100 dark:bg-amber-900/30 text-amber-900 dark:text-amber-200 border border-amber-300 rounded hover:bg-amber-200">Fakturoid</button>
-                <button @click="exportTo(profile.ico, 'idoklad')" class="px-3 py-1.5 bg-sky-100 dark:bg-sky-900/30 text-sky-900 dark:text-sky-200 border border-sky-300 rounded hover:bg-sky-200">iDoklad</button>
-                <button @click="exportTo(profile.ico, 'pohoda')" class="px-3 py-1.5 bg-violet-100 dark:bg-violet-900/30 text-violet-900 dark:text-violet-200 border border-violet-300 rounded hover:bg-violet-200">Pohoda</button>
-              </div>
-            </div>
-
-            <template x-if="exportNotice">
-              <div class="mt-3 p-2 bg-emerald-50 dark:bg-emerald-900/30 border border-emerald-200 dark:border-emerald-700 rounded text-xs text-emerald-800 dark:text-emerald-300" x-text="exportNotice"></div>
-            </template>
-
-            <!-- RES classification expanded -->
-            <template x-if="resData">
-              <div class="mt-4 p-4 border dark:border-slate-700 rounded-lg bg-slate-50 dark:bg-slate-900">
-                <h4 class="font-bold text-sm mb-2">📊 Statistická klasifikace (RES)</h4>
-                <dl class="grid grid-cols-2 md:grid-cols-3 gap-3 text-sm">
-                  <div>
-                    <dt class="text-xs text-slate-500 dark:text-slate-400">Velikost</dt>
-                    <dd>
-                      <span
-                        :class="{
-                          'bg-emerald-100 dark:bg-emerald-900/40 text-emerald-800 dark:text-emerald-300': resData.kategoriePoctuPracovniku.smeClass === 'micro' || resData.kategoriePoctuPracovniku.smeClass === 'small',
-                          'bg-sky-100 text-sky-800': resData.kategoriePoctuPracovniku.smeClass === 'medium',
-                          'bg-violet-100 text-violet-800': resData.kategoriePoctuPracovniku.smeClass === 'large',
-                          'bg-slate-100 text-slate-700': resData.kategoriePoctuPracovniku.smeClass === 'unknown'
-                        }"
-                        class="px-2 py-0.5 rounded text-xs"
-                        x-text="resData.kategoriePoctuPracovniku.smeClass.toUpperCase() + ' SME'"
-                      ></span>
-                    </dd>
-                  </div>
-                  <div>
-                    <dt class="text-xs text-slate-500 dark:text-slate-400">Počet zaměstnanců</dt>
-                    <dd class="text-xs" x-text="resData.kategoriePoctuPracovniku.label || '—'"></dd>
-                  </div>
-                  <div>
-                    <dt class="text-xs text-slate-500 dark:text-slate-400">Institucionální sektor</dt>
-                    <dd class="text-xs" x-text="resData.institucionalniSektor2010.label || '—'"></dd>
-                  </div>
-                  <div>
-                    <dt class="text-xs text-slate-500 dark:text-slate-400">Převažující CZ-NACE</dt>
-                    <dd class="text-xs font-mono cursor-help" x-text="resData.czNacePrevazujici || '—'" :title="resData.czNacePrevazujici ? $store.nace.describe(resData.czNacePrevazujici) : ''"></dd>
-                  </div>
-                  <div>
-                    <dt class="text-xs text-slate-500 dark:text-slate-400">NUTS region</dt>
-                    <dd class="text-xs font-mono" x-text="resData.okresNutsLau || '—'"></dd>
-                  </div>
-                  <div>
-                    <dt class="text-xs text-slate-500 dark:text-slate-400">Finanční úřad</dt>
-                    <dd class="text-xs font-mono" x-text="resData.financniUrad || '—'"></dd>
-                  </div>
-                </dl>
-              </div>
-            </template>
-
-            <!-- Trade licenses expanded -->
-            <template x-if="licensesData">
-              <div class="mt-4 p-4 border dark:border-slate-700 rounded-lg bg-slate-50 dark:bg-slate-900">
-                <h4 class="font-bold text-sm mb-2">🏷️ Živnostenská oprávnění (RŽP)</h4>
-                <p class="text-xs text-slate-500 dark:text-slate-400 mb-3">
-                  Celkem <span x-text="licensesData.pocetCelkem"></span> (aktivních <span x-text="licensesData.pocetAktivnich"></span>)
-                </p>
-                <template x-if="licensesData.zivnostenskaOpravneni.length === 0">
-                  <p class="text-sm text-slate-500 dark:text-slate-400">Žádná živnostenská oprávnění (subjekt nemá záznam v RŽP).</p>
-                </template>
-                <template x-if="licensesData.zivnostenskaOpravneni.length > 0">
-                  <ul class="space-y-2 max-h-64 overflow-y-auto">
-                    <template x-for="(l, idx) in licensesData.zivnostenskaOpravneni" :key="idx">
-                      <li class="text-xs border-l-2 pl-2" :class="l.datumZaniku ? 'border-slate-300 text-slate-500 dark:text-slate-400' : 'border-emerald-400'">
-                        <div class="font-semibold" x-text="l.predmetPodnikani || '—'"></div>
-                        <div class="text-slate-500 dark:text-slate-400">
-                          <span x-text="l.druh ? l.druh + ' · ' : ''"></span>
-                          <span x-text="l.datumVzniku ? 'od ' + l.datumVzniku : ''"></span>
-                          <template x-if="l.datumZaniku">
-                            <span class="text-amber-700" x-text="' · zaniklo ' + l.datumZaniku"></span>
-                          </template>
-                        </div>
-                      </li>
-                    </template>
-                  </ul>
-                </template>
-              </div>
-            </template>
+          <div class="mt-4 p-3 bg-emerald-50 dark:bg-emerald-900/30 border border-emerald-200 dark:border-emerald-700 rounded text-sm">
+            <span class="font-semibold" x-text="profile.obchodniJmeno"></span>
+            (IČO <span class="font-mono" x-text="profile.ico"></span>)
+            — profil firmy se právě načítá níže ↓
           </div>
         </template>
 
@@ -529,11 +331,11 @@
       </section>
 
       <!-- ─── Hloubková prověrka ────────────────────────────────────── -->
-      <section id="dd" x-data="ddSection()" x-init="init()" @open-dd.window="run($event.detail.ico)" class="bg-white dark:bg-slate-800 dark:border-slate-700 rounded-2xl shadow-sm border p-6">
-        <h2 class="text-lg font-bold mb-1">🛡️ Hloubková prověrka</h2>
+      <section id="profil" x-data="ddSection()" x-init="init()" @open-dd.window="run($event.detail.ico)" class="bg-white dark:bg-slate-800 dark:border-slate-700 rounded-2xl shadow-sm border p-6">
+        <h2 class="text-lg font-bold mb-1">🛡️ Profil firmy</h2>
         <p class="text-sm text-slate-500 dark:text-slate-400 mb-4">
-          Kompletní report: profil + jednatelé + DPH + insolvence + risk skóre 🟢🟡🔴.
-          <span x-show="!report && !loading">Spouští se automaticky po vyhledání firmy v sekci nahoře.</span>
+          Identifikace + risk skóre 🟢🟡🔴 + jednatelé + DPH + sankce + dotace + smlouvy + insolvence + rejstříky.
+          <span x-show="!report && !loading">Načítá se automaticky po vyhledání firmy v sekci nahoře.</span>
         </p>
 
         <template x-if="loading">
@@ -641,6 +443,23 @@
                     <div><dt class="text-slate-500 dark:text-slate-400 text-xs">Zánik</dt><dd class="text-rose-700 font-semibold" x-text="report.identification.datumZaniku"></dd></div>
                   </template>
                   <div><dt class="text-slate-500 dark:text-slate-400 text-xs">Právní forma</dt><dd x-text="report.identification.pravniForma || '—'"></dd></div>
+                  <template x-if="report.identification.czNace && report.identification.czNace.length > 0">
+                    <div>
+                      <dt class="text-slate-500 dark:text-slate-400 text-xs">CZ-NACE</dt>
+                      <dd class="flex flex-wrap gap-1 mt-1">
+                        <template x-for="kod in report.identification.czNace.slice(0, 12)" :key="kod">
+                          <span
+                            class="px-2 py-0.5 bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-200 rounded text-xs font-mono cursor-help"
+                            x-text="kod"
+                            :title="$store.nace.describe(kod)"
+                          ></span>
+                        </template>
+                        <template x-if="report.identification.czNace.length > 12">
+                          <span class="text-xs text-slate-400" x-text="`+ ${report.identification.czNace.length - 12} dalších`"></span>
+                        </template>
+                      </dd>
+                    </div>
+                  </template>
                 </dl>
               </div>
 

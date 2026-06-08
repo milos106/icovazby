@@ -306,7 +306,9 @@ function ddSection() {
     exportNotice: "",
     init() {
       const url = readUrl();
-      if (url.ico && url.action === "dd") {
+      // Akceptujeme i staré bookmarky s action=dd kvůli backward compat;
+      // nově se zapisuje action=profil (sekce byla přejmenována).
+      if (url.ico && (url.action === "profil" || url.action === "dd")) {
         this.run(url.ico);
       }
     },
@@ -324,8 +326,8 @@ function ddSection() {
       try {
         this.report = await jsonFetch(`/api/dd/${encodeURIComponent(i)}`);
         recordVisit({ ico: this.report.ico, obchodniJmeno: this.report.obchodniJmeno });
-        updateUrl({ ico: this.report.ico, action: "dd" });
-        document.getElementById("dd")?.scrollIntoView({ behavior: "smooth", block: "start" });
+        updateUrl({ ico: this.report.ico, action: "profil" });
+        document.getElementById("profil")?.scrollIntoView({ behavior: "smooth", block: "start" });
       } catch (e) {
         this.error = e.message;
       } finally {

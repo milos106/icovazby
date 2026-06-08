@@ -1,6 +1,6 @@
-# ares-web
+# IČO vazby (ares-web)
 
-> Webová aplikace pro **rychlou hloubkovou prověrku českých firem** — vyhledávání podle IČO a názvu, kompletní report s 🟢🟡🔴 risk skóre, mapa propojení statutárů (Mermaid), detekce virtuálních adres. Bez AI, bez přihlášení, vše z veřejného ARES.
+> Webová aplikace pro **prověrku českých firem a jejich propojení** — vyhledávání podle IČO a názvu, kompletní profil firmy s 🟢🟡🔴 risk skóre, mapa propojení statutárů (Mermaid), holding discovery, detekce virtuálních adres. Bez AI, bez přihlášení, data z 11+ veřejných zdrojů.
 >
 > **Local-only projekt.** Není veřejně hostovaný ani na npm; spouští se z téhož repozitáře.
 
@@ -8,8 +8,7 @@
 
 | Sekce | Co dělá |
 |---|---|
-| **Profil firmy** | IČO nebo název → identifikace, sídlo, DPH, NACE. Rozbalitelné karty: 📊 RES klasifikace (SME, sektor), 🏷️ živnostenská oprávnění (RŽP). |
-| **Hloubková prověrka** | Jeden klik → 🟢🟡🔴 risk badge + findings + sekce identifikace + DPH + insolvence + statutáři + živnosti. |
+| **🛡️ Profil firmy** | IČO nebo název → 🟢🟡🔴 risk badge + findings + identifikace + DPH + jednatelé + OR + UBO + dotace + smlouvy + sankce + insolvence + JERRS + živnosti + holding discovery. Vše v jedné sekci s rozbalovacími kartami. |
 | **Mapa propojení** | 2–50 IČO → osoby ve více firmách + Mermaid graf. Volitelně i historické vazby (nominee detection). |
 | **Hledat na adrese** | Detekce virtuálních kanceláří. > 50 firem = ⚠️, > 500 = 🚨. |
 | **Export do fakturace** | Tlačítka Fakturoid / iDoklad / Pohoda → zkopíruje JSON do schránky, paste do fakturačního systému. |
