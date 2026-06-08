@@ -564,6 +564,9 @@ export async function tryConvert(czkAmount: number, code: string): Promise<numbe
 // ─── Person vazby (HS osoby + ARES IČO resolve) ───────────────────────────────
 export { getPersonVazbyService } from "./persons/service.js";
 
+// ─── Holding discovery (BFS po jednatelích + akcionářích) ─────────────────────
+export { discoverHolding } from "./holding/discover.js";
+
 // ─── Local persistent index osoba → firmy (incremental) ──────────────────────
 import { upsertMembership } from "./persons_index/store.js";
 

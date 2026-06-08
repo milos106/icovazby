@@ -1643,6 +1643,63 @@
               </div>
             </template>
 
+            <!-- Holding discovery: rozkrýt subsidiaries → seed do Mapy
+                 propojení. BFS po jednatelích + akcionářích, depth volitelná. -->
+            <div class="border-t dark:border-slate-700 pt-3" x-data="holdingDiscovery()">
+              <div class="flex items-center gap-2 flex-wrap">
+                <span class="text-sm font-semibold">🔍 Rozkrýt holding:</span>
+                <label class="text-xs flex items-center gap-1">
+                  Hloubka
+                  <select x-model.number="depth" class="px-2 py-1 border dark:border-slate-600 dark:bg-slate-900 rounded text-xs">
+                    <option value="1">1 — přímé subsidiaries</option>
+                    <option value="2">2 — i pod-subsidiaries (default)</option>
+                    <option value="3">3 — hluboko (pomalé)</option>
+                  </select>
+                </label>
+                <button
+                  @click="run(report.ico)"
+                  :disabled="loading"
+                  class="px-3 py-1.5 bg-purple-600 text-white rounded text-sm hover:bg-purple-700 disabled:opacity-50"
+                  x-text="loading ? 'Hledám…' : 'Rozkrýt a vykreslit'"
+                ></button>
+                <span class="text-xs text-slate-500 dark:text-slate-400" x-show="result">
+                  Nalezeno <span class="font-semibold" x-text="result?.totalIcos"></span> firem
+                  (high: <span x-text="result?.discovered?.filter(c=>c.confidence==='high').length"></span>,
+                  med: <span x-text="result?.discovered?.filter(c=>c.confidence==='medium').length"></span>,
+                  low: <span x-text="result?.discovered?.filter(c=>c.confidence==='low').length"></span>),
+                  prošlo <span x-text="result?.walkedFirms"></span> firem za <span x-text="elapsed"></span>&nbsp;s
+                </span>
+                <span class="text-xs text-rose-700 dark:text-rose-400" x-show="error" x-text="error"></span>
+              </div>
+              <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                Hledá podle sdílených jednatelů (z lokálního indexu) + akcionářů z OR.
+                Pokrytí roste s tím, kolik firem jsi přes prověrku už projel.
+              </p>
+              <template x-if="result && result.discovered.length > 0">
+                <details class="mt-2 text-xs">
+                  <summary class="cursor-pointer text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100">
+                    Zobrazit seznam (<span x-text="result.discovered.length"></span>)
+                  </summary>
+                  <ul class="mt-1 space-y-0.5">
+                    <template x-for="c in result.discovered" :key="c.ico">
+                      <li>
+                        <span class="font-mono" x-text="c.ico"></span>
+                        <span
+                          class="ml-1 px-1 py-0.5 rounded text-[10px] font-semibold"
+                          :class="c.confidence === 'high' ? 'bg-emerald-100 dark:bg-emerald-900/40 text-emerald-800 dark:text-emerald-300' : c.confidence === 'medium' ? 'bg-amber-100 dark:bg-amber-900/40 text-amber-800 dark:text-amber-300' : 'bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300'"
+                          x-text="c.confidence + ' L' + c.level"
+                        ></span>
+                        <span class="ml-1" x-text="c.obchodniJmeno || '(neznámé)'"></span>
+                        <template x-if="c.jednateleShared.length > 0">
+                          <span class="text-slate-500 dark:text-slate-400" x-text="' — ' + c.jednateleShared.slice(0,3).join(', ')"></span>
+                        </template>
+                      </li>
+                    </template>
+                  </ul>
+                </details>
+              </template>
+            </div>
+
             <!-- Export buttons row in DD card -->
             <div class="flex gap-2 items-center pt-2 border-t flex-wrap">
               <span class="text-xs text-slate-500 dark:text-slate-400">Export pro fakturaci:</span>

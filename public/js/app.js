@@ -728,6 +728,51 @@ function ddEuSanctionsLoader() {
   };
 }
 
+/**
+ * Holding discovery — z parent IČO rozkryje strukturu holdingu (BFS přes
+ * jednatele a akcionáře) a výsledek pošle do Mapy propojení jako seed.
+ * Mermaid graf v graphSection se pak vykreslí automaticky.
+ */
+function holdingDiscovery() {
+  return {
+    depth: 2,
+    loading: false,
+    error: "",
+    result: null,
+    elapsed: 0,
+    async run(parentIco) {
+      if (!parentIco) return;
+      this.loading = true;
+      this.error = "";
+      this.result = null;
+      this.elapsed = 0;
+      const t0 = performance.now();
+      try {
+        const r = await fetch("/api/holding/discover", withHsToken({
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ ico: parentIco, depth: this.depth, maxIcos: 50 }),
+        }));
+        if (!r.ok) {
+          const e = await r.json().catch(() => ({}));
+          throw new Error(e.message || `HTTP ${r.status}`);
+        }
+        this.result = await r.json();
+        this.elapsed = ((performance.now() - t0) / 1000).toFixed(1);
+        // Pošli parent + všechny nalezené do Mapy propojení.
+        const icos = [parentIco, ...this.result.discovered.map((c) => c.ico)];
+        if (icos.length >= 2) {
+          window.dispatchEvent(new CustomEvent("ares-seed-graph", { detail: { icos } }));
+        }
+      } catch (e) {
+        this.error = "Rozkrytí selhalo: " + e.message;
+      } finally {
+        this.loading = false;
+      }
+    },
+  };
+}
+
 function ddVrLoader() {
   return {
     vr: null,
@@ -1037,6 +1082,7 @@ window.ddDotaceLoader = ddDotaceLoader;
 window.ddIsirLoader = ddIsirLoader;
 window.ddJerrsLoader = ddJerrsLoader;
 window.ddVrLoader = ddVrLoader;
+window.holdingDiscovery = holdingDiscovery;
 window.ddEuSanctionsLoader = ddEuSanctionsLoader;
 window.personVazbySection = personVazbySection;
 window.featuresStatus = featuresStatus;

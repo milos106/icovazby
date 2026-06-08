@@ -19,6 +19,7 @@ import { hsTokenContext } from "./hlidacstatu/token_context.js";
 import { indexStats } from "./persons_index/store.js";
 import {
   crossCompanyPersonsService,
+  discoverHolding,
   exportForInvoicingService,
   fullDueDiligenceService,
   getAdisVatStatusService,
@@ -356,6 +357,25 @@ app.get("/api/export/:ico/:target", async (req: FastifyRequest, reply) => {
       });
     }
     reply.send(await exportForInvoicingService(client, ico, target as InvoiceTarget));
+  } catch (e) {
+    sendError(reply, e);
+  }
+});
+
+// ─── Holding discovery — BFS po jednatelích + akcionářích, depth 1-3 ─────────
+const holdingSchema = z.object({
+  ico: z.string().min(7).max(8),
+  depth: z.coerce.number().int().min(1).max(3).optional(),
+  maxIcos: z.coerce.number().int().min(5).max(200).optional(),
+});
+app.post("/api/holding/discover", async (req: FastifyRequest, reply) => {
+  try {
+    const parsed = holdingSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return reply.status(400).send({ error: "INVALID_INPUT", message: parsed.error.message });
+    }
+    const { ico, depth = 2, maxIcos = 50 } = parsed.data;
+    reply.send(await discoverHolding(client, ico, depth, maxIcos));
   } catch (e) {
     sendError(reply, e);
   }
