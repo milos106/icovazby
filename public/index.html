@@ -122,10 +122,9 @@
           <a href="#graph" class="hover:text-slate-900 dark:hover:text-white">Mapa propojení</a>
           <a href="#address" class="hover:text-slate-900 dark:hover:text-white">Podle adresy</a>
         </nav>
-        <div class="flex items-center gap-2 flex-wrap">
-          <!-- HS token settings: každý user si zadá vlastní token, aby
-               nesdílel rate limit s ostatními. Token žije v localStorage,
-               odesílá se jako X-Hlidac-Token hlavička. -->
+        <div class="flex items-center gap-1.5 flex-wrap">
+          <!-- Settings menu: jeden ⚙️ button otevře popover s theme toggle +
+               HS token. Šetří horizontální prostor v hlavičce. -->
           <div
             x-data="hsTokenSettings()"
             x-init="init()"
@@ -135,73 +134,78 @@
             <button
               type="button"
               @click="open = !open"
-              class="px-3 py-1.5 border dark:border-slate-600 rounded text-sm hover:bg-slate-50 dark:hover:bg-slate-700"
-              :class="hasOwnToken ? 'border-emerald-400 dark:border-emerald-600' : 'border-amber-400 dark:border-amber-600'"
-              :title="hasOwnToken ? 'Vlastní HS token nastaven (' + tokenLen + ' znaků)' : 'Hlídač státu token — klikni pro nastavení'"
+              class="px-3 py-1.5 border dark:border-slate-600 rounded-lg text-sm hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors"
+              :class="hasOwnToken ? '' : 'border-amber-300 dark:border-amber-700'"
+              :title="hasOwnToken ? 'Nastavení (token nastaven)' : 'Nastavení (token chybí)'"
             >
-              <span x-text="hasOwnToken ? '🔑' : '🔓'"></span>
+              <span>⚙️</span>
             </button>
             <div
               x-show="open"
               x-cloak
               x-transition
-              class="absolute right-0 mt-2 w-80 bg-white dark:bg-slate-800 border dark:border-slate-700 rounded-lg shadow-lg z-40 p-3 text-left"
+              class="absolute right-0 mt-2 w-80 bg-white dark:bg-slate-800 border dark:border-slate-700 rounded-xl shadow-xl ring-1 ring-black/5 z-40 p-4 text-left"
             >
-              <h3 class="text-sm font-bold mb-1">🔑 Hlídač státu — tvůj token</h3>
-              <p class="text-xs text-slate-500 dark:text-slate-400 mb-3">
-                HS API má rate limit per token. Pokud používáš sdílený serverový token,
-                může být brzy přetížený. Vygeneruj si vlastní zdarma a zadej ho sem
-                — žije pouze ve tvém prohlížeči (localStorage).
+              <h3 class="text-sm font-semibold mb-3 flex items-center gap-2">
+                <span>⚙️</span> Nastavení
+              </h3>
+
+              <!-- Theme toggle -->
+              <div x-data="themeToggle()" x-init="init()" class="mb-4 pb-4 border-b dark:border-slate-700">
+                <p class="text-xs text-slate-500 dark:text-slate-400 mb-2">Vzhled</p>
+                <button
+                  type="button"
+                  @click="toggle()"
+                  class="w-full px-3 py-2 border dark:border-slate-600 rounded-lg text-sm hover:bg-slate-50 dark:hover:bg-slate-700 flex items-center justify-between transition-colors"
+                >
+                  <span x-text="isDark ? '🌙 Tmavý režim' : '☀️ Světlý režim'"></span>
+                  <span class="text-xs text-slate-400">přepnout</span>
+                </button>
+              </div>
+
+              <!-- HS token -->
+              <p class="text-xs text-slate-500 dark:text-slate-400 mb-2">Hlídač státu API token</p>
+              <p class="text-xs text-slate-600 dark:text-slate-400 mb-3 leading-relaxed">
+                Vlastní token = vlastní rate limit. Žije jen v prohlížeči.
+                <a
+                  class="underline text-emerald-700 dark:text-emerald-400 inline-block"
+                  href="https://www.hlidacstatu.cz/api"
+                  target="_blank"
+                  rel="noopener"
+                >Vygenerovat zdarma →</a>
               </p>
-              <a
-                class="text-xs underline text-emerald-700 dark:text-emerald-400 block mb-2"
-                href="https://www.hlidacstatu.cz/api"
-                target="_blank"
-                rel="noopener"
-              >🔗 Vygenerovat token (hlidacstatu.cz/api)</a>
               <input
                 type="password"
                 x-model="draft"
                 placeholder="HS API token (32 znaků)"
-                class="w-full px-2 py-1.5 border dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100 rounded text-sm font-mono"
+                class="w-full px-3 py-2 border dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100 rounded-lg text-sm font-mono"
                 @keydown.enter="save()"
               />
               <div class="flex gap-2 mt-2">
                 <button
                   type="button"
                   @click="save()"
-                  class="flex-1 px-3 py-1 bg-emerald-600 text-white rounded text-sm hover:bg-emerald-700"
+                  class="flex-1 px-3 py-1.5 bg-emerald-600 text-white rounded-lg text-sm hover:bg-emerald-700 transition-colors"
                 >Uložit</button>
                 <button
                   type="button"
                   @click="clearToken()"
-                  class="px-3 py-1 border dark:border-slate-600 rounded text-sm hover:bg-slate-50 dark:hover:bg-slate-700"
+                  class="px-3 py-1.5 border dark:border-slate-600 rounded-lg text-sm hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors"
                   x-show="hasOwnToken"
                 >Smazat</button>
               </div>
               <p class="text-xs text-slate-400 mt-2" x-show="saved" x-cloak>
                 ✅ Uloženo.
               </p>
-              <p class="text-xs mt-2" x-show="hasOwnToken">
-                <span class="text-emerald-700 dark:text-emerald-400">✓ Vlastní token aktivní</span>
-                (<span x-text="tokenLen"></span> znaků)
+              <p class="text-xs mt-3" x-show="hasOwnToken">
+                <span class="text-emerald-700 dark:text-emerald-400">● Vlastní token aktivní</span>
               </p>
-              <p class="text-xs mt-2" x-show="!hasOwnToken">
-                <span class="text-amber-700 dark:text-amber-400">⚠ Bez vlastního tokenu</span>
-                — používáš sdílený serverový token (může mít rate limit).
+              <p class="text-xs mt-3" x-show="!hasOwnToken">
+                <span class="text-amber-700 dark:text-amber-400">● Bez vlastního tokenu</span>
+                — sdílený s ostatními.
               </p>
             </div>
           </div>
-
-          <button
-            x-data="themeToggle()"
-            @click="toggle()"
-            x-init="init()"
-            class="px-3 py-1.5 border dark:border-slate-600 rounded text-sm hover:bg-slate-50 dark:hover:bg-slate-700"
-            :title="isDark ? 'Přepnout na světlý režim' : 'Přepnout na tmavý režim'"
-          >
-            <span x-text="isDark ? '☀️' : '🌙'"></span>
-          </button>
           <div class="relative" @click.outside="open = false">
           <button
             @click="open = !open"
@@ -348,42 +352,59 @@
 
         <template x-if="report">
           <div class="mt-6 space-y-4">
-            <!-- Risk hero -->
-            <div
-              :class="{
-                'risk-red': report.risk.level === 'red',
-                'risk-yellow': report.risk.level === 'yellow',
-                'risk-green': report.risk.level === 'green'
-              }"
-              class="border-l-4 dark:border-slate-700 rounded-lg p-5"
-            >
-              <div class="flex items-start justify-between gap-2 flex-wrap">
+            <!-- Risk hero: kompaktní inline pro GREEN (over-celebrating banner
+                 byl moc), velký banner zachován pro YELLOW/RED kde upozornění
+                 mají nárok na pozornost. -->
+            <template x-if="report.risk.level === 'green'">
+              <div class="flex items-center justify-between gap-3 flex-wrap py-2">
                 <div>
-                  <h3 class="text-2xl font-bold" x-text="report.obchodniJmeno"></h3>
-                  <p class="text-sm">
+                  <h3 class="text-2xl font-bold tracking-tight" x-text="report.obchodniJmeno"></h3>
+                  <p class="text-sm text-slate-500 dark:text-slate-400">
                     IČO <span x-text="report.ico" class="font-mono"></span>
                   </p>
                 </div>
-                <div class="text-3xl font-bold flex items-center gap-2">
-                  <span x-text="report.risk.level === 'red' ? '🔴' : report.risk.level === 'yellow' ? '🟡' : '🟢'"></span>
-                  <span x-text="report.risk.level.toUpperCase()"></span>
+                <div class="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
+                  <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+                  <span class="text-xs font-semibold tracking-wide">Bez varovných signálů</span>
                 </div>
               </div>
-              <div class="mt-4 space-y-2">
-                <template x-for="f in report.risk.findings" :key="f.message">
-                  <div class="flex gap-2 items-start text-sm">
-                    <span x-text="f.level === 'red' ? '🚨' : f.level === 'yellow' ? '⚠️' : '✅'"></span>
-                    <span x-text="f.message"></span>
-                  </div>
-                </template>
-              </div>
-            </div>
+            </template>
 
-            <!-- In-page navigation: sticky scroll-spy pro DD report. Sedí pod
-                 globální header (top-0 z-30 h-~64px), proto top-16. -->
+            <template x-if="report.risk.level !== 'green'">
+              <div
+                :class="{
+                  'risk-red': report.risk.level === 'red',
+                  'risk-yellow': report.risk.level === 'yellow'
+                }"
+                class="border-l-4 dark:border-slate-700 rounded-lg p-5"
+              >
+                <div class="flex items-start justify-between gap-2 flex-wrap">
+                  <div>
+                    <h3 class="text-2xl font-bold tracking-tight" x-text="report.obchodniJmeno"></h3>
+                    <p class="text-sm">
+                      IČO <span x-text="report.ico" class="font-mono"></span>
+                    </p>
+                  </div>
+                  <div class="text-3xl font-bold flex items-center gap-2">
+                    <span x-text="report.risk.level === 'red' ? '🔴' : '🟡'"></span>
+                    <span x-text="report.risk.level.toUpperCase()"></span>
+                  </div>
+                </div>
+                <div class="mt-4 space-y-2">
+                  <template x-for="f in report.risk.findings" :key="f.message">
+                    <div class="flex gap-2 items-start text-sm">
+                      <span x-text="f.level === 'red' ? '🚨' : f.level === 'yellow' ? '⚠️' : '✅'"></span>
+                      <span x-text="f.message"></span>
+                    </div>
+                  </template>
+                </div>
+              </div>
+            </template>
+
+            <!-- Mobilní horizontální nav (pod md breakpoint) -->
             <nav
-              class="sticky top-16 z-20 -mx-6 px-6 py-2 bg-white/95 dark:bg-slate-800/95 backdrop-blur border-y dark:border-slate-700 text-xs"
-              aria-label="Sekce hloubkové prověrky"
+              class="md:hidden sticky top-16 z-20 -mx-6 px-6 py-2 bg-white/95 dark:bg-slate-800/95 backdrop-blur border-y dark:border-slate-700 text-xs"
+              aria-label="Sekce profilu"
             >
               <div class="flex gap-1 overflow-x-auto whitespace-nowrap items-center">
                 <a href="#dd-profil" class="px-2 py-1 rounded hover:bg-slate-100 dark:hover:bg-slate-700">👤 Profil</a>
@@ -396,25 +417,43 @@
                 <a href="#dd-jerrs" class="px-2 py-1 rounded hover:bg-slate-100 dark:hover:bg-slate-700">🏦 ČNB</a>
                 <a href="#dd-sankce" class="px-2 py-1 rounded hover:bg-slate-100 dark:hover:bg-slate-700">🇪🇺 Sankce</a>
                 <a href="#dd-zivno" class="px-2 py-1 rounded hover:bg-slate-100 dark:hover:bg-slate-700">🏷️ Živnosti</a>
-                <span class="mx-2 text-slate-300 dark:text-slate-600">|</span>
-                <button
-                  type="button"
-                  @click="$store.ddCollapse.expandAll(['dd-vr','dd-adis','dd-jerrs','dd-sankce','dd-ubo','dd-dotace','dd-smlouvy','dd-isir','dd-zivno'])"
-                  class="px-2 py-1 rounded hover:bg-slate-100 dark:hover:bg-slate-700"
-                  title="Rozbalit všechny sekce"
-                >▼ Vše</button>
-                <button
-                  type="button"
-                  @click="$store.ddCollapse.collapseAll(['dd-vr','dd-adis','dd-jerrs','dd-sankce','dd-ubo','dd-dotace','dd-smlouvy','dd-isir','dd-zivno'])"
-                  class="px-2 py-1 rounded hover:bg-slate-100 dark:hover:bg-slate-700"
-                  title="Sbalit všechny sekce"
-                >▶ Nic</button>
               </div>
             </nav>
 
-            <!-- Sections -->
+            <!-- Desktop layout: levý sticky sidebar TOC + content -->
+            <div class="md:grid md:grid-cols-[180px_1fr] md:gap-6">
+              <!-- Sidebar (jen md+) -->
+              <aside class="hidden md:block">
+                <nav class="sticky top-20 space-y-0.5 text-sm" aria-label="Sekce profilu">
+                  <a href="#dd-profil" class="block px-3 py-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300">👤 Profil</a>
+                  <a href="#dd-vr" class="block px-3 py-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300">⚖️ OR</a>
+                  <a href="#dd-ubo" class="block px-3 py-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300">👥 UBO</a>
+                  <a href="#dd-dotace" class="block px-3 py-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300">💸 Dotace</a>
+                  <a href="#dd-smlouvy" class="block px-3 py-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300">💰 Smlouvy</a>
+                  <a href="#dd-adis" class="block px-3 py-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300">🏦 DPH</a>
+                  <a href="#dd-isir" class="block px-3 py-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300">⚖️ Insolvence</a>
+                  <a href="#dd-jerrs" class="block px-3 py-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300">🏦 ČNB</a>
+                  <a href="#dd-sankce" class="block px-3 py-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300">🇪🇺 Sankce</a>
+                  <a href="#dd-zivno" class="block px-3 py-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300">🏷️ Živnosti</a>
+                  <div class="pt-3 mt-3 border-t dark:border-slate-700 space-y-1">
+                    <button
+                      type="button"
+                      @click="$store.ddCollapse.expandAll(['dd-vr','dd-adis','dd-jerrs','dd-sankce','dd-ubo','dd-dotace','dd-smlouvy','dd-isir','dd-zivno'])"
+                      class="w-full text-left px-3 py-1 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 text-xs text-slate-500 dark:text-slate-400"
+                    >▼ Rozbalit vše</button>
+                    <button
+                      type="button"
+                      @click="$store.ddCollapse.collapseAll(['dd-vr','dd-adis','dd-jerrs','dd-sankce','dd-ubo','dd-dotace','dd-smlouvy','dd-isir','dd-zivno'])"
+                      class="w-full text-left px-3 py-1 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 text-xs text-slate-500 dark:text-slate-400"
+                    >▶ Sbalit vše</button>
+                  </div>
+                </nav>
+              </aside>
+
+              <!-- Content (sekce profilu) -->
+              <div class="space-y-4 min-w-0">
             <div id="dd-profil" class="grid md:grid-cols-2 gap-4 scroll-mt-32">
-              <div class="border dark:border-slate-700 rounded-lg p-4">
+              <div class="border border-slate-200/80 dark:border-slate-700 rounded-xl p-5 shadow-sm hover:shadow-md transition-shadow">
                 <h4 class="font-bold mb-2 flex items-center justify-between gap-2">
                   <span>Identifikace</span>
                   <div class="relative" x-data="{ open: false }" @click.outside="open = false">
@@ -454,7 +493,7 @@
                 </dl>
               </div>
 
-              <div class="border dark:border-slate-700 rounded-lg p-4">
+              <div class="border border-slate-200/80 dark:border-slate-700 rounded-xl p-5 shadow-sm hover:shadow-md transition-shadow">
                 <h4 class="font-bold mb-2 flex items-center justify-between gap-2">
                   <span>DPH</span>
                   <div class="relative" x-data="{ open: false }" @click.outside="open = false">
@@ -484,7 +523,7 @@
               <!-- Statutární orgány: součást profilu firmy (přesunuto sem z dolu DD).
                    Klik na jméno (modře, podtržené) otevře sekci „Vazby osoby"
                    se seznamem ostatních firem, kde osoba seděla / sedí. -->
-              <div class="border dark:border-slate-700 rounded-lg p-4 md:col-span-2 bg-emerald-50/40 dark:bg-emerald-900/10">
+              <div class="border border-slate-200/80 dark:border-slate-700 rounded-xl p-5 shadow-sm hover:shadow-md transition-shadow md:col-span-2 bg-emerald-50/40 dark:bg-emerald-900/10">
                 <div class="flex items-baseline justify-between flex-wrap gap-2 mb-2">
                   <h4 class="font-bold flex items-center gap-2">
                     <span>👥 Statutární orgány</span>
@@ -534,7 +573,7 @@
                 </template>
               </div>
 
-              <div id="dd-vr" :data-collapsed="!$store.ddCollapse.isExpanded('dd-vr')" class="dd-card border-2 border-violet-300 dark:border-violet-700 rounded-lg p-4 md:col-span-2 scroll-mt-32" x-data="ddVrLoader()" x-init="load(report.ico)">
+              <div id="dd-vr" :data-collapsed="!$store.ddCollapse.isExpanded('dd-vr')" class="dd-card border border-violet-200 dark:border-violet-800 rounded-xl p-5 shadow-sm hover:shadow-md transition-shadow md:col-span-2 scroll-mt-32" x-data="ddVrLoader()" x-init="load(report.ico)">
                 <div class="dd-card-header flex items-baseline justify-between gap-2 mb-2 flex-wrap cursor-pointer select-none" @click="$store.ddCollapse.toggle('dd-vr')">
                   <h4 class="font-bold flex items-center gap-2">
                     <span class="text-slate-400 w-3 inline-block" x-text="$store.ddCollapse.isExpanded('dd-vr') ? '▼' : '▶'"></span>
@@ -724,7 +763,7 @@
                 </template>
               </div>
 
-              <div id="dd-ubo" :data-collapsed="!$store.ddCollapse.isExpanded('dd-ubo')" class="dd-card border-2 border-indigo-300 dark:border-indigo-700 rounded-lg p-4 md:col-span-2 scroll-mt-32" x-data="ddUboLoader()" x-init="load(report.ico)">
+              <div id="dd-ubo" :data-collapsed="!$store.ddCollapse.isExpanded('dd-ubo')" class="dd-card border border-indigo-200 dark:border-indigo-800 rounded-xl p-5 shadow-sm hover:shadow-md transition-shadow md:col-span-2 scroll-mt-32" x-data="ddUboLoader()" x-init="load(report.ico)">
                 <div class="dd-card-header flex items-baseline justify-between gap-2 mb-2 flex-wrap cursor-pointer select-none" @click="$store.ddCollapse.toggle('dd-ubo')">
                   <h4 class="font-bold flex items-center gap-2">
                     <span class="text-slate-400 w-3 inline-block" x-text="$store.ddCollapse.isExpanded('dd-ubo') ? '▼' : '▶'"></span>
@@ -822,7 +861,7 @@
                 </p>
               </div>
 
-              <div id="dd-dotace" :data-collapsed="!$store.ddCollapse.isExpanded('dd-dotace')" class="dd-card border-2 border-emerald-300 dark:border-emerald-700 rounded-lg p-4 md:col-span-2 scroll-mt-32" x-data="ddDotaceLoader()" x-init="load(report.ico)">
+              <div id="dd-dotace" :data-collapsed="!$store.ddCollapse.isExpanded('dd-dotace')" class="dd-card border border-emerald-200 dark:border-emerald-800 rounded-xl p-5 shadow-sm hover:shadow-md transition-shadow md:col-span-2 scroll-mt-32" x-data="ddDotaceLoader()" x-init="load(report.ico)">
                 <div class="dd-card-header flex items-baseline justify-between gap-2 mb-2 flex-wrap cursor-pointer select-none" @click="$store.ddCollapse.toggle('dd-dotace')">
                   <h4 class="font-bold flex items-center gap-2">
                     <span class="text-slate-400 w-3 inline-block" x-text="$store.ddCollapse.isExpanded('dd-dotace') ? '▼' : '▶'"></span>
@@ -952,7 +991,7 @@
                 </p>
               </div>
 
-              <div id="dd-smlouvy" :data-collapsed="!$store.ddCollapse.isExpanded('dd-smlouvy')" class="dd-card border-2 border-sky-300 dark:border-sky-700 rounded-lg p-4 md:col-span-2 scroll-mt-32" x-data="ddSmlouvyLoader()" x-init="load(report.ico)">
+              <div id="dd-smlouvy" :data-collapsed="!$store.ddCollapse.isExpanded('dd-smlouvy')" class="dd-card border border-sky-200 dark:border-sky-800 rounded-xl p-5 shadow-sm hover:shadow-md transition-shadow md:col-span-2 scroll-mt-32" x-data="ddSmlouvyLoader()" x-init="load(report.ico)">
                 <div class="dd-card-header flex items-baseline justify-between gap-2 mb-2 flex-wrap cursor-pointer select-none" @click="$store.ddCollapse.toggle('dd-smlouvy')">
                   <h4 class="font-bold flex items-center gap-2">
                     <span class="text-slate-400 w-3 inline-block" x-text="$store.ddCollapse.isExpanded('dd-smlouvy') ? '▼' : '▶'"></span>
@@ -1059,7 +1098,7 @@
                 </p>
               </div>
 
-              <div id="dd-adis" :data-collapsed="!$store.ddCollapse.isExpanded('dd-adis')" class="dd-card border dark:border-slate-700 rounded-lg p-4 scroll-mt-32" x-data="ddAdisLoader()" x-init="load(report.ico)">
+              <div id="dd-adis" :data-collapsed="!$store.ddCollapse.isExpanded('dd-adis')" class="dd-card border border-slate-200/80 dark:border-slate-700 rounded-xl p-5 shadow-sm hover:shadow-md transition-shadow scroll-mt-32" x-data="ddAdisLoader()" x-init="load(report.ico)">
                 <h4 class="dd-card-header font-bold mb-2 flex items-center justify-between gap-2 cursor-pointer select-none" @click="$store.ddCollapse.toggle('dd-adis')">
                   <span class="flex items-center gap-2">
                     <span class="text-slate-400 w-3 inline-block" x-text="$store.ddCollapse.isExpanded('dd-adis') ? '▼' : '▶'"></span>
@@ -1127,7 +1166,7 @@
                 </p>
               </div>
 
-              <div id="dd-isir" :data-collapsed="!$store.ddCollapse.isExpanded('dd-isir')" class="dd-card border dark:border-slate-700 rounded-lg p-4 scroll-mt-32" x-data="ddIsirLoader()" x-init="load(report.ico)">
+              <div id="dd-isir" :data-collapsed="!$store.ddCollapse.isExpanded('dd-isir')" class="dd-card border border-slate-200/80 dark:border-slate-700 rounded-xl p-5 shadow-sm hover:shadow-md transition-shadow scroll-mt-32" x-data="ddIsirLoader()" x-init="load(report.ico)">
                 <h4 class="dd-card-header font-bold mb-2 flex items-center justify-between gap-2 cursor-pointer select-none" @click="$store.ddCollapse.toggle('dd-isir')">
                   <span class="flex items-center gap-2">
                     <span class="text-slate-400 w-3 inline-block" x-text="$store.ddCollapse.isExpanded('dd-isir') ? '▼' : '▶'"></span>
@@ -1252,7 +1291,7 @@
               <div
                 id="dd-jerrs"
                 :data-collapsed="!$store.ddCollapse.isExpanded('dd-jerrs')"
-                class="dd-card border dark:border-slate-700 rounded-lg p-4 scroll-mt-32"
+                class="dd-card border border-slate-200/80 dark:border-slate-700 rounded-xl p-5 shadow-sm hover:shadow-md transition-shadow scroll-mt-32"
                 x-data="ddJerrsLoader()"
                 x-init="load(report.ico)"
               >
@@ -1326,7 +1365,7 @@
               <div
                 id="dd-sankce"
                 :data-collapsed="!$store.ddCollapse.isExpanded('dd-sankce')"
-                class="dd-card border dark:border-slate-700 rounded-lg p-4 scroll-mt-32"
+                class="dd-card border border-slate-200/80 dark:border-slate-700 rounded-xl p-5 shadow-sm hover:shadow-md transition-shadow scroll-mt-32"
                 x-data="ddEuSanctionsLoader()"
                 x-init="screen(report)"
               >
@@ -1417,7 +1456,7 @@
 
             <!-- Trade licenses as part of DD (we already have the data) -->
             <template x-if="report.trade_licenses && report.trade_licenses.total > 0">
-              <div id="dd-zivno" :data-collapsed="!$store.ddCollapse.isExpanded('dd-zivno')" class="dd-card border dark:border-slate-700 rounded-lg p-4 scroll-mt-32">
+              <div id="dd-zivno" :data-collapsed="!$store.ddCollapse.isExpanded('dd-zivno')" class="dd-card border border-slate-200/80 dark:border-slate-700 rounded-xl p-5 shadow-sm hover:shadow-md transition-shadow scroll-mt-32">
                 <h4 class="dd-card-header font-bold mb-2 flex items-center justify-between gap-2 cursor-pointer select-none" @click="$store.ddCollapse.toggle('dd-zivno')">
                   <span class="flex items-center gap-2">
                     <span class="text-slate-400 w-3 inline-block" x-text="$store.ddCollapse.isExpanded('dd-zivno') ? '▼' : '▶'"></span>
@@ -1521,6 +1560,8 @@
               <a class="underline" href="https://isir.justice.cz" target="_blank" rel="noopener">ISIR</a> a
               <a class="underline" href="https://or.justice.cz" target="_blank" rel="noopener">Veřejném rejstříku</a>.
             </p>
+              </div><!-- /content column -->
+            </div><!-- /sidebar grid -->
           </div>
         </template>
         </div><!-- /ddSection wrapper -->
