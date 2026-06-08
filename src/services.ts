@@ -306,6 +306,10 @@ export async function fullDueDiligenceService(client: AresClient, icoInput: stri
   const riskLevel = tally(findings);
   const obchodniJmeno = subject.obchodniJmeno ?? currentObchodniJmeno(pickPrimaryZaznam(vr));
 
+  // Subjekt inventář: zaznamenat firmu, kterou uživatel viděl. Slouží
+  // pro reverse holding discovery (najdi firmy kde parent je akcionář).
+  upsertSubject(normalized, obchodniJmeno ?? null);
+
   // Hook do lokálního indexu osoba→firmy: vložíme všechny aktivní členy
   // statutárního orgánu ze ARES VR. Postupně se index plní s každým DD.
   for (const m of members) {
@@ -567,8 +571,8 @@ export { getPersonVazbyService } from "./persons/service.js";
 // ─── Holding discovery (BFS po jednatelích + akcionářích) ─────────────────────
 export { discoverHolding } from "./holding/discover.js";
 
-// ─── Local persistent index osoba → firmy (incremental) ──────────────────────
-import { upsertMembership } from "./persons_index/store.js";
+// ─── Local persistent index osoba → firmy + subjekt inventář ──────────────────
+import { upsertMembership, upsertSubject } from "./persons_index/store.js";
 
 // ─── Veřejný rejstřík (OR) přes verejnerejstriky.msp.gov.cz ───────────────────
 import { VR_ATTRIBUTION, fetchVrDetailByIco } from "./justice_vr/client.js";
@@ -671,6 +675,9 @@ export async function getVrDetailService(ico: string) {
   // Hook do lokálního indexu: OR má kompletnější data včetně dat zápisu
   // jednotlivých funkcí + dozorčí rady + akcionářů. Vkládáme všechny FO.
   const obchodniJmenoVr = detail.nazev?.value ?? null;
+
+  // Subjekt inventář pro reverse holding discovery.
+  upsertSubject(v.normalized, obchodniJmenoVr);
   const insertMember = (m: VrMember, source: "OR_VR" | "OR_DR" | "OR_AKC"): void => {
     if (m.isLegalEntity || !m.datumNarozeni || !m.jmeno || !m.prijmeni) return;
     upsertMembership({

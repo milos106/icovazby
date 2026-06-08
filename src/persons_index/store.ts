@@ -39,13 +39,27 @@ export interface IndexedPerson {
   memberships: IndexedMembership[];
 }
 
+/**
+ * Subject = firma kterou uživatel kdykoli viděl (DD report nebo OR detail).
+ * Slouží jako „inventář" pro reverse holding discovery: když rozkrýváme
+ * holding parent X, projdeme všechny known subjekts a u každého
+ * zkontrolujeme zda X je v jeho akcionářích/statutárech.
+ */
+export interface IndexedSubject {
+  ico: string;
+  obchodniJmeno: string | null;
+  seenAt: number;
+}
+
 interface IndexFile {
   version: number;
   lastUpdated: string;
   persons: Record<string, IndexedPerson>;
+  /** Verze 2: subjects index. Pro zpětnou kompatibilitu volitelný. */
+  subjects?: Record<string, IndexedSubject>;
 }
 
-const VERSION = 1;
+const VERSION = 2;
 const DEFAULT_DATA_DIR = "./data";
 const FILE_NAME = "persons-index.json";
 
@@ -59,6 +73,7 @@ let memory: IndexFile = {
   version: VERSION,
   lastUpdated: new Date().toISOString(),
   persons: {},
+  subjects: {},
 };
 let unflushed = 0;
 let flushTimer: NodeJS.Timeout | null = null;
@@ -94,8 +109,14 @@ function load(): void {
     if (existsSync(path)) {
       const raw = readFileSync(path, "utf-8");
       const parsed = JSON.parse(raw) as IndexFile;
-      if (parsed?.version === VERSION && parsed.persons) {
-        memory = parsed;
+      if (parsed?.persons) {
+        // V1 → V2 migrace: subjects default na prázdný objekt.
+        memory = {
+          version: VERSION,
+          lastUpdated: parsed.lastUpdated ?? new Date().toISOString(),
+          persons: parsed.persons,
+          subjects: parsed.subjects ?? {},
+        };
       }
     }
   } catch {
@@ -201,6 +222,29 @@ export function upsertMembership(input: UpsertInput): void {
   scheduleFlush();
 }
 
+/** Zaznamenej, že uživatel viděl firmu s tímto IČO. Slouží pro reverse
+ *  holding discovery — projít všechny known subjekts a u každého
+ *  zkontrolovat zda parent IČO je akcionář/statutář. */
+export function upsertSubject(ico: string, obchodniJmeno?: string | null): void {
+  load();
+  const key = ico.replace(/\D/g, "").padStart(8, "0");
+  if (!/^\d{8}$/.test(key)) return;
+  memory.subjects ??= {};
+  const existing = memory.subjects[key];
+  memory.subjects[key] = {
+    ico: key,
+    obchodniJmeno: obchodniJmeno ?? existing?.obchodniJmeno ?? null,
+    seenAt: Date.now(),
+  };
+  scheduleFlush();
+}
+
+/** Seznam všech known subjekts (firmy z DD historie). */
+export function listSubjects(): IndexedSubject[] {
+  load();
+  return Object.values(memory.subjects ?? {});
+}
+
 /** Najdi všechny memberships osoby. */
 export function findMemberships(
   jmeno: string,
@@ -216,6 +260,7 @@ export function findMemberships(
 export function indexStats(): {
   personsCount: number;
   membershipsCount: number;
+  subjectsCount: number;
   lastUpdated: string;
   path: string;
 } {
@@ -225,6 +270,7 @@ export function indexStats(): {
   return {
     personsCount: Object.keys(memory.persons).length,
     membershipsCount: count,
+    subjectsCount: Object.keys(memory.subjects ?? {}).length,
     lastUpdated: memory.lastUpdated,
     path: dataPath(),
   };

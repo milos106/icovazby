@@ -25,7 +25,7 @@ import { validateIco as validateIcoFn } from "../ares/normalize.js";
 import { flattenMembers } from "../ares/vr.js";
 import { InvalidInputError } from "../errors.js";
 import { fetchVrDetailByIco } from "../justice_vr/client.js";
-import { findMemberships } from "../persons_index/store.js";
+import { findMemberships, listSubjects } from "../persons_index/store.js";
 
 export interface DiscoveredCompany {
   ico: string;
@@ -275,6 +275,64 @@ export async function discoverHolding(
       }
     } else {
       for (const ico of seenThisRound) visited.add(ico);
+    }
+  }
+
+  // Krok D2: Reverse holding scan — projít VŠECHNY firmy v subjekt inventáři
+  // (firmy, které uživatel kdy projel přes DD/VR) a u každé zkontrolovat
+  // zda parent je v akcionářích NEBO v statutárním orgánu jako právnická
+  // osoba. Tím chytíme „obrácený směr": dceřinky kde Agrofert je akcionář
+  // bez sdíleného jednatele (např. ZZN Polabí).
+  const subjects = listSubjects()
+    .map((s) => s.ico)
+    .filter((ico) => ico !== parent && !candidates.has(ico) && !visited.has(ico));
+  if (subjects.length > 0) {
+    const reverseHits = await Promise.all(
+      subjects.slice(0, fetchCap).map(async (ico) => {
+        try {
+          const detail = await fetchVrDetailByIco(ico);
+          if (!detail) return null;
+          // Akcionář kontrola: parent IČO mezi akcionáři této firmy?
+          const akcionari = await getAkcionarLegalEntities(ico);
+          const parentIsAkcionar = akcionari.includes(parent);
+          // Statutární orgán: parent IČO jako právnická osoba ve statutáři?
+          // Detail.statutarniOrgan.osoby může mít právnickou osobu s ico.
+          let parentInStat = false;
+          for (const raw of (detail.statutarniOrgan?.osoby ?? []) as Array<{
+            value?: { osoba?: { ico?: string } };
+          }>) {
+            if ((raw.value?.osoba?.ico ?? "").padStart(8, "0") === parent) {
+              parentInStat = true;
+              break;
+            }
+          }
+          if (!parentIsAkcionar && !parentInStat) return null;
+          return {
+            ico,
+            obchodniJmeno: detail.nazev?.value ?? null,
+            isParentAkcionar: parentIsAkcionar,
+            parentInStat,
+          };
+        } catch {
+          return null;
+        }
+      }),
+    );
+    for (const hit of reverseHits) {
+      if (!hit) continue;
+      const cand: Candidate = {
+        ico: hit.ico,
+        level: 1,
+        obchodniJmeno: hit.obchodniJmeno,
+        signals: new Set<string>(),
+        jednateleShared: new Set<string>(),
+        isParentAkcionar: hit.isParentAkcionar,
+        sharedStatutaryWithParent: new Set<string>(),
+      };
+      if (hit.isParentAkcionar) cand.signals.add("parent-je-akcionar");
+      if (hit.parentInStat) cand.signals.add("parent-ve-statutaru");
+      candidates.set(hit.ico, cand);
+      walkedFirms++;
     }
   }
 
