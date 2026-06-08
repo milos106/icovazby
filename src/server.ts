@@ -498,7 +498,9 @@ app.post("/api/holding/discover", {
 
 // ─── Cross-company persons ────────────────────────────────────────────────────
 const crossSchema = z.object({
-  icos: z.array(z.string()).min(2).max(50),
+  // Min 1: 1-IČO request triggeruje auto-expand v service přes persons_index.
+  // Service vyhodí InvalidInputError pokud expanze nenajde žádné sousedy.
+  icos: z.array(z.string()).min(1).max(50),
   includeHistorical: z.boolean().optional(),
   emitMermaid: z.boolean().optional(),
 });
