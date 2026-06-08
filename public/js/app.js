@@ -195,7 +195,7 @@ function searchSection() {
         if (e.detail?.ico) {
           this.query = e.detail.ico;
           this.run().then(() => {
-            document.getElementById("profil")?.scrollIntoView({ behavior: "smooth" });
+            /* scroll removed per user request */
           });
         }
       });
@@ -261,7 +261,7 @@ function searchSection() {
     async loadByIco(ico) {
       this.query = ico;
       await this.run();
-      document.getElementById("profil")?.scrollIntoView({ behavior: "smooth" });
+      /* scroll removed per user request */
     },
     async toggleRes(ico) {
       if (this.resData) {
@@ -335,7 +335,7 @@ function ddSection() {
         this.report = await jsonFetch(`/api/dd/${encodeURIComponent(i)}`);
         recordVisit({ ico: this.report.ico, obchodniJmeno: this.report.obchodniJmeno });
         updateUrl({ ico: this.report.ico, action: "profil" });
-        document.getElementById("profil")?.scrollIntoView({ behavior: "smooth", block: "start" });
+        /* scroll removed per user request */
         // Ulož „latest profile" na window, ať holdingDiscovery, který se
         // vyrenderuje až po template x-if="report", ho mohl číst při init().
         // (Bare event dispatch by se mohl ztratit — Alpine ještě nestihla
@@ -445,12 +445,15 @@ function graphSection() {
         this.loading = false;
       }
     },
-    /** Aktivováno custom eventem z personVazbySection — pre-fill IČO a spustit. */
-    async seed(icos) {
+    /** Aktivováno custom eventem (holding discovery / personVazby): pre-fill
+     *  IČO + propagovaný historický flag, spustit run() bez auto-scrollu. */
+    async seed(icos, opts = {}) {
       if (!Array.isArray(icos) || icos.length < 2) return;
       this.raw = icos.join("\n");
+      if (typeof opts.includeHistorical === "boolean") {
+        this.includeHistorical = opts.includeHistorical;
+      }
       await this.run();
-      document.getElementById("graph")?.scrollIntoView({ behavior: "smooth", block: "start" });
     },
     /**
      * Nový profil firmy v searchSection RESETuje Mapu propojení na jediné
@@ -496,7 +499,7 @@ function personVazbySection() {
         this.visible = true;
         // Necháme Alpine rerenderovat než scrollneme.
         Promise.resolve().then(() => {
-          document.getElementById("vazby")?.scrollIntoView({ behavior: "smooth", block: "start" });
+          /* scroll removed */
           this.run();
         });
       });
@@ -758,6 +761,7 @@ function ddEuSanctionsLoader() {
 function holdingDiscovery() {
   return {
     depth: 2,
+    includeHistorical: false,
     loading: false,
     error: "",
     result: null,
@@ -803,7 +807,12 @@ function holdingDiscovery() {
         const r = await fetch("/api/holding/discover", withHsToken({
           method: "POST",
           headers: { "content-type": "application/json" },
-          body: JSON.stringify({ ico: parentIco, depth: this.depth, maxIcos: 50 }),
+          body: JSON.stringify({
+            ico: parentIco,
+            depth: this.depth,
+            maxIcos: 50,
+            includeHistorical: this.includeHistorical,
+          }),
         }));
         if (!r.ok) {
           const e = await r.json().catch(() => ({}));
@@ -811,10 +820,13 @@ function holdingDiscovery() {
         }
         this.result = await r.json();
         this.elapsed = ((performance.now() - t0) / 1000).toFixed(1);
-        // Pošli parent + všechny nalezené do Mapy propojení.
+        // Pošli parent + všechny nalezené do Mapy propojení + propagace
+        // historického flagu, aby Mapa render vykreslila i historické hrany.
         const icos = [parentIco, ...this.result.discovered.map((c) => c.ico)];
         if (icos.length >= 2) {
-          window.dispatchEvent(new CustomEvent("ares-seed-graph", { detail: { icos } }));
+          window.dispatchEvent(new CustomEvent("ares-seed-graph", {
+            detail: { icos, includeHistorical: this.includeHistorical },
+          }));
         }
       } catch (e) {
         this.error = "Rozkrytí selhalo: " + e.message;

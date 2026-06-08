@@ -84,11 +84,12 @@ function personKey(jmeno: string, prijmeni: string, datumNarozeni: string): stri
 async function getStatutaryPersons(
   client: AresClient,
   ico: string,
+  includeHistorical = false,
 ): Promise<Array<{ jmeno: string; prijmeni: string; datumNarozeni: string }>> {
   const persons: Array<{ jmeno: string; prijmeni: string; datumNarozeni: string }> = [];
   try {
     const vr = await cached(`vr:raw:${ico}`, () => aresLimit(() => client.getVrRecord(ico)));
-    const members = flattenMembers(vr, { activeOnly: true });
+    const members = flattenMembers(vr, { activeOnly: !includeHistorical });
     for (const m of members) {
       const fo = m.fyzickaOsoba;
       if (!fo?.jmeno || !fo.prijmeni || !fo.datumNarozeni) continue;
@@ -146,6 +147,7 @@ export async function discoverHolding(
   parentIcoInput: string,
   depth = 2,
   maxIcos = 50,
+  includeHistorical = false,
 ): Promise<HoldingDiscoveryResult> {
   const v = validateIcoFn(parentIcoInput);
   if (!v.valid || !v.normalized) throw new InvalidInputError("Neplatné parent IČO.");
@@ -170,7 +172,7 @@ export async function discoverHolding(
   } catch {
     /* ignore */
   }
-  const parentPersons = await getStatutaryPersons(client, parent);
+  const parentPersons = await getStatutaryPersons(client, parent, includeHistorical);
   for (const p of parentPersons) {
     parentStatutary.add(personKey(p.jmeno, p.prijmeni, p.datumNarozeni));
   }
@@ -198,7 +200,7 @@ export async function discoverHolding(
 
     // Krok B: získat jednatele této firmy a pro každého ho cross-refnout
     // přes lokální index.
-    const persons = await getStatutaryPersons(client, item.ico);
+    const persons = await getStatutaryPersons(client, item.ico, includeHistorical);
     const personOtherIcos = new Map<string, { fullName: string; icos: string[] }>();
     for (const p of persons) {
       const otherIcos = getPersonOtherCompanies(p.jmeno, p.prijmeni, p.datumNarozeni)

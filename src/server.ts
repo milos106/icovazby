@@ -475,6 +475,7 @@ const holdingSchema = z.object({
   ico: z.string().min(7).max(8),
   depth: z.coerce.number().int().min(1).max(3).optional(),
   maxIcos: z.coerce.number().int().min(5).max(200).optional(),
+  includeHistorical: z.boolean().optional(),
 });
 // Tighter limit pro heavy endpoint — discover dělá až 50× ARES calls.
 // Default 10/min, override přes RATE_LIMIT_HEAVY_PER_MIN.
@@ -488,8 +489,8 @@ app.post("/api/holding/discover", {
     if (!parsed.success) {
       return reply.status(400).send({ error: "INVALID_INPUT", message: parsed.error.message });
     }
-    const { ico, depth = 2, maxIcos = 50 } = parsed.data;
-    reply.send(await discoverHolding(client, ico, depth, maxIcos));
+    const { ico, depth = 2, maxIcos = 50, includeHistorical = false } = parsed.data;
+    reply.send(await discoverHolding(client, ico, depth, maxIcos, includeHistorical));
   } catch (e) {
     sendError(reply, e);
   }
