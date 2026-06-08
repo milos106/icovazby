@@ -95,7 +95,7 @@ app.addHook("onRequest", async (req) => {
 // instance, které tento kód provozují — důkazní materiál pokud někdo
 // porušuje §13 (povinné publikování modifikovaného zdroje).
 app.addHook("onSend", async (_req, reply, payload) => {
-  reply.header("X-Powered-By", "icovazby/0.3.0 (AGPL-3.0)");
+  reply.header("X-Powered-By", "icovazby/0.4.0 (AGPL-3.0)");
   return payload;
 });
 
@@ -128,7 +128,7 @@ function sendError(reply: FastifyReply, err: unknown): void {
 // ─── Health ───────────────────────────────────────────────────────────────────
 app.get("/healthz", async () => ({
   ok: true,
-  version: "0.3.0",
+  version: "0.4.0",
   uptimeSeconds: Math.floor(process.uptime()),
   cache: cacheStats(),
   integrations: {

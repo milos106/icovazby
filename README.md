@@ -177,4 +177,13 @@ Pro odhalené zranitelnosti viz [SECURITY.md](./SECURITY.md).
 
 ## Status
 
+**`v0.4`** — Holding discovery rozšířen:
+
+- Deep preseed při bootu — ARES VR jednatele pro top firem
+- Bootstrap inventory ~16 700 firem + 6 600 jednatelů (Agrofert holding najde 5+ dceřinek včetně ZZN Polabí přes akcionářskou strukturu)
+- Auto-detect OSVČ jednatelů (PD MONT → Dubický OSVČ)
+- `includeHistorical` checkbox v holding discovery (synced s Mapou přes Alpine store)
+- UI redesign Profil sekce, žádné auto-scroll skoky
+- DNS přes Cloudflare (bypass Hetzner 443 filter), Always Use HTTPS
+
 `v0.3` — MVP s production-ready hardening (rate limit, cache, p-limit), 3 deliverable features (PDF, demo, e-mail alerty) a první OSS release pod AGPL-3.0.

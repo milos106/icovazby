@@ -4,6 +4,72 @@ Všechny významné změny v tomto projektu jsou zaznamenány zde.
 
 Formát vychází z [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), verzování podle [SemVer](https://semver.org/).
 
+## [0.4.0] — 2026-06-08
+
+### Added
+
+- **Deep preseed**: server při bootu projíždí top-cz-companies.json (~520 firem)
+  a stahuje jejich jednatele z ARES VR do persons_index. Holding discovery
+  pak najde rodinné struktury i bez user history. Vypnutí: `PRESEED_DEEP=0`.
+- **Bootstrap inventory dump** (16 660 firem + 6 624 jednatelů): generovaný
+  jednorázově lokálním harvest skriptem (`/tmp/harvest_50k.mjs` +
+  `/tmp/harvest_deep.mjs`), nahrán na server jako `data/persons-index.json`.
+  Pokrývá ~95 % známých velkých českých holdingových struktur.
+- **Auto-detect OSVČ jednatelů** (`enrichJednateleOsvc()`): při DD na firmu
+  (PD MONT s.r.o.) projde jednatele a pro každého zkusí najít jeho OSVČ
+  záznam přes ARES search by jméno + filtr pravniForma 107/108 + match DOB.
+  Pak holding discovery najde i OSVČ jako dceřinky (PD MONT → Dubický OSVČ).
+- **includeHistorical v holding discovery**: nový parameter (default false)
+  pro `discoverHolding()`. UI checkbox v sekci 🔍 Rozkrýt holding. Synced
+  s checkboxem v Mapě propojení přes globální Alpine store (`$store.history`).
+- **Loading spinner** v holding discovery — visual cue že discovery běží
+  na pozadí (5-15 s).
+- **Global history toggle** přes Alpine.store(„history"): jeden binární
+  flag řídí jak discovery (Profil), tak render (Mapa). Zaškrtnutí kdekoli
+  propaguje se do druhého místa automaticky.
+
+### Changed
+
+- **ARES VR endpoint pro akcionáře**: holding discovery reverse scan teď
+  získává akcionáře z ARES VR `/ekonomicke-subjekty-vr/:ico` (authoritativní,
+  vždy odpovídá) místo VR portal `/api/rejstriky/detail/:ico` (v ověřovacím
+  provozu, často vrací `{message: error}` např. pro ZZN Polabí).
+- **Reverse scan cap**: z 200 firem na **5 000** (= projíždí celý seed
+  bootstrap). Zpomalí discovery o ~30 s ale zvýší pokrytí.
+- **UI redesign Profil sekce „Rozkrýt holding"**: 3-řádkový layout
+  (akce → volby → status) místo jednoho přeplněného flex řádku.
+- **Žádné auto-scroll skoky** (`scrollIntoView` odstraněno ze všech sekcí).
+  Stránka zůstává tam, kde je.
+- **Mapa propojení checkbox přejmenován** „Zobrazit historické vazby"
+  (Profil checkbox: „Hledat i historické vazby") — odhalují různé sémantiky.
+- **Search fallback**: pokud ARES nenajde firmu pro neúplné jméno (`agrofer`),
+  postupné krácení query (`agrofer → agrofe → agrof → agro`); pokud i to
+  selže, lokální subjects inventory substring match. Notice v UI.
+- **OSVČ false-positive risk**: právní forma 107/108 už nedostává žluté
+  riziko za chybějící statutární orgán (ze zákona ho mít nemůžou).
+- **Aktivních osob count** v Mapě propojení: deduplikováno přes personKey
+  (dříve 32 raw rows vs 26 unikátních osob).
+
+### Fixed
+
+- **Mapa propojení reset** při novém profilu (předtím kumulovala IČO mezi
+  vyhledáními: PD MONT pak SimpleSolar → 2 holdingy v jednom grafu).
+- **Mermaid graf v dark mode** má tmavý kontejner (předtím bílé pozadí).
+- **localStorage key migrace** `ares-web:*` → `icovazby:*` (automatická
+  migrace v <head>, existující uživatelé nepřijdou o nastavení).
+- **Personal key normalizace** — diakritika v jednatel jménech (Jedlička vs
+  Jedlicka) způsobovala dva oddělené klíče v persons_index. Harvest skript
+  teď používá stejný NFD strip jako server.
+
+### Infrastructure
+
+- **DNS přes Cloudflare** (icovazby.cz) — bypass Hetzner upstream 443
+  filtru. Flexible TLS mode (CF→server přes HTTP/80).
+- **Always Use HTTPS** v CF — automatický redirect HTTP→HTTPS.
+- **Static cache snížen** na 5 min (z 24 h) pro rychlejší propagaci JS změn.
+- **Resolver fix**: instrukce pro lokální DNS (`resolvectl dns ... 1.1.1.1`)
+  pro testování během DNS propagace u registrátora.
+
 ## [0.3.0] — 2026-06-08
 
 První veřejný OSS release pod AGPL-3.0.

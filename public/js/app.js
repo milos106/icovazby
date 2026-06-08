@@ -47,6 +47,11 @@ document.addEventListener("alpine:init", () => {
     },
   });
 
+  // Globální historie toggle: synchronizuje cb v Profilu (Rozkrýt holding)
+  // a v Mapě propojení. User myslí v binární kategorii „chci historické info"
+  // — discovery i render vždy řídí stejný flag. Default off.
+  window.Alpine.store("history", { enabled: false });
+
   window.Alpine.store("ddCollapse", {
     state: (() => {
       try {
@@ -376,7 +381,6 @@ function ddSection() {
 function graphSection() {
   return {
     raw: "",
-    includeHistorical: false,
     loading: false,
     error: "",
     result: null,
@@ -425,7 +429,7 @@ function graphSection() {
           headers: { "content-type": "application/json" },
           body: JSON.stringify({
             icos,
-            includeHistorical: this.includeHistorical,
+            includeHistorical: Alpine.store("history").enabled,
             emitMermaid: true,
           }),
         });
@@ -446,13 +450,11 @@ function graphSection() {
       }
     },
     /** Aktivováno custom eventem (holding discovery / personVazby): pre-fill
-     *  IČO + propagovaný historický flag, spustit run() bez auto-scrollu. */
-    async seed(icos, opts = {}) {
+     *  IČO + spustit run(). Historický flag se čte z globálního Alpine store
+     *  ($store.history.enabled) sdíleného s Profilem. */
+    async seed(icos) {
       if (!Array.isArray(icos) || icos.length < 2) return;
       this.raw = icos.join("\n");
-      if (typeof opts.includeHistorical === "boolean") {
-        this.includeHistorical = opts.includeHistorical;
-      }
       await this.run();
     },
     /**
@@ -761,7 +763,6 @@ function ddEuSanctionsLoader() {
 function holdingDiscovery() {
   return {
     depth: 2,
-    includeHistorical: false,
     loading: false,
     error: "",
     result: null,
@@ -811,7 +812,7 @@ function holdingDiscovery() {
             ico: parentIco,
             depth: this.depth,
             maxIcos: 50,
-            includeHistorical: this.includeHistorical,
+            includeHistorical: Alpine.store("history").enabled,
           }),
         }));
         if (!r.ok) {
@@ -820,13 +821,11 @@ function holdingDiscovery() {
         }
         this.result = await r.json();
         this.elapsed = ((performance.now() - t0) / 1000).toFixed(1);
-        // Pošli parent + všechny nalezené do Mapy propojení + propagace
-        // historického flagu, aby Mapa render vykreslila i historické hrany.
+        // Mapa dostane jen IČO. Historický flag čte z globálního store
+        // ($store.history.enabled) — již synced s Profilem checkboxem.
         const icos = [parentIco, ...this.result.discovered.map((c) => c.ico)];
         if (icos.length >= 2) {
-          window.dispatchEvent(new CustomEvent("ares-seed-graph", {
-            detail: { icos, includeHistorical: this.includeHistorical },
-          }));
+          window.dispatchEvent(new CustomEvent("ares-seed-graph", { detail: { icos } }));
         }
       } catch (e) {
         this.error = "Rozkrytí selhalo: " + e.message;

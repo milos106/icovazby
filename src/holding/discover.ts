@@ -105,20 +105,39 @@ async function getStatutaryPersons(
  * Z OR detailu vytáhne akcionáře, kteří jsou PRÁVNICKÉ osoby (mají
  * IČO). Tyto IČO se přidávají do queue jako "akcionář signál".
  */
-async function getAkcionarLegalEntities(ico: string): Promise<string[]> {
+async function getAkcionarLegalEntities(
+  client: AresClient,
+  ico: string,
+  includeHistorical = false,
+): Promise<string[]> {
+  // ARES VR endpoint má `akcionari` s plnou historií. Předtím jsme používali
+  // VR portal /api/rejstriky/detail/:ico, ale ten je v ověřovacím provozu
+  // a často vrací { message: error } místo detailu (např. pro ZZN Polabí).
+  // ARES VR je authoritativní a vrátí všechny PO akcionáře včetně historických.
   try {
-    const detail = await cached(`vrportal:${ico}`, () => aresLimit(() => fetchVrDetailByIco(ico)));
-    if (!detail) return [];
-    const out: string[] = [];
-    for (const raw of (detail.akcionar?.osoby ?? []) as Array<{
-      value?: { osoba?: { ico?: string; nazev?: string } };
-    }>) {
-      const akcIco = raw.value?.osoba?.ico;
-      if (akcIco && /^\d{7,8}$/.test(akcIco)) {
-        out.push(akcIco.padStart(8, "0"));
+    const vr = await cached(`vr:raw:${ico}`, () => aresLimit(() => client.getVrRecord(ico)));
+    const out = new Set<string>();
+    type AkcionarBlock = {
+      datumZapisu?: string;
+      datumVymazu?: string | null;
+      clenoveOrganu?: Array<{
+        datumVymazu?: string | null;
+        pravnickaOsoba?: { ico?: string };
+      }>;
+    };
+    for (const zaznam of (vr as { zaznamy?: Array<{ akcionari?: AkcionarBlock[] }> }).zaznamy ?? []) {
+      for (const blok of zaznam.akcionari ?? []) {
+        if (!includeHistorical && blok.datumVymazu) continue;
+        for (const clen of blok.clenoveOrganu ?? []) {
+          if (!includeHistorical && clen.datumVymazu) continue;
+          const akcIco = clen.pravnickaOsoba?.ico;
+          if (akcIco && /^\d{7,8}$/.test(akcIco)) {
+            out.add(akcIco.padStart(8, "0"));
+          }
+        }
       }
     }
-    return out;
+    return [...out];
   } catch {
     return [];
   }
@@ -196,7 +215,7 @@ export async function discoverHolding(
 
     // Krok A: získat akcionáře této firmy (jen pro level >= 1 — parent
     // sám sebe akcionářem nedělá).
-    const akcionari = item.level >= 0 ? await getAkcionarLegalEntities(item.ico) : [];
+    const akcionari = item.level >= 0 ? await getAkcionarLegalEntities(client, item.ico, includeHistorical) : [];
 
     // Krok B: získat jednatele této firmy a pro každého ho cross-refnout
     // přes lokální index.
@@ -264,7 +283,7 @@ export async function discoverHolding(
       // Pro level 0 (parent) — jednorázové cyklování pro každou level-1
       // kandidátní firmu detekuje, zda parent je jejím akcionářem.
       for (const ico of seenThisRound) {
-        const akc = await getAkcionarLegalEntities(ico);
+        const akc = await getAkcionarLegalEntities(client, ico, includeHistorical);
         if (akc.includes(parent)) {
           const cand = candidates.get(ico);
           if (cand) {
@@ -297,31 +316,42 @@ export async function discoverHolding(
     .filter((ico) => ico !== parent && !candidates.has(ico) && !visited.has(ico));
   if (subjects.length > 0) {
     const reverseHits = await Promise.all(
-      subjects.slice(0, fetchCap).map(async (ico) => {
+      // Reverse scan má vyšší cap (5000) než BFS — projíždíme jen lokálně
+      // známé subjects, ARES VR call je paralelní s rate-limit. Pro 16k
+      // subjects to znamená cca 30 s; můžeme za to spolehlivě najít všechny
+      // akcionářské vazby (např. ZZN Polabí je s indexem ~10 000).
+      subjects.slice(0, 5000).map(async (ico) => {
         try {
-          const detail = await cached(`vrportal:${ico}`, () => aresLimit(() => fetchVrDetailByIco(ico)));
-          if (!detail) return null;
-          // Akcionář kontrola: parent IČO mezi akcionáři této firmy?
-          const akcionari = await getAkcionarLegalEntities(ico);
+          // Akcionáře získáme z ARES VR (authoritativní zdroj, vždy odpovídá).
+          // VR portal /api/rejstriky/detail je v ověřovacím provozu a často
+          // selhává — pro ZZN Polabí např. vrací {message: error}. Předtím
+          // jsme z toho early-return-ovali a chyběli akcionářské nálezy.
+          const akcionari = await getAkcionarLegalEntities(client, ico, includeHistorical);
           const parentIsAkcionar = akcionari.includes(parent);
-          // Statutární orgán: parent IČO jako právnická osoba ve statutáři?
-          // Detail.statutarniOrgan.osoby může mít právnickou osobu s ico.
+
+          // VR portal detail je nice-to-have pro: (a) obchodniJmeno, (b)
+          // statutární orgán právnické osoby. Jeho selhání neblokuje hit.
           let parentInStat = false;
-          for (const raw of (detail.statutarniOrgan?.osoby ?? []) as Array<{
-            value?: { osoba?: { ico?: string } };
-          }>) {
-            if ((raw.value?.osoba?.ico ?? "").padStart(8, "0") === parent) {
-              parentInStat = true;
-              break;
+          let obchodniJmeno: string | null = null;
+          try {
+            const detail = await cached(`vrportal:${ico}`, () => aresLimit(() => fetchVrDetailByIco(ico)));
+            if (detail) {
+              obchodniJmeno = detail.nazev?.value ?? null;
+              for (const raw of (detail.statutarniOrgan?.osoby ?? []) as Array<{
+                value?: { osoba?: { ico?: string } };
+              }>) {
+                if ((raw.value?.osoba?.ico ?? "").padStart(8, "0") === parent) {
+                  parentInStat = true;
+                  break;
+                }
+              }
             }
+          } catch {
+            /* VR portal nedostupný — pokračujeme jen s akcionáři */
           }
+
           if (!parentIsAkcionar && !parentInStat) return null;
-          return {
-            ico,
-            obchodniJmeno: detail.nazev?.value ?? null,
-            isParentAkcionar: parentIsAkcionar,
-            parentInStat,
-          };
+          return { ico, obchodniJmeno, isParentAkcionar: parentIsAkcionar, parentInStat };
         } catch {
           return null;
         }
