@@ -32,6 +32,10 @@ export interface SharedPerson {
 export interface GraphResult {
   companies: { ico: string; obchodniJmeno?: string; vrFound: boolean }[];
   totalActivePersons: number;
+  /** Všechny aktivní osoby+právnické osoby napříč firmami, seřazené podle
+   *  počtu unikátních firem (sdílené nahoře). Slouží pro expand „Aktivních
+   *  osob" v UI. */
+  activePersons: SharedPerson[];
   sharedPersons: SharedPerson[];
   mermaid: string;
 }
@@ -121,13 +125,19 @@ export function buildCrossCompanyGraph(
     }
   }
 
-  const sharedPersons = [...personMap.values(), ...legalMap.values()]
-    .filter((p) => uniqueIcoCount(p.memberships) >= 2)
+  // Všechny osoby napříč firmami (aspoň jedna aktivní vazba) — pro expand
+  // „Aktivních osob" v UI. Seřazené podle počtu unikátních firem.
+  const activePersons = [...personMap.values(), ...legalMap.values()]
+    .filter((p) => p.memberships.some((m) => !m.datumVymazu))
     .sort((a, b) => uniqueIcoCount(b.memberships) - uniqueIcoCount(a.memberships));
+
+  // Sdílení = ti, kdo jsou ve ≥2 unikátních firmách (subset activePersons).
+  const sharedPersons = activePersons.filter((p) => uniqueIcoCount(p.memberships) >= 2);
 
   return {
     companies: companyMeta,
     totalActivePersons: totalActive,
+    activePersons,
     sharedPersons,
     mermaid: renderMermaid(companyMeta, sharedPersons),
   };

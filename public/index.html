@@ -2032,10 +2032,107 @@
 
         <template x-if="result">
           <div class="mt-6 space-y-4">
-            <div class="grid grid-cols-3 gap-3 text-center">
-              <div class="border dark:border-slate-700 rounded-lg p-3"><div class="text-2xl font-bold" x-text="result.zpracovanoIco"></div><div class="text-xs text-slate-500 dark:text-slate-400">Firem</div></div>
-              <div class="border dark:border-slate-700 rounded-lg p-3"><div class="text-2xl font-bold" x-text="result.totalActivePersons"></div><div class="text-xs text-slate-500 dark:text-slate-400">Aktivních osob</div></div>
-              <div class="border dark:border-slate-700 rounded-lg p-3 bg-amber-50"><div class="text-2xl font-bold text-amber-700" x-text="result.sharedCount"></div><div class="text-xs text-slate-500 dark:text-slate-400">Sdílených napříč</div></div>
+            <!-- Stat tiles — klik rozbalí detail pod nimi. expanded = 'firem' |
+                 'osob' | 'sdileni' | null. -->
+            <div class="grid grid-cols-3 gap-3 text-center" x-data="{ expanded: null }">
+              <button
+                type="button"
+                @click="expanded = expanded === 'firem' ? null : 'firem'"
+                :class="expanded === 'firem' ? 'ring-2 ring-emerald-500 bg-emerald-50 dark:bg-emerald-900/20' : 'hover:bg-slate-50 dark:hover:bg-slate-700/30'"
+                class="border border-slate-200/80 dark:border-slate-700 rounded-xl p-3 transition-all cursor-pointer"
+              >
+                <div class="text-2xl font-semibold tracking-tight" x-text="result.zpracovanoIco"></div>
+                <div class="text-xs text-slate-500 dark:text-slate-400">Firem <span x-text="expanded === 'firem' ? '▲' : '▼'"></span></div>
+              </button>
+              <button
+                type="button"
+                @click="expanded = expanded === 'osob' ? null : 'osob'"
+                :class="expanded === 'osob' ? 'ring-2 ring-emerald-500 bg-emerald-50 dark:bg-emerald-900/20' : 'hover:bg-slate-50 dark:hover:bg-slate-700/30'"
+                class="border border-slate-200/80 dark:border-slate-700 rounded-xl p-3 transition-all cursor-pointer"
+              >
+                <div class="text-2xl font-semibold tracking-tight" x-text="result.totalActivePersons"></div>
+                <div class="text-xs text-slate-500 dark:text-slate-400">Aktivních osob <span x-text="expanded === 'osob' ? '▲' : '▼'"></span></div>
+              </button>
+              <button
+                type="button"
+                @click="expanded = expanded === 'sdileni' ? null : 'sdileni'"
+                :class="expanded === 'sdileni' ? 'ring-2 ring-amber-500 bg-amber-100 dark:bg-amber-900/40' : 'bg-amber-50 dark:bg-amber-900/20 hover:bg-amber-100 dark:hover:bg-amber-900/30'"
+                class="border border-amber-200 dark:border-amber-800 rounded-xl p-3 transition-all cursor-pointer"
+              >
+                <div class="text-2xl font-semibold tracking-tight text-amber-700 dark:text-amber-300" x-text="result.sharedCount"></div>
+                <div class="text-xs text-slate-500 dark:text-slate-400">Sdílených napříč <span x-text="expanded === 'sdileni' ? '▲' : '▼'"></span></div>
+              </button>
+
+              <!-- Expanded panel — full-width pod 3 tiles -->
+              <div
+                x-show="expanded"
+                x-cloak
+                x-transition.opacity
+                class="col-span-3 border border-slate-200/80 dark:border-slate-700 rounded-xl p-4 bg-white dark:bg-slate-800 text-left"
+              >
+                <!-- Firem expand -->
+                <template x-if="expanded === 'firem'">
+                  <div>
+                    <h4 class="text-sm font-semibold mb-2">Firmy v grafu</h4>
+                    <ul class="space-y-1 text-sm">
+                      <template x-for="c in (result.companies || [])" :key="c.ico">
+                        <li class="flex items-center gap-2">
+                          <span class="font-mono text-xs text-slate-500 dark:text-slate-400" x-text="c.ico"></span>
+                          <a :href="'/?ico=' + c.ico + '&action=profil'" target="_blank" class="font-semibold underline text-emerald-700 dark:text-emerald-400 hover:text-emerald-800" x-text="c.obchodniJmeno || '(neznámé)'"></a>
+                          <template x-if="!c.vrFound">
+                            <span class="text-xs text-amber-700 dark:text-amber-400">⚠ VR data chybí</span>
+                          </template>
+                        </li>
+                      </template>
+                    </ul>
+                  </div>
+                </template>
+
+                <!-- Aktivních osob expand -->
+                <template x-if="expanded === 'osob'">
+                  <div>
+                    <h4 class="text-sm font-semibold mb-2">
+                      Všechny aktivní osoby (<span x-text="result.activePersons?.length || 0"></span>)
+                    </h4>
+                    <p class="text-xs text-slate-500 dark:text-slate-400 mb-2">
+                      Seřazeno podle počtu firem ↓. Klik na jméno → mapa firem osoby.
+                    </p>
+                    <ul class="space-y-1 text-sm max-h-96 overflow-y-auto">
+                      <template x-for="p in (result.activePersons || [])" :key="p.jmeno + (p.datumNarozeni || '')">
+                        <li class="flex items-baseline gap-2">
+                          <span class="text-xs font-mono w-6 text-right text-slate-500 dark:text-slate-400" x-text="new Set(p.memberships.map(m => m.ico)).size + '×'"></span>
+                          <template x-if="p.datumNarozeni">
+                            <button
+                              type="button"
+                              @click="openPersonVazby(p.jmeno, p.datumNarozeni)"
+                              class="name-link font-semibold underline text-emerald-700 dark:text-emerald-400 hover:text-emerald-800 text-left"
+                            >
+                              <span x-text="p.jmeno"></span>
+                              <span class="text-xs text-slate-400 ml-0.5">🔗</span>
+                            </button>
+                          </template>
+                          <template x-if="!p.datumNarozeni">
+                            <span class="font-semibold" x-text="p.jmeno"></span>
+                          </template>
+                          <template x-if="p.datumNarozeni">
+                            <span class="text-xs text-slate-400">nar. <span x-text="p.datumNarozeni"></span></span>
+                          </template>
+                        </li>
+                      </template>
+                    </ul>
+                  </div>
+                </template>
+
+                <!-- Sdílených expand — odkaz na detail níže -->
+                <template x-if="expanded === 'sdileni'">
+                  <div>
+                    <h4 class="text-sm font-semibold mb-2">Sdílení napříč firmami</h4>
+                    <p class="text-xs text-slate-500 dark:text-slate-400">
+                      Detail s funkcemi a daty zápisu níže ↓
+                    </p>
+                  </div>
+                </template>
+              </div>
             </div>
 
             <div class="border rounded-xl p-4 bg-white">

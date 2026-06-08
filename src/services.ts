@@ -198,6 +198,12 @@ export async function crossCompanyPersonsService(
     companies: graph.companies,
     totalActivePersons: graph.totalActivePersons,
     sharedCount: graph.sharedPersons.length,
+    activePersons: graph.activePersons.map((p) => ({
+      jmeno: p.jmeno,
+      datumNarozeni: p.datumNarozeni,
+      isLegalEntity: p.personKey.startsWith("LEGAL|"),
+      memberships: p.memberships,
+    })),
     sharedPersons: graph.sharedPersons.map((p) => ({
       jmeno: p.jmeno,
       datumNarozeni: p.datumNarozeni,
