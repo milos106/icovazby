@@ -26,12 +26,15 @@
 | **Export do fakturace** | Fakturoid / iDoklad / Pohoda JSON. |
 | **Historie + oblíbené** | LocalStorage, žádný backend. Shareable `?ico=…` URL. |
 | **Tmavý režim** | System-aware + manuální toggle, persistentní. |
+| **🤖 Autonomní drip harvest** | systemd timer — každou hodinu přidá ~20 firem z ARES (orphan parents v ownership cache + keyword rotace). Inventory roste sama. |
+| **🔄 Týdenní refresh** | systemd timer — neděle 3:00 UTC re-fetchne 2000 nejstarších firem, chytá změny ve statutárech a vlastníkovi. |
 
 ## Stack
 
-- **Backend:** Fastify (TS), zod, undici, p-retry, p-limit, lru-cache, nodemailer — žádná databáze (kromě JSON souboru pro subscribers).
+- **Backend:** Fastify (TS), zod, undici, p-retry, p-limit, lru-cache, **Resend** (alerty) / nodemailer (fallback) — žádná databáze (jen JSON pro inventory + subscribers).
 - **Frontend:** vanilla HTML + Tailwind CDN + Alpine.js + Mermaid 11 + Inter font — bez build stepu.
-- **Data:** veřejná REST API českých registrů. Žádný proxy, žádné scraping, žádný AI vrstva.
+- **Persistence:** `persons-index.json` (~5 MB pro 16k+ firem) s vlastním schema v3: subjects + persons + ownership.byParent — denormalizovaný index pro O(1) holding discovery.
+- **Data:** veřejná REST API českých registrů. Žádný proxy, žádné scraping, žádná AI vrstva.
 
 ## Spuštění lokálně
 
@@ -63,8 +66,13 @@ Hot reload pro vývoj: `npm run dev`.
 | `ARES_TIMEOUT_MS` | `15000` | Timeout ARES requestu |
 | `ARES_RETRIES` | `3` | Retry budget |
 | `HLIDAC_API_TOKEN` | _(volitelný)_ | Bez něj se HS sekce neukážou. Vlastní si vyřídíš na hlidacstatu.cz/api. |
-| `SMTP_HOST` / `SMTP_USER` / `SMTP_PASS` | _(volitelné)_ | Bez nich alerts mailer jen loguje do konzole. |
+| `RESEND_API_KEY` | _(volitelný)_ | Resend (resend.com) API token pro e-mail alerty. Doporučená cesta. Bez něj se použije SMTP fallback. |
+| `RESEND_FROM` | _(volitelný)_ | `noreply@tvuj-domain.cz` — verifikovaná Resend doména. |
+| `SMTP_HOST` / `SMTP_USER` / `SMTP_PASS` | _(volitelné)_ | Nodemailer fallback. Bez Resend i SMTP mailer jen loguje do konzole. |
 | `ALERTS_CHECK_MIN` | `360` | Interval kontroly subscriptions v minutách (6h) |
+| `ARES_WEB_DATA_DIR` | `./data` | Kde žije `persons-index.json` (inventory + ownership cache). |
+| `DRIP_PER_RUN` | `20` | Kolik nových firem přidá drip harvest při jednom běhu. |
+| `REFRESH_BATCH` | `2000` | Kolik nejstarších firem refresh job re-fetchne týdně. |
 | `LOG_LEVEL` | `info` | Pino log level |
 
 ## Architektura ve velkém
@@ -177,13 +185,14 @@ Pro odhalené zranitelnosti viz [SECURITY.md](./SECURITY.md).
 
 ## Status
 
-**`v0.4`** — Holding discovery rozšířen:
+**`v0.4.1`** — Indexovaný backend + autonomní růst:
 
-- Deep preseed při bootu — ARES VR jednatele pro top firem
-- Bootstrap inventory ~16 700 firem + 6 600 jednatelů (Agrofert holding najde 5+ dceřinek včetně ZZN Polabí přes akcionářskou strukturu)
-- Auto-detect OSVČ jednatelů (PD MONT → Dubický OSVČ)
-- `includeHistorical` checkbox v holding discovery (synced s Mapou přes Alpine store)
-- UI redesign Profil sekce, žádné auto-scroll skoky
-- DNS přes Cloudflare (bypass Hetzner 443 filter), Always Use HTTPS
+- **Ownership cache** (`persons_index.ownership.byParent`) — denormalizovaný index parent → children, plněný z `akcionari[]` (a.s.) i `spolecnici[]` (s.r.o.). Holding discovery v 1-2 s místo 30 s.
+- **Autonomní drip harvest + týdenní refresh** přes systemd timery. Bootstrap inventory pro nového usera za hodinu, plné pokrytí za týdny.
+- **Resend mailer** s SMTP fallback (EU region, GDPR, free 3000/měsíc).
+- **Historical members v persons_index** — bývalí statutáři teď dohledatelní přes `includeHistorical=true`.
+- **Cross-persons auto-expand** — Mapa propojení dostane 1 IČO → backend rozšíří přes statutáře persons_index na max 20 sousedů. Žádné prázdné grafy.
 
-`v0.3` — MVP s production-ready hardening (rate limit, cache, p-limit), 3 deliverable features (PDF, demo, e-mail alerty) a první OSS release pod AGPL-3.0.
+**`v0.4`** — Holding discovery rozšířen: deep preseed, bootstrap inventory ~16 700 firem, Agrofert holding 5+ dceřinek včetně ZZN Polabí, auto-detect OSVČ jednatelů, `includeHistorical` UI checkbox, Cloudflare DNS.
+
+**`v0.3`** — MVP s production-ready hardening (rate limit, cache, p-limit), 3 deliverable features (PDF, demo, e-mail alerty), první OSS release pod AGPL-3.0.
