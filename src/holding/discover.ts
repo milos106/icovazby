@@ -152,11 +152,15 @@ function getPersonOtherCompanies(
   jmeno: string,
   prijmeni: string,
   datumNarozeni: string,
+  includeHistorical: boolean,
 ): string[] {
   const p = findMemberships(jmeno, prijmeni, datumNarozeni);
   if (!p) return [];
   const out: string[] = [];
-  for (const m of p.memberships) out.push(m.ico);
+  for (const m of p.memberships) {
+    if (!includeHistorical && m.datumVymazu) continue;
+    out.push(m.ico);
+  }
   return [...new Set(out)];
 }
 
@@ -221,7 +225,7 @@ export async function discoverHolding(
     const persons = await getStatutaryPersons(client, item.ico, includeHistorical);
     const personOtherIcos = new Map<string, { fullName: string; icos: string[] }>();
     for (const p of persons) {
-      const otherIcos = getPersonOtherCompanies(p.jmeno, p.prijmeni, p.datumNarozeni)
+      const otherIcos = getPersonOtherCompanies(p.jmeno, p.prijmeni, p.datumNarozeni, includeHistorical)
         .filter((other) => other !== item.ico && other !== parent);
       const fullName = `${p.jmeno} ${p.prijmeni}`;
       personOtherIcos.set(personKey(p.jmeno, p.prijmeni, p.datumNarozeni), {

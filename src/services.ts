@@ -237,7 +237,40 @@ export async function crossCompanyPersonsService(
     }
     normalizedIcos.push(normalized);
   }
-  const uniqueIcos = [...new Set(normalizedIcos)];
+  let uniqueIcos = [...new Set(normalizedIcos)];
+  const includeHistorical = args.includeHistorical ?? false;
+  let autoExpanded: string[] = [];
+
+  // Auto-expand: pokud user pošle 1 IČO (typicky z Profilu firmy bez
+  // dceřinek), rozšíříme input o firmy, kde sedí jeho statutáři. Hledáme
+  // přes persons_index — bez fetchu ARES navíc pro každého statutáře.
+  // Limit 19 přidaných firem (= max input 20). Honor includeHistorical.
+  if (uniqueIcos.length === 1) {
+    try {
+      const seed = uniqueIcos[0]!;
+      const seedVr = await client.getVrRecord(seed);
+      const seedMembers = flattenMembers(seedVr, { activeOnly: !includeHistorical });
+      const neighborSet = new Set<string>();
+      for (const m of seedMembers) {
+        const fo = m.fyzickaOsoba;
+        if (!fo?.jmeno || !fo.prijmeni || !fo.datumNarozeni) continue;
+        const person = findMemberships(fo.jmeno, fo.prijmeni, fo.datumNarozeni);
+        if (!person) continue;
+        for (const mem of person.memberships) {
+          if (mem.ico === seed) continue;
+          if (!includeHistorical && mem.datumVymazu) continue;
+          neighborSet.add(mem.ico);
+          if (neighborSet.size >= 19) break;
+        }
+        if (neighborSet.size >= 19) break;
+      }
+      autoExpanded = [...neighborSet];
+      uniqueIcos = [seed, ...autoExpanded];
+    } catch {
+      // VR pro seed selže — necháme uniqueIcos s 1 IČO, error spadne dál
+    }
+  }
+
   if (uniqueIcos.length < 2) {
     throw new InvalidInputError("At least two distinct IČOs are required.");
   }
@@ -268,7 +301,8 @@ export async function crossCompanyPersonsService(
 
   return {
     zpracovanoIco: uniqueIcos.length,
-    includeHistorical: args.includeHistorical ?? false,
+    includeHistorical,
+    ...(autoExpanded.length > 0 ? { autoExpandedIcos: autoExpanded } : {}),
     companies: graph.companies,
     totalActivePersons: graph.totalActivePersons,
     sharedCount: graph.sharedPersons.length,
@@ -381,6 +415,10 @@ export async function fullDueDiligenceService(client: AresClient, icoInput: stri
   const hadInsolvencyHistory = ir === "ENDED" || ceu === "ENDED";
 
   const members = flattenMembers(vr, { activeOnly: true });
+  // allMembers = aktivní + historiky. Slouží jen pro persons_index zápis,
+  // aby includeHistorical=true v cross-persons / vazby osoby najde i bývalé
+  // statutáře. Risk findings a EU sanctions zůstanou na activeOnly: true.
+  const allMembers = flattenMembers(vr, { activeOnly: false });
   const statutariCount = members.length;
   const allLicenses = rzp?.zivnostenskeOpravneni ?? [];
   const activeLicenses = allLicenses.filter((l) => !l.datumZaniku);
@@ -493,9 +531,10 @@ export async function fullDueDiligenceService(client: AresClient, icoInput: stri
     }
   }
 
-  // Hook do lokálního indexu osoba→firmy: vložíme všechny aktivní členy
-  // statutárního orgánu ze ARES VR. Postupně se index plní s každým DD.
-  for (const m of members) {
+  // Hook do lokálního indexu osoba→firmy: vložíme VŠECHNY členy
+  // statutárního orgánu (aktivní i historické). Historiky se používají
+  // pro cross-persons + vazby osoby když user zapne includeHistorical.
+  for (const m of allMembers) {
     const fo = m.fyzickaOsoba;
     if (!fo?.datumNarozeni || !fo.jmeno || !fo.prijmeni) continue;
     upsertMembership({
@@ -509,7 +548,7 @@ export async function fullDueDiligenceService(client: AresClient, icoInput: stri
       funkce: m.funkce ?? null,
       organ: m.organName ?? null,
       datumZapisu: m.datumZapisu ?? null,
-      datumVymazu: null,
+      datumVymazu: m.datumVymazu ?? null,
       source: "ARES_VR",
     });
   }
@@ -762,6 +801,7 @@ export { discoverHolding } from "./holding/discover.js";
 
 // ─── Local persistent index osoba → firmy + subjekt inventář ──────────────────
 import {
+  findMemberships,
   listSubjects,
   upsertMembership,
   upsertOwnership,
