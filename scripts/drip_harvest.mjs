@@ -87,6 +87,7 @@ async function processIco(ico, current) {
     const additions = {
       subjects: {},
       persons: {},
+      personsTentative: {},
       ownership: {},
     };
 
@@ -97,7 +98,7 @@ async function processIco(ico, current) {
     };
 
     if (vrVal) {
-      const { memberships, ownership } = extractFromVr(vrVal, ico, obchodniJmeno);
+      const { memberships, tentativeMemberships, ownership } = extractFromVr(vrVal, ico, obchodniJmeno);
       for (const m of memberships) {
         const key = makePersonKey(m.jmeno, m.prijmeni, m.datumNarozeni);
         if (!additions.persons[key]) {
@@ -111,6 +112,29 @@ async function processIco(ico, current) {
           };
         }
         additions.persons[key].memberships.push({
+          ico: m.ico,
+          obchodniJmeno: m.obchodniJmeno,
+          funkce: m.funkce,
+          organ: m.organ,
+          datumZapisu: m.datumZapisu,
+          datumVymazu: m.datumVymazu,
+          source: "ARES_VR",
+          seenAt: Date.now(),
+        });
+      }
+      for (const m of tentativeMemberships) {
+        const tkey = m.jmeno.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().trim()
+          + "|"
+          + m.prijmeni.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().trim();
+        if (!additions.personsTentative[tkey]) {
+          additions.personsTentative[tkey] = {
+            displayName: `${m.jmeno} ${m.prijmeni}`,
+            jmeno: m.jmeno,
+            prijmeni: m.prijmeni,
+            memberships: [],
+          };
+        }
+        additions.personsTentative[tkey].memberships.push({
           ico: m.ico,
           obchodniJmeno: m.obchodniJmeno,
           funkce: m.funkce,
@@ -182,7 +206,7 @@ async function main() {
   const idx = loadIndex();
   const state = loadState();
 
-  const allAdditions = { subjects: {}, persons: {}, ownership: {} };
+  const allAdditions = { subjects: {}, persons: {}, personsTentative: {}, ownership: {} };
   let processed = 0;
 
   // Fáze 1: orphan parents (max polovina budget)
@@ -196,6 +220,13 @@ async function main() {
     if (add) {
       Object.assign(allAdditions.subjects, add.subjects);
       Object.assign(allAdditions.persons, add.persons);
+      for (const [tkey, tperson] of Object.entries(add.personsTentative ?? {})) {
+        if (!allAdditions.personsTentative[tkey]) {
+          allAdditions.personsTentative[tkey] = tperson;
+        } else {
+          allAdditions.personsTentative[tkey].memberships.push(...tperson.memberships);
+        }
+      }
       for (const [p, es] of Object.entries(add.ownership)) {
         (allAdditions.ownership[p] ??= []).push(...es);
       }

@@ -202,8 +202,8 @@
         </div>
         <nav class="hidden md:flex gap-4 text-sm text-slate-600 dark:text-slate-400">
           <a href="#profil" class="hover:text-slate-900 dark:hover:text-white">Profil firmy</a>
-          <a href="#graph" class="hover:text-slate-900 dark:hover:text-white">Mapa propojení</a>
-          <a href="#address" class="hover:text-slate-900 dark:hover:text-white">Podle adresy</a>
+          <a x-show="$store.sections.visible('graph')" href="#graph" class="hover:text-slate-900 dark:hover:text-white">Mapa propojení</a>
+          <a x-show="$store.sections.visible('address')" href="#address" class="hover:text-slate-900 dark:hover:text-white">Podle adresy</a>
         </nav>
         <div class="flex items-center gap-1.5 flex-wrap">
           <!-- Settings menu: jeden ⚙️ button otevře popover s theme toggle +
@@ -287,6 +287,33 @@
                 <span class="text-amber-700 dark:text-amber-400">● Bez vlastního tokenu</span>
                 — sdílený s ostatními.
               </p>
+
+              <!-- Section visibility — uživatel skrývá karty mimo Profil -->
+              <div class="mt-4 pt-4 border-t dark:border-slate-700">
+                <p class="text-xs text-slate-500 dark:text-slate-400 mb-2">
+                  Zobrazené sekce (Profil zůstává vždy)
+                </p>
+                <template x-for="group in ['Profil firmy','Sekce']" :key="group">
+                  <div class="mb-3">
+                    <p class="text-[10px] uppercase tracking-wide text-slate-400 dark:text-slate-500 mb-1" x-text="group"></p>
+                    <ul class="space-y-1">
+                      <template x-for="def in $store.sections.defs().filter(d => d.group === group)" :key="def.key">
+                        <li>
+                          <label class="flex items-center gap-2 text-sm cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-700/40 rounded px-2 py-1">
+                            <input
+                              type="checkbox"
+                              :checked="$store.sections.visible(def.key)"
+                              @change="$store.sections.setVisible(def.key, $event.target.checked)"
+                              class="rounded h-4 w-4 text-emerald-600"
+                            />
+                            <span x-text="def.label"></span>
+                          </label>
+                        </li>
+                      </template>
+                    </ul>
+                  </div>
+                </template>
+              </div>
             </div>
           </div>
           <div class="relative" @click.outside="open = false">
@@ -510,15 +537,15 @@
             >
               <div class="flex gap-1 overflow-x-auto whitespace-nowrap items-center">
                 <a href="#dd-profil" class="px-2 py-1 rounded hover:bg-slate-100 dark:hover:bg-slate-700">👤 Profil</a>
-                <a href="#dd-vr" class="px-2 py-1 rounded hover:bg-slate-100 dark:hover:bg-slate-700">⚖️ OR</a>
-                <a href="#dd-ubo" class="px-2 py-1 rounded hover:bg-slate-100 dark:hover:bg-slate-700">👥 UBO</a>
-                <a href="#dd-dotace" class="px-2 py-1 rounded hover:bg-slate-100 dark:hover:bg-slate-700">💸 Dotace</a>
-                <a href="#dd-smlouvy" class="px-2 py-1 rounded hover:bg-slate-100 dark:hover:bg-slate-700">💰 Smlouvy</a>
-                <a href="#dd-adis" class="px-2 py-1 rounded hover:bg-slate-100 dark:hover:bg-slate-700">🏦 DPH</a>
-                <a href="#dd-isir" class="px-2 py-1 rounded hover:bg-slate-100 dark:hover:bg-slate-700">⚖️ Insolvence</a>
-                <a href="#dd-jerrs" class="px-2 py-1 rounded hover:bg-slate-100 dark:hover:bg-slate-700">🏦 ČNB</a>
-                <a href="#dd-sankce" class="px-2 py-1 rounded hover:bg-slate-100 dark:hover:bg-slate-700">🇪🇺 Sankce</a>
-                <a href="#dd-zivno" class="px-2 py-1 rounded hover:bg-slate-100 dark:hover:bg-slate-700">🏷️ Živnosti</a>
+                <a x-show="$store.sections.visible('dd-vr')" href="#dd-vr" class="px-2 py-1 rounded hover:bg-slate-100 dark:hover:bg-slate-700">⚖️ OR</a>
+                <a x-show="$store.sections.visible('dd-ubo')" href="#dd-ubo" class="px-2 py-1 rounded hover:bg-slate-100 dark:hover:bg-slate-700">👥 UBO</a>
+                <a x-show="$store.sections.visible('dd-dotace')" href="#dd-dotace" class="px-2 py-1 rounded hover:bg-slate-100 dark:hover:bg-slate-700">💸 Dotace</a>
+                <a x-show="$store.sections.visible('dd-smlouvy')" href="#dd-smlouvy" class="px-2 py-1 rounded hover:bg-slate-100 dark:hover:bg-slate-700">💰 Smlouvy</a>
+                <a x-show="$store.sections.visible('dd-adis')" href="#dd-adis" class="px-2 py-1 rounded hover:bg-slate-100 dark:hover:bg-slate-700">🏦 DPH</a>
+                <a x-show="$store.sections.visible('dd-isir')" href="#dd-isir" class="px-2 py-1 rounded hover:bg-slate-100 dark:hover:bg-slate-700">⚖️ Insolvence</a>
+                <a x-show="$store.sections.visible('dd-jerrs')" href="#dd-jerrs" class="px-2 py-1 rounded hover:bg-slate-100 dark:hover:bg-slate-700">🏦 ČNB</a>
+                <a x-show="$store.sections.visible('dd-sankce')" href="#dd-sankce" class="px-2 py-1 rounded hover:bg-slate-100 dark:hover:bg-slate-700">🇪🇺 Sankce</a>
+                <a x-show="$store.sections.visible('dd-zivno')" href="#dd-zivno" class="px-2 py-1 rounded hover:bg-slate-100 dark:hover:bg-slate-700">🏷️ Živnosti</a>
               </div>
             </nav>
 
@@ -533,15 +560,15 @@
                   aria-label="Sekce profilu"
                 >
                   <a href="#dd-profil" :class="active === 'dd-profil' ? 'bg-slate-100 dark:bg-slate-700/60 text-slate-900 dark:text-slate-100 font-medium' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700/40 hover:text-slate-900 dark:hover:text-slate-100'" class="block px-3 py-1.5 rounded-lg transition-colors">👤 Profil</a>
-                  <a href="#dd-vr" :class="active === 'dd-vr' ? 'bg-slate-100 dark:bg-slate-700/60 text-slate-900 dark:text-slate-100 font-medium' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700/40 hover:text-slate-900 dark:hover:text-slate-100'" class="block px-3 py-1.5 rounded-lg transition-colors">⚖️ OR</a>
-                  <a href="#dd-ubo" :class="active === 'dd-ubo' ? 'bg-slate-100 dark:bg-slate-700/60 text-slate-900 dark:text-slate-100 font-medium' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700/40 hover:text-slate-900 dark:hover:text-slate-100'" class="block px-3 py-1.5 rounded-lg transition-colors">👥 UBO</a>
-                  <a href="#dd-dotace" :class="active === 'dd-dotace' ? 'bg-slate-100 dark:bg-slate-700/60 text-slate-900 dark:text-slate-100 font-medium' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700/40 hover:text-slate-900 dark:hover:text-slate-100'" class="block px-3 py-1.5 rounded-lg transition-colors">💸 Dotace</a>
-                  <a href="#dd-smlouvy" :class="active === 'dd-smlouvy' ? 'bg-slate-100 dark:bg-slate-700/60 text-slate-900 dark:text-slate-100 font-medium' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700/40 hover:text-slate-900 dark:hover:text-slate-100'" class="block px-3 py-1.5 rounded-lg transition-colors">💰 Smlouvy</a>
-                  <a href="#dd-adis" :class="active === 'dd-adis' ? 'bg-slate-100 dark:bg-slate-700/60 text-slate-900 dark:text-slate-100 font-medium' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700/40 hover:text-slate-900 dark:hover:text-slate-100'" class="block px-3 py-1.5 rounded-lg transition-colors">🏦 DPH</a>
-                  <a href="#dd-isir" :class="active === 'dd-isir' ? 'bg-slate-100 dark:bg-slate-700/60 text-slate-900 dark:text-slate-100 font-medium' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700/40 hover:text-slate-900 dark:hover:text-slate-100'" class="block px-3 py-1.5 rounded-lg transition-colors">⚖️ Insolvence</a>
-                  <a href="#dd-jerrs" :class="active === 'dd-jerrs' ? 'bg-slate-100 dark:bg-slate-700/60 text-slate-900 dark:text-slate-100 font-medium' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700/40 hover:text-slate-900 dark:hover:text-slate-100'" class="block px-3 py-1.5 rounded-lg transition-colors">🏦 ČNB</a>
-                  <a href="#dd-sankce" :class="active === 'dd-sankce' ? 'bg-slate-100 dark:bg-slate-700/60 text-slate-900 dark:text-slate-100 font-medium' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700/40 hover:text-slate-900 dark:hover:text-slate-100'" class="block px-3 py-1.5 rounded-lg transition-colors">🇪🇺 Sankce</a>
-                  <a href="#dd-zivno" :class="active === 'dd-zivno' ? 'bg-slate-100 dark:bg-slate-700/60 text-slate-900 dark:text-slate-100 font-medium' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700/40 hover:text-slate-900 dark:hover:text-slate-100'" class="block px-3 py-1.5 rounded-lg transition-colors">🏷️ Živnosti</a>
+                  <a x-show="$store.sections.visible('dd-vr')" href="#dd-vr" :class="active === 'dd-vr' ? 'bg-slate-100 dark:bg-slate-700/60 text-slate-900 dark:text-slate-100 font-medium' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700/40 hover:text-slate-900 dark:hover:text-slate-100'" class="block px-3 py-1.5 rounded-lg transition-colors">⚖️ OR</a>
+                  <a x-show="$store.sections.visible('dd-ubo')" href="#dd-ubo" :class="active === 'dd-ubo' ? 'bg-slate-100 dark:bg-slate-700/60 text-slate-900 dark:text-slate-100 font-medium' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700/40 hover:text-slate-900 dark:hover:text-slate-100'" class="block px-3 py-1.5 rounded-lg transition-colors">👥 UBO</a>
+                  <a x-show="$store.sections.visible('dd-dotace')" href="#dd-dotace" :class="active === 'dd-dotace' ? 'bg-slate-100 dark:bg-slate-700/60 text-slate-900 dark:text-slate-100 font-medium' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700/40 hover:text-slate-900 dark:hover:text-slate-100'" class="block px-3 py-1.5 rounded-lg transition-colors">💸 Dotace</a>
+                  <a x-show="$store.sections.visible('dd-smlouvy')" href="#dd-smlouvy" :class="active === 'dd-smlouvy' ? 'bg-slate-100 dark:bg-slate-700/60 text-slate-900 dark:text-slate-100 font-medium' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700/40 hover:text-slate-900 dark:hover:text-slate-100'" class="block px-3 py-1.5 rounded-lg transition-colors">💰 Smlouvy</a>
+                  <a x-show="$store.sections.visible('dd-adis')" href="#dd-adis" :class="active === 'dd-adis' ? 'bg-slate-100 dark:bg-slate-700/60 text-slate-900 dark:text-slate-100 font-medium' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700/40 hover:text-slate-900 dark:hover:text-slate-100'" class="block px-3 py-1.5 rounded-lg transition-colors">🏦 DPH</a>
+                  <a x-show="$store.sections.visible('dd-isir')" href="#dd-isir" :class="active === 'dd-isir' ? 'bg-slate-100 dark:bg-slate-700/60 text-slate-900 dark:text-slate-100 font-medium' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700/40 hover:text-slate-900 dark:hover:text-slate-100'" class="block px-3 py-1.5 rounded-lg transition-colors">⚖️ Insolvence</a>
+                  <a x-show="$store.sections.visible('dd-jerrs')" href="#dd-jerrs" :class="active === 'dd-jerrs' ? 'bg-slate-100 dark:bg-slate-700/60 text-slate-900 dark:text-slate-100 font-medium' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700/40 hover:text-slate-900 dark:hover:text-slate-100'" class="block px-3 py-1.5 rounded-lg transition-colors">🏦 ČNB</a>
+                  <a x-show="$store.sections.visible('dd-sankce')" href="#dd-sankce" :class="active === 'dd-sankce' ? 'bg-slate-100 dark:bg-slate-700/60 text-slate-900 dark:text-slate-100 font-medium' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700/40 hover:text-slate-900 dark:hover:text-slate-100'" class="block px-3 py-1.5 rounded-lg transition-colors">🇪🇺 Sankce</a>
+                  <a x-show="$store.sections.visible('dd-zivno')" href="#dd-zivno" :class="active === 'dd-zivno' ? 'bg-slate-100 dark:bg-slate-700/60 text-slate-900 dark:text-slate-100 font-medium' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700/40 hover:text-slate-900 dark:hover:text-slate-100'" class="block px-3 py-1.5 rounded-lg transition-colors">🏷️ Živnosti</a>
                   <div class="pt-3 mt-3 border-t dark:border-slate-700 space-y-1">
                     <button
                       type="button"
@@ -684,7 +711,7 @@
                 </template>
               </div>
 
-              <div id="dd-vr" :data-collapsed="!$store.ddCollapse.isExpanded('dd-vr')" class="dd-card border border-slate-200/80 dark:border-slate-700 rounded-xl p-5 shadow-sm hover:shadow-md transition-shadow md:col-span-2 scroll-mt-32" x-data="ddVrLoader()" x-init="load(report.ico)">
+              <div id="dd-vr" x-show="$store.sections.visible('dd-vr')" :data-collapsed="!$store.ddCollapse.isExpanded('dd-vr')" class="dd-card border border-slate-200/80 dark:border-slate-700 rounded-xl p-5 shadow-sm hover:shadow-md transition-shadow md:col-span-2 scroll-mt-32" x-data="ddVrLoader()" x-init="load(report.ico)">
                 <div class="dd-card-header flex items-baseline justify-between gap-2 mb-2 flex-wrap cursor-pointer select-none" @click="$store.ddCollapse.toggle('dd-vr')">
                   <h4 class="font-bold flex items-center gap-2">
                     <span class="text-slate-400 w-3 inline-block chevron">▶</span>
@@ -878,7 +905,7 @@
                 </template>
               </div>
 
-              <div id="dd-ubo" :data-collapsed="!$store.ddCollapse.isExpanded('dd-ubo')" class="dd-card border border-slate-200/80 dark:border-slate-700 rounded-xl p-5 shadow-sm hover:shadow-md transition-shadow md:col-span-2 scroll-mt-32" x-data="ddUboLoader()" x-init="load(report.ico)">
+              <div id="dd-ubo" x-show="$store.sections.visible('dd-ubo')" :data-collapsed="!$store.ddCollapse.isExpanded('dd-ubo')" class="dd-card border border-slate-200/80 dark:border-slate-700 rounded-xl p-5 shadow-sm hover:shadow-md transition-shadow md:col-span-2 scroll-mt-32" x-data="ddUboLoader()" x-init="load(report.ico)">
                 <div class="dd-card-header flex items-baseline justify-between gap-2 mb-2 flex-wrap cursor-pointer select-none" @click="$store.ddCollapse.toggle('dd-ubo')">
                   <h4 class="font-bold flex items-center gap-2">
                     <span class="text-slate-400 w-3 inline-block chevron">▶</span>
@@ -980,7 +1007,7 @@
                 </p>
               </div>
 
-              <div id="dd-dotace" :data-collapsed="!$store.ddCollapse.isExpanded('dd-dotace')" class="dd-card border border-slate-200/80 dark:border-slate-700 rounded-xl p-5 shadow-sm hover:shadow-md transition-shadow md:col-span-2 scroll-mt-32" x-data="ddDotaceLoader()" x-init="load(report.ico)">
+              <div id="dd-dotace" x-show="$store.sections.visible('dd-dotace')" :data-collapsed="!$store.ddCollapse.isExpanded('dd-dotace')" class="dd-card border border-slate-200/80 dark:border-slate-700 rounded-xl p-5 shadow-sm hover:shadow-md transition-shadow md:col-span-2 scroll-mt-32" x-data="ddDotaceLoader()" x-init="load(report.ico)">
                 <div class="dd-card-header flex items-baseline justify-between gap-2 mb-2 flex-wrap cursor-pointer select-none" @click="$store.ddCollapse.toggle('dd-dotace')">
                   <h4 class="font-bold flex items-center gap-2">
                     <span class="text-slate-400 w-3 inline-block chevron">▶</span>
@@ -1114,7 +1141,7 @@
                 </p>
               </div>
 
-              <div id="dd-smlouvy" :data-collapsed="!$store.ddCollapse.isExpanded('dd-smlouvy')" class="dd-card border border-slate-200/80 dark:border-slate-700 rounded-xl p-5 shadow-sm hover:shadow-md transition-shadow md:col-span-2 scroll-mt-32" x-data="ddSmlouvyLoader()" x-init="load(report.ico)">
+              <div id="dd-smlouvy" x-show="$store.sections.visible('dd-smlouvy')" :data-collapsed="!$store.ddCollapse.isExpanded('dd-smlouvy')" class="dd-card border border-slate-200/80 dark:border-slate-700 rounded-xl p-5 shadow-sm hover:shadow-md transition-shadow md:col-span-2 scroll-mt-32" x-data="ddSmlouvyLoader()" x-init="load(report.ico)">
                 <div class="dd-card-header flex items-baseline justify-between gap-2 mb-2 flex-wrap cursor-pointer select-none" @click="$store.ddCollapse.toggle('dd-smlouvy')">
                   <h4 class="font-bold flex items-center gap-2">
                     <span class="text-slate-400 w-3 inline-block chevron">▶</span>
@@ -1225,7 +1252,7 @@
                 </p>
               </div>
 
-              <div id="dd-adis" :data-collapsed="!$store.ddCollapse.isExpanded('dd-adis')" class="dd-card border border-slate-200/80 dark:border-slate-700 rounded-xl p-5 shadow-sm hover:shadow-md transition-shadow scroll-mt-32" x-data="ddAdisLoader()" x-init="load(report.ico)">
+              <div id="dd-adis" x-show="$store.sections.visible('dd-adis')" :data-collapsed="!$store.ddCollapse.isExpanded('dd-adis')" class="dd-card border border-slate-200/80 dark:border-slate-700 rounded-xl p-5 shadow-sm hover:shadow-md transition-shadow scroll-mt-32" x-data="ddAdisLoader()" x-init="load(report.ico)">
                 <h4 class="dd-card-header font-bold mb-2 flex items-center justify-between gap-2 cursor-pointer select-none" @click="$store.ddCollapse.toggle('dd-adis')">
                   <span class="flex items-center gap-2">
                     <span class="text-slate-400 w-3 inline-block chevron">▶</span>
@@ -1297,7 +1324,7 @@
                 </p>
               </div>
 
-              <div id="dd-isir" :data-collapsed="!$store.ddCollapse.isExpanded('dd-isir')" class="dd-card border border-slate-200/80 dark:border-slate-700 rounded-xl p-5 shadow-sm hover:shadow-md transition-shadow scroll-mt-32" x-data="ddIsirLoader()" x-init="load(report.ico)">
+              <div id="dd-isir" x-show="$store.sections.visible('dd-isir')" :data-collapsed="!$store.ddCollapse.isExpanded('dd-isir')" class="dd-card border border-slate-200/80 dark:border-slate-700 rounded-xl p-5 shadow-sm hover:shadow-md transition-shadow scroll-mt-32" x-data="ddIsirLoader()" x-init="load(report.ico)">
                 <h4 class="dd-card-header font-bold mb-2 flex items-center justify-between gap-2 cursor-pointer select-none" @click="$store.ddCollapse.toggle('dd-isir')">
                   <span class="flex items-center gap-2">
                     <span class="text-slate-400 w-3 inline-block chevron">▶</span>
@@ -1425,6 +1452,7 @@
 
               <div
                 id="dd-jerrs"
+                x-show="$store.sections.visible('dd-jerrs')"
                 :data-collapsed="!$store.ddCollapse.isExpanded('dd-jerrs')"
                 class="dd-card border border-slate-200/80 dark:border-slate-700 rounded-xl p-5 shadow-sm hover:shadow-md transition-shadow scroll-mt-32"
                 x-data="ddJerrsLoader()"
@@ -1503,6 +1531,7 @@
 
               <div
                 id="dd-sankce"
+                x-show="$store.sections.visible('dd-sankce')"
                 :data-collapsed="!$store.ddCollapse.isExpanded('dd-sankce')"
                 class="dd-card border border-slate-200/80 dark:border-slate-700 rounded-xl p-5 shadow-sm hover:shadow-md transition-shadow scroll-mt-32"
                 x-data="ddEuSanctionsLoader()"
@@ -1599,7 +1628,7 @@
 
             <!-- Trade licenses as part of DD (we already have the data) -->
             <template x-if="report.trade_licenses && report.trade_licenses.total > 0">
-              <div id="dd-zivno" :data-collapsed="!$store.ddCollapse.isExpanded('dd-zivno')" class="dd-card border border-slate-200/80 dark:border-slate-700 rounded-xl p-5 shadow-sm hover:shadow-md transition-shadow scroll-mt-32">
+              <div id="dd-zivno" x-show="$store.sections.visible('dd-zivno')" :data-collapsed="!$store.ddCollapse.isExpanded('dd-zivno')" class="dd-card border border-slate-200/80 dark:border-slate-700 rounded-xl p-5 shadow-sm hover:shadow-md transition-shadow scroll-mt-32">
                 <h4 class="dd-card-header font-bold mb-2 flex items-center justify-between gap-2 cursor-pointer select-none" @click="$store.ddCollapse.toggle('dd-zivno')">
                   <span class="flex items-center gap-2">
                     <span class="text-slate-400 w-3 inline-block chevron">▶</span>
@@ -1789,7 +1818,7 @@
         id="vazby"
         x-data="personVazbySection()"
         x-init="init()"
-        x-show="visible"
+        x-show="visible && $store.sections.visible('osoby')"
         x-cloak
         class="bg-white dark:bg-slate-800 dark:border-slate-700 rounded-2xl shadow-sm border p-6"
       >
@@ -2058,6 +2087,7 @@
       <!-- ─── Cross-company graph ──────────────────────────────────── -->
       <section
         id="graph"
+        x-show="$store.sections.visible('graph')"
         x-data="graphSection()"
         x-init="init()"
         @ares-seed-graph.window="seed($event.detail.icos)"
@@ -2295,6 +2325,82 @@
               </div>
             </div>
 
+            <!-- ── Možní jmenovci (tentative — bývalí statutáři bez DOB) ── -->
+            <template x-if="result.tentativeCandidates && result.tentativeCandidates.length > 0">
+              <div class="border border-amber-300 dark:border-amber-700 rounded-xl p-4 bg-amber-50 dark:bg-amber-900/20">
+                <div class="flex items-start gap-3 mb-3">
+                  <span class="text-2xl">⚠️</span>
+                  <div class="flex-1">
+                    <h3 class="font-semibold text-amber-900 dark:text-amber-200">
+                      Možní jmenovci <span class="font-normal text-sm">(bývalí statutáři bez ověřeného data narození)</span>
+                    </h3>
+                    <p class="text-xs text-amber-800 dark:text-amber-300 mt-1">
+                      ARES VR pro tyto historiky neeviduje DOB, takže nelze 100% ověřit, zda je to ten samý člověk.
+                      Projdi seznam, odškrtni ty, kteří nejsou stejná osoba, a klikni „Vykresli s vybranými" — graf
+                      přidá firmy zaškrtnutých kandidátů.
+                    </p>
+                  </div>
+                </div>
+
+                <ul class="space-y-2">
+                  <template x-for="c in result.tentativeCandidates" :key="candidateKey(c)">
+                    <li class="bg-white dark:bg-slate-900 border dark:border-slate-700 rounded-lg p-3">
+                      <label class="flex items-start gap-3 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          x-model="tentativeSelections[candidateKey(c)]"
+                          class="mt-1 rounded h-4 w-4 text-emerald-600 focus:ring-emerald-500"
+                        />
+                        <div class="flex-1 min-w-0">
+                          <div class="flex flex-wrap items-baseline gap-x-2 gap-y-1">
+                            <span class="font-semibold" x-text="c.displayName || (c.jmeno + ' ' + c.prijmeni)"></span>
+                            <span class="text-xs text-slate-500 dark:text-slate-400">
+                              ze
+                              <span class="font-mono" x-text="c.fromSeedIco"></span>
+                              <span x-text="c.fromSeedName ? ' (' + c.fromSeedName + ')' : ''"></span>
+                            </span>
+                            <template x-for="sig in c.signals" :key="sig">
+                              <span class="text-[10px] px-1.5 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800"
+                                    x-text="{ 'shared-ownership': 'sdílený holding', 'in-inventory': 'vše v inventory', 'multi-firm': 'více firem' }[sig] || sig"></span>
+                            </template>
+                          </div>
+                          <ul class="mt-2 text-sm space-y-0.5">
+                            <template x-for="m in c.memberships" :key="m.ico + '|' + (m.datumZapisu || '')">
+                              <li class="text-slate-700 dark:text-slate-300">
+                                <span class="text-slate-400">└</span>
+                                <span class="font-mono text-xs" x-text="m.ico"></span>
+                                <span x-text="' ' + (m.obchodniJmeno || '(neznámý název)')"></span>
+                                <template x-if="m.funkce">
+                                  <span class="text-slate-500 dark:text-slate-400" x-text="' — ' + m.funkce"></span>
+                                </template>
+                                <template x-if="m.datumZapisu || m.datumVymazu">
+                                  <span class="text-xs text-slate-400" x-text="' (' + (m.datumZapisu || '?') + ' – ' + (m.datumVymazu || 'dosud') + ')'"></span>
+                                </template>
+                              </li>
+                            </template>
+                          </ul>
+                        </div>
+                      </label>
+                    </li>
+                  </template>
+                </ul>
+
+                <div class="mt-3 flex items-center gap-3 flex-wrap">
+                  <button
+                    type="button"
+                    @click="renderWithSelections()"
+                    :disabled="loading"
+                    class="px-4 py-2 bg-emerald-600 text-white rounded-lg text-sm hover:bg-emerald-700 disabled:opacity-50 transition-colors"
+                  >
+                    Vykresli s vybranými (<span x-text="activeCandidateCount()"></span>)
+                  </button>
+                  <span class="text-xs text-amber-700 dark:text-amber-400">
+                    Default: vše zaškrtnuté. Odškrtni ty, kteří NEJSOU ten samý člověk.
+                  </span>
+                </div>
+              </div>
+            </template>
+
             <div class="border dark:border-slate-700 rounded-xl p-4 bg-white dark:bg-slate-900">
               <div class="mermaid" x-html="mermaidSvg"></div>
             </div>
@@ -2303,7 +2409,7 @@
       </section>
 
       <!-- ─── Search by address ────────────────────────────────────── -->
-      <section id="address" x-data="addressSection()" x-init="init()" class="bg-white dark:bg-slate-800 dark:border-slate-700 rounded-2xl shadow-sm border p-6">
+      <section id="address" x-show="$store.sections.visible('address')" x-data="addressSection()" x-init="init()" class="bg-white dark:bg-slate-800 dark:border-slate-700 rounded-2xl shadow-sm border p-6">
         <h2 class="text-lg font-semibold tracking-tight mb-1">🏢 Hledat firmy na adrese</h2>
         <p class="text-sm text-slate-500 dark:text-slate-400 mb-4">
           Detekce virtuálních kanceláří a sdílených sídel — adresa s desítkami firem je červená vlajka.
@@ -2423,7 +2529,7 @@
              je POVINNÝ pro každou síťově dostupnou instanci pod AGPL-3.0. -->
         <p class="pt-2 border-t dark:border-slate-700 mt-2">
           <strong>Software:</strong> <a class="underline" href="https://github.com/milos106/icovazby" target="_blank" rel="noopener">icovazby</a>
-          v0.4.1 — licencováno pod
+          v0.4.3 — licencováno pod
           <a class="underline" href="https://www.gnu.org/licenses/agpl-3.0.html" target="_blank" rel="noopener">GNU AGPL-3.0-or-later</a>.
           Provozuješ-li modifikovanou verzi jako webovou službu, máš povinnost
           zveřejnit svůj zdrojový kód (AGPL §13).
@@ -2433,6 +2539,6 @@
 
     <!-- Cache buster v query param: každý release změní verzi → browser
          dostane nový URL, CF cache pro starý URL ignorován. -->
-    <script src="/js/app.js?v=0.4.1"></script>
+    <script src="/js/app.js?v=0.4.3"></script>
   </body>
 </html>

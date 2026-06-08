@@ -7,6 +7,24 @@ const ICO_RE = /^\d{7,8}$/;
 const STORAGE_RECENT = "icovazby:recent";
 const STORAGE_BOOKMARKS = "icovazby:bookmarks";
 const STORAGE_DD_COLLAPSE = "icovazby:dd-collapsed";
+const STORAGE_SECTIONS = "icovazby:sections-hidden";
+
+// Sekce, které lze v Nastavení skrýt. Profil zůstává vždy viditelný.
+// Klíče slouží zároveň jako section id v DOM a key v localStorage.
+const SECTION_DEFS = [
+  { key: "dd-vr", label: "⚖️ Veřejný rejstřík (OR)", group: "Profil firmy" },
+  { key: "dd-ubo", label: "👥 Skuteční majitelé (UBO)", group: "Profil firmy" },
+  { key: "dd-dotace", label: "💸 Dotace", group: "Profil firmy" },
+  { key: "dd-smlouvy", label: "💰 Veřejné zakázky", group: "Profil firmy" },
+  { key: "dd-adis", label: "🏦 DPH (ADIS)", group: "Profil firmy" },
+  { key: "dd-isir", label: "⚖️ Insolvence (ISIR)", group: "Profil firmy" },
+  { key: "dd-jerrs", label: "🏦 ČNB JERRS", group: "Profil firmy" },
+  { key: "dd-sankce", label: "🇪🇺 EU sankce", group: "Profil firmy" },
+  { key: "dd-zivno", label: "🏷️ Živnosti", group: "Profil firmy" },
+  { key: "graph", label: "🌐 Mapa propojení", group: "Sekce" },
+  { key: "address", label: "🏢 Hledat na adrese", group: "Sekce" },
+  { key: "osoby", label: "🔗 Vazby osoby", group: "Sekce" },
+];
 const RECENT_LIMIT = 10;
 
 // Alpine store pro stav rozbalení DD karet — persistovaný v localStorage.
@@ -51,6 +69,42 @@ document.addEventListener("alpine:init", () => {
   // a v Mapě propojení. User myslí v binární kategorii „chci historické info"
   // — discovery i render vždy řídí stejný flag. Default off.
   window.Alpine.store("history", { enabled: false });
+
+  // Section visibility — uživatel může v Nastavení skrýt sekce/karty.
+  // Persistujeme jen SKRYTÉ klíče (= defaultně všechno viditelné). Profil
+  // je always-on a do nastavení se nezobrazí. Sync mezi menu a body
+  // přes jeden zdroj pravdy.
+  window.Alpine.store("sections", {
+    hidden: (() => {
+      try {
+        const raw = localStorage.getItem(STORAGE_SECTIONS);
+        return raw ? new Set(JSON.parse(raw)) : new Set();
+      } catch {
+        return new Set();
+      }
+    })(),
+    save() {
+      try {
+        localStorage.setItem(STORAGE_SECTIONS, JSON.stringify([...this.hidden]));
+      } catch {
+        /* private mode */
+      }
+    },
+    visible(key) {
+      return !this.hidden.has(key);
+    },
+    setVisible(key, on) {
+      if (on) this.hidden.delete(key);
+      else this.hidden.add(key);
+      this.save();
+    },
+    toggle(key) {
+      this.setVisible(key, this.hidden.has(key));
+    },
+    defs() {
+      return SECTION_DEFS;
+    },
+  });
 
   window.Alpine.store("ddCollapse", {
     state: (() => {
@@ -385,6 +439,10 @@ function graphSection() {
     error: "",
     result: null,
     mermaidSvg: "",
+    // Selection map pro „Možné jmenovce" (tentativeCandidates). Key = jmeno|prijmeni
+    // (unikátní per name; pokud má více seed firem, vše bere). Hodnota = boolean.
+    // Default ON — uživatel odškrtává ty, kteří nejsou ten samý člověk.
+    tentativeSelections: {},
     init() {
       const url = readUrl();
       if (url.icos) {
@@ -409,21 +467,23 @@ function graphSection() {
         .map((s) => s.trim().replace(/^CZ\s*/i, "").replace(/\s|-|\./g, ""))
         .filter((s) => ICO_RE.test(s));
     },
-    async run() {
+    async run(extraTentativeIcos = []) {
       this.error = "";
-      this.result = null;
       this.mermaidSvg = "";
-      const icos = this.parseIcos(this.raw);
-      if (icos.length < 2) {
-        this.error = "Zadej alespoň 2 platná IČO.";
+      const userIcos = this.parseIcos(this.raw);
+      if (userIcos.length < 1) {
+        this.error = "Zadej alespoň 1 platné IČO.";
         return;
       }
+      // Spoj user IČO + IČO z selected tentative kandidátů (re-render flow).
+      const icos = [...new Set([...userIcos, ...extraTentativeIcos])];
       if (icos.length > 50) {
         this.error = "Maximum 50 IČO na jeden dotaz.";
         return;
       }
       this.loading = true;
       try {
+        const prev = this.result;
         this.result = await jsonFetch("/api/cross-persons", {
           method: "POST",
           headers: { "content-type": "application/json" },
@@ -433,6 +493,20 @@ function graphSection() {
             emitMermaid: true,
           }),
         });
+        // Initialize selections: default ALL on
+        if (this.result?.tentativeCandidates) {
+          const nextSelections = {};
+          for (const c of this.result.tentativeCandidates) {
+            const key = this.candidateKey(c);
+            // Zachovej předchozí volbu pokud uživatel již dříve odškrtl
+            nextSelections[key] = prev?.tentativeCandidates?.length
+              ? this.tentativeSelections[key] ?? true
+              : true;
+          }
+          this.tentativeSelections = nextSelections;
+        } else {
+          this.tentativeSelections = {};
+        }
         updateUrl({ icos: icos.join(",") });
         if (this.result.mermaid && window.__mermaid) {
           const id = "mer-" + Date.now();
@@ -448,6 +522,27 @@ function graphSection() {
       } finally {
         this.loading = false;
       }
+    },
+    /** Unique key pro tentative kandidáta — pro Alpine x-model binding. */
+    candidateKey(c) {
+      return `${c.jmeno}|${c.prijmeni}`.toLowerCase();
+    },
+    /** Spočti počet aktivních (zaškrtnutých) tentative kandidátů. */
+    activeCandidateCount() {
+      if (!this.result?.tentativeCandidates) return 0;
+      return this.result.tentativeCandidates.filter(
+        (c) => this.tentativeSelections[this.candidateKey(c)],
+      ).length;
+    },
+    /** Re-render s aktuální checkbox volbou. Vezme všechny IČO z aktivně
+     *  zaškrtnutých kandidátů a spojí je s původním user inputem. */
+    renderWithSelections() {
+      const extra = new Set();
+      for (const c of this.result?.tentativeCandidates ?? []) {
+        if (!this.tentativeSelections[this.candidateKey(c)]) continue;
+        for (const m of c.memberships ?? []) extra.add(m.ico);
+      }
+      this.run([...extra]);
     },
     /** Aktivováno custom eventem (holding discovery / personVazby): pre-fill
      *  IČO + spustit run(). Historický flag se čte z globálního Alpine store

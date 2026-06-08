@@ -24,17 +24,19 @@ export const ARES_BASE = "https://ares.gov.cz/ekonomicke-subjekty-v-be/rest";
 export function loadIndex() {
   if (!existsSync(INDEX_FILE)) {
     return {
-      version: 3,
+      version: 4,
       lastUpdated: new Date().toISOString(),
       persons: {},
       subjects: {},
       ownership: { byParent: {} },
+      personsTentative: {},
     };
   }
   const raw = JSON.parse(readFileSync(INDEX_FILE, "utf8"));
   raw.subjects ??= {};
   raw.persons ??= {};
   raw.ownership ??= { byParent: {} };
+  raw.personsTentative ??= {};
   return raw;
 }
 
@@ -65,6 +67,25 @@ export function mergeAndWrite(scriptState, additions) {
       fresh.persons[key] = person;
     } else {
       const existing = fresh.persons[key];
+      const seen = new Set(
+        existing.memberships.map(
+          (m) => `${m.ico}|${m.funkce}|${m.source}|${m.datumZapisu ?? ""}`,
+        ),
+      );
+      for (const m of person.memberships) {
+        const sig = `${m.ico}|${m.funkce}|${m.source}|${m.datumZapisu ?? ""}`;
+        if (!seen.has(sig)) existing.memberships.push(m);
+      }
+    }
+  }
+
+  // Merge personsTentative — klíč jmeno|prijmeni bez DOB, sloučit memberships
+  fresh.personsTentative ??= {};
+  for (const [key, person] of Object.entries(additions.personsTentative ?? {})) {
+    if (!fresh.personsTentative[key]) {
+      fresh.personsTentative[key] = person;
+    } else {
+      const existing = fresh.personsTentative[key];
       const seen = new Set(
         existing.memberships.map(
           (m) => `${m.ico}|${m.funkce}|${m.source}|${m.datumZapisu ?? ""}`,
@@ -162,27 +183,34 @@ export function makePersonKey(jmeno, prijmeni, datumNarozeni) {
  */
 export function extractFromVr(vr, ico, obchodniJmeno) {
   const memberships = [];
+  const tentativeMemberships = [];
   const ownership = [];
-  if (!vr?.zaznamy) return { memberships, ownership };
+  if (!vr?.zaznamy) return { memberships, tentativeMemberships, ownership };
 
   for (const zaznam of vr.zaznamy) {
     // Statutáři (fyzické osoby = jednatelé/členové DR)
     for (const organ of zaznam.statutarniOrgany ?? []) {
       for (const clen of organ.clenoveOrganu ?? []) {
         const fo = clen.fyzickaOsoba;
-        if (!fo?.jmeno || !fo?.prijmeni || !fo?.datumNarozeni) continue;
-        memberships.push({
+        if (!fo?.jmeno || !fo?.prijmeni) continue;
+        const base = {
           jmeno: fo.jmeno,
           prijmeni: fo.prijmeni,
           titulPred: fo.titulPredJmenem ?? null,
-          datumNarozeni: fo.datumNarozeni,
           ico,
           obchodniJmeno: obchodniJmeno ?? null,
           funkce: clen.clenstvi?.funkce?.nazev ?? null,
           organ: organ.nazevOrganu ?? null,
           datumZapisu: clen.datumZapisu ?? null,
           datumVymazu: clen.datumVymazu ?? null,
-        });
+        };
+        if (fo.datumNarozeni) {
+          memberships.push({ ...base, datumNarozeni: fo.datumNarozeni });
+        } else {
+          // Bývalí statutáři před cca 2014 — DOB v ARES VR chybí.
+          // Půjde do tentative bucketu jako „možný jmenovec".
+          tentativeMemberships.push(base);
+        }
       }
     }
     // Akcionáři (a.s.) — vnořené bloky
@@ -214,7 +242,7 @@ export function extractFromVr(vr, ico, obchodniJmeno) {
       });
     }
   }
-  return { memberships, ownership };
+  return { memberships, tentativeMemberships, ownership };
 }
 
 /** Vrátí aktuální obchodní jméno z primárního VR záznamu. */

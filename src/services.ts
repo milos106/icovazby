@@ -271,6 +271,66 @@ export async function crossCompanyPersonsService(
     }
   }
 
+  // Pokud i po auto-expand máme jen 1 IČO ALE includeHistorical=true,
+  // ještě zkusíme tentative bucket: pro každého bývalého statutáře bez
+  // DOB zjistíme jeho další firmy. Pokud najdeme, vrátíme „candidates-only"
+  // response — UI zobrazí checkboxy a uživatel klikne „Vykresli s vybranými"
+  // pro fakticky vykreslení grafu.
+  if (uniqueIcos.length === 1 && includeHistorical) {
+    try {
+      const seed = uniqueIcos[0]!;
+      const seedVr = await client.getVrRecord(seed);
+      const allMems = flattenMembers(seedVr, { activeOnly: false });
+      const seedChildren = new Set(getChildrenByParent(seed, true));
+      const allKnownSubjects = new Set(listSubjects().map((s) => s.ico));
+      const earlyCandidates: Array<Record<string, unknown>> = [];
+      for (const m of allMems) {
+        const fo = m.fyzickaOsoba;
+        if (!fo?.jmeno || !fo.prijmeni || fo.datumNarozeni) continue;
+        const tperson = findTentativeMemberships(fo.jmeno, fo.prijmeni);
+        if (!tperson) continue;
+        const otherFirms = tperson.memberships.filter((mm) => mm.ico !== seed);
+        if (otherFirms.length === 0) continue;
+        const signals: string[] = [];
+        if (otherFirms.some((mm) => seedChildren.has(mm.ico))) signals.push("shared-ownership");
+        if (otherFirms.every((mm) => allKnownSubjects.has(mm.ico))) signals.push("in-inventory");
+        if (otherFirms.length > 1) signals.push("multi-firm");
+        earlyCandidates.push({
+          fromSeedIco: seed,
+          fromSeedName: currentObchodniJmeno(pickPrimaryZaznam(seedVr)) ?? null,
+          jmeno: fo.jmeno,
+          prijmeni: fo.prijmeni,
+          displayName: memberDisplayName(m),
+          memberships: otherFirms.map((mm) => ({
+            ico: mm.ico,
+            obchodniJmeno: mm.obchodniJmeno,
+            funkce: mm.funkce,
+            organ: mm.organ,
+            datumZapisu: mm.datumZapisu,
+            datumVymazu: mm.datumVymazu,
+          })),
+          signals,
+        });
+      }
+      if (earlyCandidates.length > 0) {
+        return {
+          zpracovanoIco: 1,
+          includeHistorical,
+          tentativeCandidates: earlyCandidates,
+          companies: [],
+          totalActivePersons: 0,
+          sharedCount: 0,
+          activePersons: [],
+          sharedPersons: [],
+          _attribution: ARES_ATTRIBUTION,
+          _note: "Pouze tentative kandidáti — zaškrtni žádané a klikni 'Vykresli s vybranými'.",
+        };
+      }
+    } catch {
+      // Seed VR fail — fall through to standard error
+    }
+  }
+
   if (uniqueIcos.length < 2) {
     throw new InvalidInputError("At least two distinct IČOs are required.");
   }
@@ -299,10 +359,81 @@ export async function crossCompanyPersonsService(
     includeHistorical: args.includeHistorical ?? false,
   });
 
+  // Tentative candidates — bývalí statutáři vstupních firem bez DOB.
+  // Vyhledáme každého v personsTentative bucket; pokud najdeme jeho další
+  // firmy, vrátíme jako „možného jmenovce". UI ukáže checkboxy a uživatel
+  // rozhodne, zda je to ten samý člověk.
+  //
+  // Context signály pro disambiguation:
+  //   • 'shared-ownership' — kandidátova jiná firma sdílí parent IČO se seed firmou
+  //   • 'in-inventory'    — všechny kandidátovy firmy máme v subjects (nejsou exotické)
+  //   • 'multi-firm'      — kandidát sedí ve >1 firmě (typický pravý jmenovec)
+  interface TentativeCandidate {
+    fromSeedIco: string;
+    fromSeedName: string | null;
+    jmeno: string;
+    prijmeni: string;
+    displayName: string;
+    memberships: Array<{
+      ico: string;
+      obchodniJmeno: string | null;
+      funkce: string | null;
+      organ: string | null;
+      datumZapisu: string | null;
+      datumVymazu: string | null;
+    }>;
+    signals: string[];
+  }
+  const tentativeCandidates: TentativeCandidate[] = [];
+  if (includeHistorical) {
+    const allKnownSubjects = new Set(listSubjects().map((s) => s.ico));
+    for (const company of companies) {
+      if (!company.vr) continue;
+      const allMems = flattenMembers(company.vr, { activeOnly: false });
+      for (const m of allMems) {
+        const fo = m.fyzickaOsoba;
+        if (!fo?.jmeno || !fo.prijmeni) continue;
+        if (fo.datumNarozeni) continue; // má DOB → nepatří do tentative
+        const tperson = findTentativeMemberships(fo.jmeno, fo.prijmeni);
+        if (!tperson) continue;
+        // Filter membership ze seed firmy (= ta sama, ne „jiná firma kde sedí")
+        const otherFirms = tperson.memberships.filter((mm) => mm.ico !== company.ico);
+        if (otherFirms.length === 0) continue;
+        // Signal: shared-ownership = některá z kandidátových firem je dceřinkou
+        // seed firmy (= jsou v holdingu, slabý ale pozitivní signál stejnosti).
+        const signals: string[] = [];
+        const seedChildren = new Set(getChildrenByParent(company.ico, true));
+        const sharesOwnership = otherFirms.some((mm) => seedChildren.has(mm.ico));
+        if (sharesOwnership) signals.push("shared-ownership");
+        const allInInventory = otherFirms.every((mm) => allKnownSubjects.has(mm.ico));
+        if (allInInventory) signals.push("in-inventory");
+        if (otherFirms.length > 1) signals.push("multi-firm");
+
+        tentativeCandidates.push({
+          fromSeedIco: company.ico,
+          fromSeedName: currentObchodniJmeno(pickPrimaryZaznam(company.vr)) ?? null,
+          jmeno: fo.jmeno,
+          prijmeni: fo.prijmeni,
+          displayName: memberDisplayName(m),
+          memberships: otherFirms.map((mm) => ({
+            ico: mm.ico,
+            obchodniJmeno: mm.obchodniJmeno,
+            funkce: mm.funkce,
+            organ: mm.organ,
+            datumZapisu: mm.datumZapisu,
+            datumVymazu: mm.datumVymazu,
+          })),
+          signals,
+        });
+      }
+    }
+  }
+
   return {
     zpracovanoIco: uniqueIcos.length,
     includeHistorical,
     ...(autoExpanded.length > 0 ? { autoExpandedIcos: autoExpanded } : {}),
+    ...(tentativeCandidates.length > 0 ? { tentativeCandidates } : {}),
     companies: graph.companies,
     totalActivePersons: graph.totalActivePersons,
     sharedCount: graph.sharedPersons.length,
@@ -532,25 +663,43 @@ export async function fullDueDiligenceService(client: AresClient, icoInput: stri
   }
 
   // Hook do lokálního indexu osoba→firmy: vložíme VŠECHNY členy
-  // statutárního orgánu (aktivní i historické). Historiky se používají
-  // pro cross-persons + vazby osoby když user zapne includeHistorical.
+  // statutárního orgánu (aktivní i historické). Routing podle dostupnosti DOB:
+  //   • DOB známý → hlavní persons bucket (klíč jmeno|prijmeni|YYYY-MM-DD)
+  //   • DOB chybí → tentative bucket (klíč jmeno|prijmeni). Bývalí statutáři
+  //     z období před cca 2014, kdy ARES VR nedrží DOB historiků. UI je
+  //     označí jako „Možný jmenovec" a vyžaduje user confirmation.
   for (const m of allMembers) {
     const fo = m.fyzickaOsoba;
-    if (!fo?.datumNarozeni || !fo.jmeno || !fo.prijmeni) continue;
-    upsertMembership({
-      jmeno: fo.jmeno,
-      prijmeni: fo.prijmeni,
-      titulPred: fo.titulPredJmenem ?? null,
-      displayName: memberDisplayName(m),
-      datumNarozeni: fo.datumNarozeni,
-      ico: normalized,
-      obchodniJmeno: obchodniJmeno ?? null,
-      funkce: m.funkce ?? null,
-      organ: m.organName ?? null,
-      datumZapisu: m.datumZapisu ?? null,
-      datumVymazu: m.datumVymazu ?? null,
-      source: "ARES_VR",
-    });
+    if (!fo?.jmeno || !fo.prijmeni) continue;
+    if (fo.datumNarozeni) {
+      upsertMembership({
+        jmeno: fo.jmeno,
+        prijmeni: fo.prijmeni,
+        titulPred: fo.titulPredJmenem ?? null,
+        displayName: memberDisplayName(m),
+        datumNarozeni: fo.datumNarozeni,
+        ico: normalized,
+        obchodniJmeno: obchodniJmeno ?? null,
+        funkce: m.funkce ?? null,
+        organ: m.organName ?? null,
+        datumZapisu: m.datumZapisu ?? null,
+        datumVymazu: m.datumVymazu ?? null,
+        source: "ARES_VR",
+      });
+    } else {
+      upsertTentativeMembership({
+        jmeno: fo.jmeno,
+        prijmeni: fo.prijmeni,
+        displayName: memberDisplayName(m),
+        ico: normalized,
+        obchodniJmeno: obchodniJmeno ?? null,
+        funkce: m.funkce ?? null,
+        organ: m.organName ?? null,
+        datumZapisu: m.datumZapisu ?? null,
+        datumVymazu: m.datumVymazu ?? null,
+        source: "ARES_VR",
+      });
+    }
   }
 
   // OSVČ self-membership: pokud je subjekt fyzická osoba podnikající,
@@ -802,10 +951,13 @@ export { discoverHolding } from "./holding/discover.js";
 // ─── Local persistent index osoba → firmy + subjekt inventář ──────────────────
 import {
   findMemberships,
+  findTentativeMemberships,
+  getChildrenByParent,
   listSubjects,
   upsertMembership,
   upsertOwnership,
   upsertSubject,
+  upsertTentativeMembership,
 } from "./persons_index/store.js";
 
 // ─── Veřejný rejstřík (OR) přes verejnerejstriky.msp.gov.cz ───────────────────

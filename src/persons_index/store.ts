@@ -76,6 +76,33 @@ export interface OwnershipEntry {
   seenAt: number;
 }
 
+/**
+ * Verze 4: personsTentative bucket — bývalí statutáři, pro které ARES VR
+ * neeviduje `datumNarozeni` (historická data oříznutá). Bez DOB nelze
+ * sestavit unikátní klíč v hlavním personsIndex, takže by se tato data
+ * úplně ztratila. Tentative bucket je drží pod méně přísným klíčem
+ * `jmeno|prijmeni` s tím, že UI je nikdy nezobrazí jako definitivní
+ * shodu — vždy jen jako „Možný jmenovec, ověř". Disambiguation přes
+ * kontextové signály (overlap holdingu, NACE, časového období).
+ */
+export interface IndexedTentativeMembership {
+  ico: string;
+  obchodniJmeno: string | null;
+  funkce: string | null;
+  organ: string | null;
+  datumZapisu: string | null;
+  datumVymazu: string | null;
+  source: "ARES_VR" | "OR_VR" | "OR_DR" | "OR_AKC";
+  seenAt: number;
+}
+
+export interface IndexedTentativePerson {
+  displayName: string;
+  jmeno: string;
+  prijmeni: string;
+  memberships: IndexedTentativeMembership[];
+}
+
 interface IndexFile {
   version: number;
   lastUpdated: string;
@@ -84,9 +111,13 @@ interface IndexFile {
   subjects?: Record<string, IndexedSubject>;
   /** Verze 3: ownership.byParent[parentIco] = [{childIco, ...}, ...]. */
   ownership?: { byParent: Record<string, OwnershipEntry[]> };
+  /** Verze 4: tentative bucket — osoby bez datumNarozeni klíčované jen
+   *  podle jmeno+prijmeni. Lookup vrací „možné jmenovce", UI je vždy
+   *  označuje jako neověřené. */
+  personsTentative?: Record<string, IndexedTentativePerson>;
 }
 
-const VERSION = 3;
+const VERSION = 4;
 const DEFAULT_DATA_DIR = "./data";
 const FILE_NAME = "persons-index.json";
 
@@ -102,6 +133,7 @@ let memory: IndexFile = {
   persons: {},
   subjects: {},
   ownership: { byParent: {} },
+  personsTentative: {},
 };
 let unflushed = 0;
 let flushTimer: NodeJS.Timeout | null = null;
@@ -130,6 +162,11 @@ function makeKey(jmeno: string, prijmeni: string, datumNarozeni: string): string
   return `${normalize(jmeno)}|${normalize(prijmeni)}|${datumNarozeni}`;
 }
 
+/** Klíč pro tentative bucket — bez DOB. Nejasný jmenovec! */
+function makeTentativeKey(jmeno: string, prijmeni: string): string {
+  return `${normalize(jmeno)}|${normalize(prijmeni)}`;
+}
+
 function load(): void {
   if (loaded) return;
   try {
@@ -138,13 +175,15 @@ function load(): void {
       const raw = readFileSync(path, "utf-8");
       const parsed = JSON.parse(raw) as IndexFile;
       if (parsed?.persons) {
-        // V1 → V2 → V3 migrace: subjects + ownership default na prázdné.
+        // V1 → V2 → V3 → V4 migrace: subjects + ownership + personsTentative
+        // default na prázdné. Existující v3 dataset se převede transparentně.
         memory = {
           version: VERSION,
           lastUpdated: parsed.lastUpdated ?? new Date().toISOString(),
           persons: parsed.persons,
           subjects: parsed.subjects ?? {},
           ownership: parsed.ownership ?? { byParent: {} },
+          personsTentative: parsed.personsTentative ?? {},
         };
       }
     }
@@ -335,6 +374,75 @@ export function getOwnershipDetails(
 }
 
 /** Najdi všechny memberships osoby. */
+/**
+ * Vlož tentative membership — osobu BEZ data narození. Používáno
+ * pro historické statutáře, pro které ARES neeviduje DOB. Vrácený match
+ * při lookupu je vždy označen jako „možný jmenovec".
+ */
+export function upsertTentativeMembership(input: {
+  jmeno: string;
+  prijmeni: string;
+  displayName: string;
+  ico: string;
+  obchodniJmeno?: string | null;
+  funkce?: string | null;
+  organ?: string | null;
+  datumZapisu?: string | null;
+  datumVymazu?: string | null;
+  source: IndexedTentativeMembership["source"];
+}): void {
+  load();
+  if (!input.jmeno || !input.prijmeni || !input.ico) return;
+  const key = makeTentativeKey(input.jmeno, input.prijmeni);
+  memory.personsTentative ??= {};
+  let person = memory.personsTentative[key];
+  if (!person) {
+    person = {
+      displayName: input.displayName,
+      jmeno: input.jmeno,
+      prijmeni: input.prijmeni,
+      memberships: [],
+    };
+    memory.personsTentative[key] = person;
+  }
+  const now = Date.now();
+  const newM: IndexedTentativeMembership = {
+    ico: input.ico,
+    obchodniJmeno: input.obchodniJmeno ?? null,
+    funkce: input.funkce ?? null,
+    organ: input.organ ?? null,
+    datumZapisu: input.datumZapisu ?? null,
+    datumVymazu: input.datumVymazu ?? null,
+    source: input.source,
+    seenAt: now,
+  };
+  const existing = person.memberships.find(
+    (m) =>
+      m.ico === newM.ico &&
+      m.funkce === newM.funkce &&
+      m.source === newM.source &&
+      m.datumZapisu === newM.datumZapisu,
+  );
+  if (existing) {
+    existing.seenAt = now;
+    if (newM.datumVymazu && !existing.datumVymazu) existing.datumVymazu = newM.datumVymazu;
+    if (newM.obchodniJmeno && !existing.obchodniJmeno) existing.obchodniJmeno = newM.obchodniJmeno;
+  } else {
+    person.memberships.push(newM);
+  }
+  scheduleFlush();
+}
+
+/** Vyhledej tentative kandidáty pro jmeno+prijmeni (bez DOB). */
+export function findTentativeMemberships(
+  jmeno: string,
+  prijmeni: string,
+): IndexedTentativePerson | null {
+  load();
+  const key = makeTentativeKey(jmeno, prijmeni);
+  return memory.personsTentative?.[key] ?? null;
+}
+
 export function findMemberships(
   jmeno: string,
   prijmeni: string,
@@ -352,6 +460,8 @@ export function indexStats(): {
   subjectsCount: number;
   ownershipParentsCount: number;
   ownershipEdgesCount: number;
+  tentativeCount: number;
+  tentativeMembershipsCount: number;
   lastUpdated: string;
   path: string;
 } {
@@ -360,12 +470,16 @@ export function indexStats(): {
   for (const p of Object.values(memory.persons)) count += p.memberships.length;
   let edges = 0;
   for (const list of Object.values(memory.ownership?.byParent ?? {})) edges += list.length;
+  let tentativeMembers = 0;
+  for (const p of Object.values(memory.personsTentative ?? {})) tentativeMembers += p.memberships.length;
   return {
     personsCount: Object.keys(memory.persons).length,
     membershipsCount: count,
     subjectsCount: Object.keys(memory.subjects ?? {}).length,
     ownershipParentsCount: Object.keys(memory.ownership?.byParent ?? {}).length,
     ownershipEdgesCount: edges,
+    tentativeCount: Object.keys(memory.personsTentative ?? {}).length,
+    tentativeMembershipsCount: tentativeMembers,
     lastUpdated: memory.lastUpdated,
     path: dataPath(),
   };

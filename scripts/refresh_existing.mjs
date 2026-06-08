@@ -28,12 +28,12 @@ async function processOne(ico, obchodniJmenoFromSubject) {
   try {
     const vr = await fetchAresVr(ico);
     if (!vr) return null;
-    const { memberships, ownership } = extractFromVr(
+    const { memberships, tentativeMemberships, ownership } = extractFromVr(
       vr,
       ico,
       obchodniJmenoFromSubject,
     );
-    return { memberships, ownership };
+    return { memberships, tentativeMemberships, ownership };
   } catch {
     return null;
   }
@@ -49,11 +49,12 @@ async function main() {
 
   console.log(`Refresh batch: ${candidates.length} / ${Object.keys(idx.subjects).length} subjektů`);
 
-  const additions = { subjects: {}, persons: {}, ownership: {} };
+  const additions = { subjects: {}, persons: {}, personsTentative: {}, ownership: {} };
   let processed = 0;
   let withChanges = 0;
   let edgesAdded = 0;
   let membershipsAdded = 0;
+  let tentativeAdded = 0;
   const queue = candidates.slice();
 
   async function worker() {
@@ -89,6 +90,32 @@ async function main() {
             seenAt: Date.now(),
           });
           membershipsAdded++;
+          firmChanged = true;
+        }
+
+        for (const m of result.tentativeMemberships ?? []) {
+          const tkey = m.jmeno.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().trim()
+            + "|"
+            + m.prijmeni.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().trim();
+          if (!additions.personsTentative[tkey]) {
+            additions.personsTentative[tkey] = {
+              displayName: `${m.jmeno} ${m.prijmeni}`,
+              jmeno: m.jmeno,
+              prijmeni: m.prijmeni,
+              memberships: [],
+            };
+          }
+          additions.personsTentative[tkey].memberships.push({
+            ico: m.ico,
+            obchodniJmeno: m.obchodniJmeno,
+            funkce: m.funkce,
+            organ: m.organ,
+            datumZapisu: m.datumZapisu,
+            datumVymazu: m.datumVymazu,
+            source: "ARES_VR",
+            seenAt: Date.now(),
+          });
+          tentativeAdded++;
           firmChanged = true;
         }
 
@@ -136,6 +163,7 @@ async function main() {
   console.log(`  Změněno (membership nebo ownership): ${withChanges}`);
   console.log(`  Nových ownership hran: ${edgesAdded}`);
   console.log(`  Nových membership záznamů (dedup ještě proběhne při merge): ${membershipsAdded}`);
+  console.log(`  Nových tentative záznamů (jmenovci bez DOB): ${tentativeAdded}`);
 }
 
 main().catch((e) => {
