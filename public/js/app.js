@@ -194,7 +194,7 @@ function searchSection() {
         if (e.detail?.ico) {
           this.query = e.detail.ico;
           this.run().then(() => {
-            document.getElementById("search")?.scrollIntoView({ behavior: "smooth" });
+            document.getElementById("profil")?.scrollIntoView({ behavior: "smooth" });
           });
         }
       });
@@ -253,7 +253,7 @@ function searchSection() {
     async loadByIco(ico) {
       this.query = ico;
       await this.run();
-      document.getElementById("search")?.scrollIntoView({ behavior: "smooth" });
+      document.getElementById("profil")?.scrollIntoView({ behavior: "smooth" });
     },
     async toggleRes(ico) {
       if (this.resData) {

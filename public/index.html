@@ -118,7 +118,6 @@
           </div>
         </div>
         <nav class="hidden md:flex gap-4 text-sm text-slate-600 dark:text-slate-400">
-          <a href="#search" class="hover:text-slate-900 dark:hover:text-white">Hledat</a>
           <a href="#profil" class="hover:text-slate-900 dark:hover:text-white">Profil firmy</a>
           <a href="#graph" class="hover:text-slate-900 dark:hover:text-white">Mapa propojení</a>
           <a href="#address" class="hover:text-slate-900 dark:hover:text-white">Podle adresy</a>
@@ -266,77 +265,69 @@
 
     <main class="flex-1 max-w-6xl mx-auto w-full px-4 py-8 space-y-10">
       <!-- ─── Search ────────────────────────────────────────────────── -->
-      <section id="search" x-data="searchSection()" x-init="init()" class="bg-white dark:bg-slate-800 dark:border-slate-700 rounded-2xl shadow-sm border p-6">
-        <h2 class="text-lg font-bold mb-1">Profil firmy</h2>
-        <p class="text-sm text-slate-500 dark:text-slate-400 mb-4">Zadej IČO (8 číslic) nebo část názvu firmy.</p>
-        <form @submit.prevent="run()" class="flex gap-2 flex-wrap">
-          <input
-            type="text"
-            x-model="query"
-            placeholder="např. 26185610  nebo  AGROFERT"
-            class="flex-1 min-w-[200px] px-4 py-2 border dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none"
-            autofocus
-          />
-          <button
-            type="submit"
-            class="px-6 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 disabled:opacity-50"
-            :disabled="loading"
-            x-text="loading ? 'Hledám…' : 'Najít'"
-          ></button>
-        </form>
+      <!-- ─── Profil firmy (sloučený search + report) ──────────────── -->
+      <section id="profil" class="bg-white dark:bg-slate-800 dark:border-slate-700 rounded-2xl shadow-sm border p-6">
+        <!-- Search header — hledání IČO / názvu firmy. searchSection() jen
+             pro form + multi-result list. Po jediném hitu dispatchne open-dd
+             do ddSection() níže. -->
+        <div x-data="searchSection()" x-init="init()" class="pb-4 mb-4 border-b dark:border-slate-700">
+          <h2 class="text-lg font-bold mb-1">🛡️ Profil firmy</h2>
+          <p class="text-sm text-slate-500 dark:text-slate-400 mb-3">
+            Zadej IČO (8 číslic) nebo část názvu firmy. Po nálezu se profil i
+            risk prověrka načte automaticky.
+          </p>
+          <form @submit.prevent="run()" class="flex gap-2 flex-wrap">
+            <input
+              type="text"
+              x-model="query"
+              placeholder="např. 26185610  nebo  AGROFERT"
+              class="flex-1 min-w-[200px] px-4 py-2 border dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none"
+              autofocus
+            />
+            <button
+              type="submit"
+              class="px-6 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 disabled:opacity-50"
+              :disabled="loading"
+              x-text="loading ? 'Hledám…' : 'Najít'"
+            ></button>
+          </form>
 
-        <template x-if="error">
-          <div class="mt-4 p-3 bg-rose-50 dark:bg-rose-900/30 border border-rose-200 dark:border-rose-800 rounded text-sm text-rose-800 dark:text-rose-300" x-text="error"></div>
-        </template>
+          <template x-if="error">
+            <div class="mt-4 p-3 bg-rose-50 dark:bg-rose-900/30 border border-rose-200 dark:border-rose-800 rounded text-sm text-rose-800 dark:text-rose-300" x-text="error"></div>
+          </template>
 
-        <!-- Po nálezu jediné firmy (přes IČO nebo jediný name match) se profil
-             firmy načte v sekci níže (autotrigger open-dd v searchSection.run).
-             Tady už nic samostatně nevykreslujeme. -->
-        <template x-if="profile">
-          <div class="mt-4 p-3 bg-emerald-50 dark:bg-emerald-900/30 border border-emerald-200 dark:border-emerald-700 rounded text-sm">
-            <span class="font-semibold" x-text="profile.obchodniJmeno"></span>
-            (IČO <span class="font-mono" x-text="profile.ico"></span>)
-            — profil firmy se právě načítá níže ↓
-          </div>
-        </template>
-
-        <!-- Multi-result list -->
-        <template x-if="results.length > 0">
-          <div class="mt-6 space-y-2">
-            <p class="text-sm text-slate-600">
-              Nalezeno <span x-text="totalFound" class="font-semibold"></span> firem
-            </p>
-            <template x-for="r in results" :key="r.ico">
-              <button
-                @click="loadByIco(r.ico)"
-                class="w-full text-left p-3 border dark:border-slate-700 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-700 transition"
-              >
-                <div class="flex items-center justify-between gap-2 flex-wrap">
-                  <div>
-                    <div class="font-semibold" x-text="r.obchodniJmeno"></div>
-                    <div class="text-xs text-slate-500 dark:text-slate-400">
-                      IČO <span x-text="r.ico" class="font-mono"></span> · <span x-text="r.sidlo || ''"></span>
+          <!-- Multi-result list (jen při name search s víc shodami) -->
+          <template x-if="results.length > 0">
+            <div class="mt-4 space-y-2">
+              <p class="text-sm text-slate-600 dark:text-slate-400">
+                Nalezeno <span x-text="totalFound" class="font-semibold"></span> firem — klikni pro načtení profilu:
+              </p>
+              <template x-for="r in results" :key="r.ico">
+                <button
+                  @click="loadByIco(r.ico)"
+                  class="w-full text-left p-3 border dark:border-slate-700 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-700 transition"
+                >
+                  <div class="flex items-center justify-between gap-2 flex-wrap">
+                    <div>
+                      <div class="font-semibold" x-text="r.obchodniJmeno"></div>
+                      <div class="text-xs text-slate-500 dark:text-slate-400">
+                        IČO <span x-text="r.ico" class="font-mono"></span> · <span x-text="r.sidlo || ''"></span>
+                      </div>
                     </div>
+                    <span
+                      :class="r.datumZaniku ? 'bg-rose-100 dark:bg-rose-900/40 text-rose-800 dark:text-rose-300' : 'bg-emerald-100 dark:bg-emerald-900/40 text-emerald-800 dark:text-emerald-300'"
+                      class="px-2 py-0.5 rounded text-xs"
+                      x-text="r.datumZaniku ? 'zanikla' : 'aktivní'"
+                    ></span>
                   </div>
-                  <span
-                    :class="r.datumZaniku ? 'bg-rose-100 dark:bg-rose-900/40 text-rose-800 dark:text-rose-300' : 'bg-emerald-100 dark:bg-emerald-900/40 text-emerald-800 dark:text-emerald-300'"
-                    class="px-2 py-0.5 rounded text-xs"
-                    x-text="r.datumZaniku ? 'zanikla' : 'aktivní'"
-                  ></span>
-                </div>
-              </button>
-            </template>
-          </div>
-        </template>
-      </section>
+                </button>
+              </template>
+            </div>
+          </template>
+        </div>
 
-      <!-- ─── Hloubková prověrka ────────────────────────────────────── -->
-      <section id="profil" x-data="ddSection()" x-init="init()" @open-dd.window="run($event.detail.ico)" class="bg-white dark:bg-slate-800 dark:border-slate-700 rounded-2xl shadow-sm border p-6">
-        <h2 class="text-lg font-bold mb-1">🛡️ Profil firmy</h2>
-        <p class="text-sm text-slate-500 dark:text-slate-400 mb-4">
-          Identifikace + risk skóre 🟢🟡🔴 + jednatelé + DPH + sankce + dotace + smlouvy + insolvence + rejstříky.
-          <span x-show="!report && !loading">Načítá se automaticky po vyhledání firmy v sekci nahoře.</span>
-        </p>
+        <!-- Report — full data, lazy loaded přes open-dd event z searchSection. -->
+        <div x-data="ddSection()" x-init="init()" @open-dd.window="run($event.detail.ico)">
 
         <template x-if="loading">
           <div class="p-4 text-sm text-slate-500 dark:text-slate-400 flex items-center gap-2">
@@ -1532,6 +1523,7 @@
             </p>
           </div>
         </template>
+        </div><!-- /ddSection wrapper -->
       </section>
 
       <!-- ─── Vazby osoby ──────────────────────────────────────────── -->
