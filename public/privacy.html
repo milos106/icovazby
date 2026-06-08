@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Zásady ochrany osobních údajů — IČO vazby</title>
+<style>
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Inter", "Helvetica Neue", sans-serif; max-width: 760px; margin: 0 auto; padding: 32px 20px 64px; color: #0f172a; line-height: 1.6; background: #fff; }
+  h1 { font-size: 26px; font-weight: 600; margin: 0 0 6px; letter-spacing: -0.01em; }
+  h2 { font-size: 18px; font-weight: 600; margin: 28px 0 10px; color: #1e293b; border-bottom: 1px solid #e2e8f0; padding-bottom: 4px; }
+  h3 { font-size: 15px; font-weight: 600; margin: 20px 0 6px; color: #334155; }
+  p, li { font-size: 14.5px; color: #1e293b; }
+  ul { padding-left: 22px; }
+  ul li { margin: 4px 0; }
+  a { color: #047857; text-decoration: underline; }
+  a:hover { color: #065f46; }
+  code, .ico { font-family: ui-monospace, "SF Mono", "JetBrains Mono", monospace; font-size: 13px; background: #f1f5f9; padding: 1px 5px; border-radius: 3px; }
+  .meta { font-size: 12px; color: #64748b; margin-bottom: 24px; }
+  .back { display: inline-block; margin-top: 32px; padding: 8px 14px; background: #0f172a; color: white; text-decoration: none; border-radius: 6px; font-size: 13px; }
+  .back:hover { background: #1e293b; color: white; }
+  .note { background: #fffbeb; border-left: 3px solid #d97706; padding: 10px 14px; font-size: 13.5px; margin: 16px 0; }
+</style>
+</head>
+<body>
+
+<h1>Zásady ochrany osobních údajů</h1>
+<p class="meta">Webová aplikace <strong>IČO vazby</strong> (icovazby.cz) · platné od 2026-06-08</p>
+
+<h2>1. Kdo je správce údajů</h2>
+<p>
+  Provozovatel webu icovazby.cz a správce osobních údajů ve smyslu nařízení (EU) 2016/679 (GDPR):
+</p>
+<ul>
+  <li><strong>Miloš Pospíšil</strong></li>
+  <li>kontakt: <a href="mailto:max118@seznam.cz">max118@seznam.cz</a></li>
+  <li>(fyzická osoba — nepodnikatel, web provozován jako veřejně přístupný OSS projekt)</li>
+</ul>
+
+<h2>2. Jaká data zpracováváme</h2>
+
+<h3>2.1 Data o firmách a fyzických osobách (jednatelích)</h3>
+<p>
+  Aplikace agreguje veřejně dostupná data o českých obchodních subjektech ze státních registrů:
+</p>
+<ul>
+  <li>ARES (MFČR) — obchodní jméno, IČO, sídlo, NACE, DPH stav</li>
+  <li>Veřejný rejstřík (MSp ČR) — statutární orgán, akcionáři, obchodní listiny</li>
+  <li>Hlídač státu — veřejné zakázky, dotace, skuteční majitelé, insolvenční rejstřík</li>
+  <li>EU sanctions list, ČNB JERRS, ADIS DPH</li>
+</ul>
+<p>
+  Tato data <strong>jsou veřejně publikovaná</strong> na základě právních předpisů
+  (§ 304/2013 Sb. o veřejných rejstřících, § 96a z. o DPH, § 419 z. č. 182/2006 Sb. atd.).
+  Obsahují <strong>jména, příjmení a data narození</strong> jednatelů a skutečných majitelů.
+</p>
+
+<div class="note">
+  ⚠ <strong>Pokud výsledky prověrky stahujete, ukládáte nebo dále zpracováváte</strong>
+  (např. jako součást vlastní compliance dokumentace, faktury, archivace),
+  stáváte se <strong>vy správcem osobních údajů</strong> a máte vlastní povinnosti
+  podle GDPR (informační povinnost vůči subjektům údajů, doba uchování,
+  právní základ zpracování).
+</div>
+
+<h3>2.2 Data o uživatelích webu</h3>
+<p>Při běžném používání webu zpracováváme:</p>
+<ul>
+  <li>
+    <strong>IP adresa + User-Agent</strong> — pouze v logu HTTP serveru a Cloudflare CDN
+    pro účely bezpečnosti a anti-DDoS. Uchováváme po dobu 7 dnů. Právní základ: čl. 6(1)(f) GDPR
+    (oprávněný zájem na zabezpečení služby).
+  </li>
+  <li>
+    <strong>localStorage v prohlížeči</strong> — historie posledních 10 hledání, oblíbené záložky,
+    nastavení tmavého režimu, váš HS API token (pokud jste ho zadal). Tyto údaje
+    <strong>neopouštějí váš prohlížeč</strong> — server je nevidí.
+  </li>
+  <li>
+    <strong>E-mail (pokud aktivujete alerty)</strong> — pokud se přihlásíte k e-mail alertům
+    o změně statutárního orgánu, insolvence apod., váš e-mail ukládáme do souboru
+    <code>data/subscriptions.json</code> na serveru. Použijeme ho výhradně pro odesílání
+    notifikací o změnách u zvoleného IČO. Právní základ: čl. 6(1)(a) GDPR (souhlas — dvojí
+    opt-in přes ověřovací odkaz). Máte kdykoli právo na výmaz přes odhlašovací link.
+  </li>
+</ul>
+
+<h3>2.3 Server-side cache (sdílená napříč uživateli)</h3>
+<p>
+  Pro zrychlení odezvy a šetření kvóty veřejných API ukládáme dočasně v paměti serveru
+  (RAM, LRU cache, TTL 24 h) výsledky prověrek IČO. Tyto výsledky obsahují
+  jména a data narození jednatelů (= veřejně publikovaná data ze státních registrů,
+  viz 2.1). Cache <strong>není sdílena s třetími stranami</strong>, slouží výhradně
+  pro rychlejší obsluhu opakovaných dotazů a vyprší samočinně po restartu serveru
+  nebo 24 hodinách.
+</p>
+
+<h3>2.4 Lokální index osoba→firmy</h3>
+<p>
+  Aplikace si pro funkci „Vazby osoby" udržuje na disku (soubor <code>data/persons-index.json</code>)
+  index spojení jméno + datum narození → seznam firem, ve kterých daná osoba figuruje
+  jako jednatel. Tento index vzniká postupně z dat veřejných rejstříků (viz 2.1)
+  a slouží k rychlejšímu nalezení vazeb mezi firmami. Funguje pouze pro IČO, která byla
+  v aplikaci v minulosti vyhledávána.
+</p>
+
+<h2>3. Co NEzpracováváme</h2>
+<ul>
+  <li>❌ Body HTTP požadavků (server logger Pino default nezapisuje payload)</li>
+  <li>❌ Cookies pro tracking, analytics ani marketing — aplikace nepoužívá žádné cookies</li>
+  <li>❌ Žádné third-party tracking nástroje (Google Analytics, Facebook Pixel, atd.)</li>
+  <li>❌ Trvalé úložiště prověrek konkrétních uživatelů (server je stateless v RAM cache)</li>
+</ul>
+
+<h2>4. Komu data předáváme</h2>
+<p>
+  Žádným třetím stranám pro účely marketingu, reklamy ani profilování. Jediní zpracovatelé
+  jsou techničtí poskytovatelé infrastruktury:
+</p>
+<ul>
+  <li><strong>Hetzner Online GmbH</strong> (Německo) — hosting serveru</li>
+  <li><strong>Cloudflare, Inc.</strong> (USA, EU-US Data Privacy Framework) — CDN, DDoS protection, TLS terminace</li>
+  <li><strong>Hukot.net</strong> (ČR) — DNS hosting a e-mailové schránky domény</li>
+</ul>
+<p>
+  Při dotazu na veřejné registry (ARES, Hlídač státu, EU sanctions, ČNB JERRS,
+  verejnerejstriky.msp.gov.cz) odesíláme dotaz ze IP našeho serveru — tito poskytovatelé
+  v rámci své činnosti zaznamenávají naše IP, nikoli vaši.
+</p>
+
+<h2>5. Jak dlouho data uchováváme</h2>
+<ul>
+  <li>HTTP/Cloudflare logy: 7 dnů</li>
+  <li>RAM cache (DD reporty): 24 h</li>
+  <li>persons_index na disku: trvale (slouží k rostoucí kvalitě vazeb)</li>
+  <li>E-mail subscribery: do doby, dokud sám neudělíte odhlášení</li>
+  <li>localStorage v prohlížeči: kontrolujete sám/sama (lze smazat v prohlížeči kdykoli)</li>
+</ul>
+
+<h2>6. Vaše práva</h2>
+<p>Jako subjekt údajů máte podle GDPR právo:</p>
+<ul>
+  <li>požádat o přístup k vašim osobním údajům, které zpracováváme</li>
+  <li>požádat o opravu nepřesných údajů</li>
+  <li>požádat o výmaz („právo být zapomenut")</li>
+  <li>požádat o omezení zpracování</li>
+  <li>vznést námitku proti zpracování</li>
+  <li>požádat o přenositelnost údajů</li>
+  <li>odvolat souhlas (u e-mail alertů kdykoli přes odhlašovací link)</li>
+  <li>podat stížnost u <a href="https://www.uoou.cz/" target="_blank" rel="noopener">Úřadu pro ochranu osobních údajů</a></li>
+</ul>
+<p>
+  Žádosti zasílejte na <a href="mailto:max118@seznam.cz">max118@seznam.cz</a>.
+  Odpovíme do 30 dnů.
+</p>
+
+<h2>7. Bezpečnost</h2>
+<p>
+  Web běží na HTTPS s validním TLS certifikátem (Cloudflare). Server používá rate-limiting,
+  sandboxing přes systemd, OOM-cap a deny-by-default firewall. Kompletní bezpečnostní
+  politika je publikována na <a href="https://github.com/milos106/icovazby/blob/main/SECURITY.md" target="_blank" rel="noopener">GitHub SECURITY.md</a>.
+</p>
+
+<h2>8. Open Source</h2>
+<p>
+  Zdrojový kód aplikace je veřejně publikovaný pod licencí
+  <a href="https://www.gnu.org/licenses/agpl-3.0.html" target="_blank" rel="noopener">GNU AGPL-3.0</a>
+  na <a href="https://github.com/milos106/icovazby" target="_blank" rel="noopener">github.com/milos106/icovazby</a>.
+  Komukoli je k dispozici audit toho, jak aplikace skutečně zpracovává vaše údaje.
+</p>
+
+<h2>9. Změny zásad</h2>
+<p>
+  Tyto zásady mohou být v budoucnu doplněny. Datum poslední revize je uvedeno nahoře.
+  V případě podstatných změn (např. změna účelu zpracování, předávání novým zpracovatelům)
+  budou stávající e-mail subscribery informováni e-mailem.
+</p>
+
+<a href="/" class="back">← Zpět na IČO vazby</a>
+
+</body>
+</html>
