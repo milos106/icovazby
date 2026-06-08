@@ -272,6 +272,11 @@ export interface EuSanctionsScreenResult {
  * Skip: query s méně než 2 distinctními tokeny (příliš mnoho falešných pozitiv).
  */
 export async function screenEuSanctions(names: string[]): Promise<EuSanctionsScreenResult> {
+  // Test/offline opt-out: vrátit prázdný snapshot bez síťového volání.
+  // CI test runner nikdy nemá EU feed cache hot, full XML fetch by trval >5s.
+  if (process.env.EU_SANCTIONS_DISABLED === "true") {
+    return { queries: names, hits: [], totalEntities: 0, generationDate: null, loadedAt: new Date().toISOString() };
+  }
   const s = await getSnapshot();
   const hits: EuSanctionsHit[] = [];
   const seenPair = new Set<string>();

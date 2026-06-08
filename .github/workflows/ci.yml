@@ -28,6 +28,10 @@ jobs:
 
       - name: Test (vitest)
         run: npm test
+        env:
+          # EU sankce live fetch je 1-3 MB XML, v CI bez cache by timeoutoval.
+          # DD pipeline ho má v try/catch — bez signálu jen pokračuje.
+          EU_SANCTIONS_DISABLED: "true"
 
       - name: Build
         run: npm run build
