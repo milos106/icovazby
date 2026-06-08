@@ -2123,13 +2123,50 @@
                   </div>
                 </template>
 
-                <!-- Sdílených expand — odkaz na detail níže -->
+                <!-- Sdílených expand — plný detail s funkcemi a daty zápisu -->
                 <template x-if="expanded === 'sdileni'">
                   <div>
-                    <h4 class="text-sm font-semibold mb-2">Sdílení napříč firmami</h4>
-                    <p class="text-xs text-slate-500 dark:text-slate-400">
-                      Detail s funkcemi a daty zápisu níže ↓
-                    </p>
+                    <h4 class="text-sm font-semibold mb-2">
+                      Sdílení napříč firmami (<span x-text="result.sharedPersons.length"></span>)
+                    </h4>
+                    <template x-if="result.sharedPersons.length === 0">
+                      <p class="text-xs text-slate-500 dark:text-slate-400 italic">Žádné sdílené osoby — každá firma má jiný statutární orgán.</p>
+                    </template>
+                    <ul class="space-y-2 max-h-96 overflow-y-auto">
+                      <template x-for="p in result.sharedPersons" :key="p.jmeno">
+                        <li class="border border-slate-200/80 dark:border-slate-700 rounded-lg p-3">
+                          <template x-if="p.datumNarozeni && !p.isLegalEntity">
+                            <button
+                              type="button"
+                              @click="openPersonVazby(p.jmeno, p.datumNarozeni)"
+                              class="name-link font-semibold underline text-emerald-700 dark:text-emerald-400 hover:text-emerald-800 text-left"
+                              :title="'Najít vazby osoby ' + p.jmeno"
+                            >
+                              <span x-text="p.jmeno"></span>
+                              <span class="text-xs text-slate-400 ml-0.5">🔗</span>
+                            </button>
+                          </template>
+                          <template x-if="!p.datumNarozeni || p.isLegalEntity">
+                            <div class="font-semibold" x-text="p.jmeno"></div>
+                          </template>
+                          <template x-if="p.datumNarozeni">
+                            <div class="text-xs text-slate-500 dark:text-slate-400">nar. <span x-text="p.datumNarozeni"></span></div>
+                          </template>
+                          <ul class="mt-1 text-sm space-y-0.5">
+                            <template x-for="m in p.memberships" :key="m.ico + (m.datumVymazu || '') + (m.funkce || '')">
+                              <li>
+                                <span class="font-mono text-xs" x-text="m.ico"></span>
+                                <span x-text="' ' + (m.company || '')"></span>
+                                <span class="text-slate-500 dark:text-slate-400" x-text="m.funkce ? ' — ' + m.funkce : ''"></span>
+                                <template x-if="m.datumVymazu">
+                                  <span class="text-xs text-amber-700" x-text="' [bývalý, ukončeno ' + m.datumVymazu + ']'"></span>
+                                </template>
+                              </li>
+                            </template>
+                          </ul>
+                        </li>
+                      </template>
+                    </ul>
                   </div>
                 </template>
               </div>
@@ -2138,47 +2175,6 @@
             <div class="border rounded-xl p-4 bg-white">
               <div class="mermaid" x-html="mermaidSvg"></div>
             </div>
-
-            <template x-if="result.sharedPersons.length > 0">
-              <div>
-                <h4 class="font-bold mb-2">Sdílení statutáři</h4>
-                <ul class="space-y-2">
-                  <template x-for="p in result.sharedPersons" :key="p.jmeno">
-                    <li class="border dark:border-slate-700 rounded-lg p-3">
-                      <template x-if="p.datumNarozeni && !p.isLegalEntity">
-                        <button
-                          type="button"
-                          @click="openPersonVazby(p.jmeno, p.datumNarozeni)"
-                          class="name-link font-semibold underline text-emerald-700 dark:text-emerald-400 hover:text-emerald-800 text-left"
-                          :title="'Najít vazby osoby ' + p.jmeno"
-                        >
-                          <span x-text="p.jmeno"></span>
-                          <span class="text-xs text-slate-400 ml-0.5">🔗</span>
-                        </button>
-                      </template>
-                      <template x-if="!p.datumNarozeni || p.isLegalEntity">
-                        <div class="font-semibold" x-text="p.jmeno"></div>
-                      </template>
-                      <template x-if="p.datumNarozeni">
-                        <div class="text-xs text-slate-500 dark:text-slate-400">nar. <span x-text="p.datumNarozeni"></span></div>
-                      </template>
-                      <ul class="mt-1 text-sm space-y-0.5">
-                        <template x-for="m in p.memberships" :key="m.ico + (m.datumVymazu || '') + (m.funkce || '')">
-                          <li>
-                            <span class="font-mono text-xs" x-text="m.ico"></span>
-                            <span x-text="' ' + (m.company || '')"></span>
-                            <span class="text-slate-500 dark:text-slate-400" x-text="m.funkce ? ' — ' + m.funkce : ''"></span>
-                            <template x-if="m.datumVymazu">
-                              <span class="text-xs text-amber-700" x-text="' [bývalý, ukončeno ' + m.datumVymazu + ']'"></span>
-                            </template>
-                          </li>
-                        </template>
-                      </ul>
-                    </li>
-                  </template>
-                </ul>
-              </div>
-            </template>
           </div>
         </template>
       </section>
