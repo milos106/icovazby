@@ -27,8 +27,7 @@ import { validateIco as validateIcoFn } from "../ares/normalize.js";
 import { flattenMembers } from "../ares/vr.js";
 import { cached } from "../cache.js";
 import { InvalidInputError } from "../errors.js";
-import { fetchVrDetailByIco } from "../justice_vr/client.js";
-import { findMemberships, listSubjects } from "../persons_index/store.js";
+import { findMemberships, getChildrenByParent } from "../persons_index/store.js";
 
 // Globální per-běh limit souběžných ARES/VR calls. Bez něj jeden holding
 // na velkou firmu pošle desítky requestů paralelně a banne nás z ARES.
@@ -306,75 +305,32 @@ export async function discoverHolding(
     }
   }
 
-  // Krok D2: Reverse holding scan — projít VŠECHNY firmy v subjekt inventáři
-  // (firmy, které uživatel kdy projel přes DD/VR) a u každé zkontrolovat
-  // zda parent je v akcionářích NEBO v statutárním orgánu jako právnická
-  // osoba. Tím chytíme „obrácený směr": dceřinky kde Agrofert je akcionář
-  // bez sdíleného jednatele (např. ZZN Polabí).
-  const subjects = listSubjects()
-    .map((s) => s.ico)
-    .filter((ico) => ico !== parent && !candidates.has(ico) && !visited.has(ico));
-  if (subjects.length > 0) {
-    const reverseHits = await Promise.all(
-      // Reverse scan cap = 800 firem (kompromis rychlost vs pokrytí).
-      // Při p-limit=3 a ARES ~200ms/call to znamená ~55 s — pod Cloudflare
-      // timeout (100s). Vyšší cap by způsobil 504. Trade-off: některé
-      // málo-frekventované firmy v inventory (např. ZZN Polabí s indexem
-      // ~10k) se nemusí prohledat; user může pomoci vyhledáním přes
-      // přímé IČO které doplní jeho jednatele do indexu.
-      subjects.slice(0, 800).map(async (ico) => {
-        try {
-          // Akcionáře získáme z ARES VR (authoritativní zdroj, vždy odpovídá).
-          // VR portal /api/rejstriky/detail je v ověřovacím provozu a často
-          // selhává — pro ZZN Polabí např. vrací {message: error}. Předtím
-          // jsme z toho early-return-ovali a chyběli akcionářské nálezy.
-          const akcionari = await getAkcionarLegalEntities(client, ico, includeHistorical);
-          const parentIsAkcionar = akcionari.includes(parent);
-
-          // VR portal detail je nice-to-have pro: (a) obchodniJmeno, (b)
-          // statutární orgán právnické osoby. Jeho selhání neblokuje hit.
-          let parentInStat = false;
-          let obchodniJmeno: string | null = null;
-          try {
-            const detail = await cached(`vrportal:${ico}`, () => aresLimit(() => fetchVrDetailByIco(ico)));
-            if (detail) {
-              obchodniJmeno = detail.nazev?.value ?? null;
-              for (const raw of (detail.statutarniOrgan?.osoby ?? []) as Array<{
-                value?: { osoba?: { ico?: string } };
-              }>) {
-                if ((raw.value?.osoba?.ico ?? "").padStart(8, "0") === parent) {
-                  parentInStat = true;
-                  break;
-                }
-              }
-            }
-          } catch {
-            /* VR portal nedostupný — pokračujeme jen s akcionáři */
-          }
-
-          if (!parentIsAkcionar && !parentInStat) return null;
-          return { ico, obchodniJmeno, isParentAkcionar: parentIsAkcionar, parentInStat };
-        } catch {
-          return null;
-        }
-      }),
-    );
-    for (const hit of reverseHits) {
-      if (!hit) continue;
-      const cand: Candidate = {
-        ico: hit.ico,
-        level: 1,
-        obchodniJmeno: hit.obchodniJmeno,
-        signals: new Set<string>(),
-        jednateleShared: new Set<string>(),
-        isParentAkcionar: hit.isParentAkcionar,
-        sharedStatutaryWithParent: new Set<string>(),
-      };
-      if (hit.isParentAkcionar) cand.signals.add("parent-je-akcionar");
-      if (hit.parentInStat) cand.signals.add("parent-ve-statutaru");
-      candidates.set(hit.ico, cand);
-      walkedFirms++;
-    }
+  // Krok D2: Reverse holding lookup — O(1) z ownership cache. Dříve jsme
+  // skenovali až 800 firem z inventáře a pro každou volali ARES VR (~55 s,
+  // hraniční s Cloudflare 100 s timeoutem; firmy nad index 800 vůbec
+  // neprošly). Teď: ownership.byParent[parent] je denormalizovaná struktura
+  // plněná při každém DD lookupu z VR akcionari[] — instant lookup, žádný cap.
+  //
+  // Kompromis: dceřinka X se objeví jen pokud její VR record byl někdy
+  // procházen (a tudíž ownership zapsán). Pro day-0 nového uživatele
+  // bootstrap backfill (npm run backfill:ownership) projde celý inventář.
+  const cachedChildIcos = getChildrenByParent(parent, includeHistorical).filter(
+    (ico) => ico !== parent && !candidates.has(ico) && !visited.has(ico),
+  );
+  for (const ico of cachedChildIcos) {
+    // obchodniJmeno doplníme z lokálního subjektu pokud je k dispozici;
+    // pokud ne, frontend doplní lazy přes /api/profile.
+    const cand: Candidate = {
+      ico,
+      level: 1,
+      obchodniJmeno: null,
+      signals: new Set<string>(["parent-je-akcionar"]),
+      jednateleShared: new Set<string>(),
+      isParentAkcionar: true,
+      sharedStatutaryWithParent: new Set<string>(),
+    };
+    candidates.set(ico, cand);
+    walkedFirms++;
   }
 
   // Krok E: doplnit obchodní jména pro kandidáty (rychlý ARES profile lookup).

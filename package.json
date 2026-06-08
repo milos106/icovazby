@@ -1,6 +1,6 @@
 {
   "name": "icovazby",
-  "version": "0.4.0",
+  "version": "0.4.1",
   "private": true,
   "description": "Webová prověrka českých firem a jejich propojení — agreguje ARES, OR, RŽP, ADIS DPH, ISIR, ČNB JERRS, EU sankce a Hlídač státu do risk skóre + holding discovery + cross-company graph.",
   "license": "AGPL-3.0-or-later",
@@ -29,6 +29,7 @@
     "nodemailer": "^8.0.10",
     "p-limit": "^7.3.0",
     "p-retry": "^6.2.0",
+    "resend": "^6.12.4",
     "undici": "^6.21.0",
     "zod": "^3.23.8"
   },

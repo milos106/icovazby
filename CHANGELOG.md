@@ -4,6 +4,42 @@ Všechny významné změny v tomto projektu jsou zaznamenány zde.
 
 Formát vychází z [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), verzování podle [SemVer](https://semver.org/).
 
+## [0.4.1] — 2026-06-08
+
+### Added
+
+- **Ownership cache** (`persons_index.ownership.byParent`) — denormalizovaný
+  index vlastnických vztahů „rodič → seznam dceřinek". Plněno při každém
+  DD lookupu firmy z jejího `akcionari[]` (a.s.) i `spolecnici[]` (s.r.o.)
+  v ARES VR. Lookup `getChildrenByParent(parentIco)` je O(1) — bez ARES
+  calls, bez capu, bez timeoutu. Drtivá většina českých firem jsou s.r.o.,
+  proto musíme číst obojí.
+- **Resend mailer** — alerty se posílají přes Resend API (EU region Ireland,
+  GDPR-friendly, free tier 3000 mailů/měsíc). Konfigurace: `RESEND_API_KEY`
+  + `RESEND_FROM` v `.env`. Nodemailer SMTP zůstal jako fallback, bez
+  konfigurace mailer loguje do konzole.
+- **Backfill script** `scripts/backfill_ownership.mjs` — projde existující
+  inventář (16k+ subjektů), pro každý stáhne VR a vytáhne ownership hrany
+  do byParent mapy. Spuštění na serveru jednorázově po deploy.
+- **indexStats** rozšířený o `ownershipParentsCount` + `ownershipEdgesCount`
+  (debug a monitoring kapacity ownership cache).
+
+### Changed
+
+- **Holding discovery reverse scan**: nahrazen O(1) ownership lookup.
+  Předtím: scan 800 firem × ARES VR call = ~55 s, hraniční s Cloudflare
+  100 s timeoutem. Teď: instant. Žádný cap.
+- **persons-index.json schema v2 → v3** s tranzitní migrací (nový
+  `ownership` field default prázdný; existující v2 soubory se načítají
+  beze ztráty dat).
+
+### Fixed
+
+- **„IČO přehazování jak brambory"** — Polabí (45148210) a další dceřinky
+  Agrofertu se objeví ihned, deterministicky, bez ohledu na pořadí
+  vyhledávání. Předchozí band-aid `listSubjects().sort(seenAt desc)` byl
+  odstraněn.
+
 ## [0.4.0] — 2026-06-08
 
 ### Added

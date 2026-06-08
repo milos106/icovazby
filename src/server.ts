@@ -128,7 +128,7 @@ function sendError(reply: FastifyReply, err: unknown): void {
 // ─── Health ───────────────────────────────────────────────────────────────────
 app.get("/healthz", async () => ({
   ok: true,
-  version: "0.4.0",
+  version: "0.4.1",
   uptimeSeconds: Math.floor(process.uptime()),
   cache: cacheStats(),
   integrations: {

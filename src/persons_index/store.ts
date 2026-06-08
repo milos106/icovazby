@@ -52,15 +52,41 @@ export interface IndexedSubject {
   seenAt: number;
 }
 
+/**
+ * Verze 3: ownership cache — denormalizovaný index vlastnických vztahů
+ * "rodič → seznam dceřinek". Plněno při DD lookup firmy z jejího
+ * `akcionari[]` v ARES VR. Nahrazuje pomalé reverse scan, které volalo
+ * ARES pro 800 firem živě a často timeoutovalo přes Cloudflare.
+ *
+ * Lookup `getChildrenByParent(parentIco)` je O(1) — žádné ARES calls
+ * v reálném čase, žádný cap, žádný timeout.
+ */
+export interface OwnershipEntry {
+  /** IČO dceřinky (firma vlastněná). */
+  childIco: string;
+  /** IČO matky (akcionář). */
+  parentIco: string;
+  /** datumZapisu z VR akcionari záznamu (null pokud neznámé). */
+  validFrom: string | null;
+  /** datumVymazu z VR (null = aktivní akcionářský vztah). */
+  validTo: string | null;
+  /** Zdroj vztahu. Zatím jen ARES VR akcionari, později UBO atd. */
+  source: "ARES_VR_akcionari";
+  /** Kdy jsme tento vztah naposledy viděli (touch při re-fetchu). */
+  seenAt: number;
+}
+
 interface IndexFile {
   version: number;
   lastUpdated: string;
   persons: Record<string, IndexedPerson>;
   /** Verze 2: subjects index. Pro zpětnou kompatibilitu volitelný. */
   subjects?: Record<string, IndexedSubject>;
+  /** Verze 3: ownership.byParent[parentIco] = [{childIco, ...}, ...]. */
+  ownership?: { byParent: Record<string, OwnershipEntry[]> };
 }
 
-const VERSION = 2;
+const VERSION = 3;
 const DEFAULT_DATA_DIR = "./data";
 const FILE_NAME = "persons-index.json";
 
@@ -75,6 +101,7 @@ let memory: IndexFile = {
   lastUpdated: new Date().toISOString(),
   persons: {},
   subjects: {},
+  ownership: { byParent: {} },
 };
 let unflushed = 0;
 let flushTimer: NodeJS.Timeout | null = null;
@@ -111,12 +138,13 @@ function load(): void {
       const raw = readFileSync(path, "utf-8");
       const parsed = JSON.parse(raw) as IndexFile;
       if (parsed?.persons) {
-        // V1 → V2 migrace: subjects default na prázdný objekt.
+        // V1 → V2 → V3 migrace: subjects + ownership default na prázdné.
         memory = {
           version: VERSION,
           lastUpdated: parsed.lastUpdated ?? new Date().toISOString(),
           persons: parsed.persons,
           subjects: parsed.subjects ?? {},
+          ownership: parsed.ownership ?? { byParent: {} },
         };
       }
     }
@@ -243,13 +271,67 @@ export function upsertSubject(ico: string, obchodniJmeno?: string | null): void 
 /** Seznam všech known subjekts (firmy z DD historie). */
 export function listSubjects(): IndexedSubject[] {
   load();
-  // Sort by seenAt desc — nedávno viděné firmy první. Holding discovery
-  // reverse scan má cap 800; pokud user právě před chvílí vyhledal firmu
-  // X (čímž ji upsertSubject pushnul s aktuálním seenAt), dostane v listě
-  // přednost před tisíci preseed firem a reverse scan ji projde.
-  return Object.values(memory.subjects ?? {}).sort(
-    (a, b) => (b.seenAt ?? 0) - (a.seenAt ?? 0),
+  return Object.values(memory.subjects ?? {});
+}
+
+/** Upsert ownership relace parent → child z VR akcionari záznamu.
+ *  Idempotentní podle (childIco, parentIco, validFrom). */
+export function upsertOwnership(input: {
+  childIco: string;
+  parentIco: string;
+  validFrom: string | null;
+  validTo: string | null;
+  source?: OwnershipEntry["source"];
+}): void {
+  load();
+  const child = input.childIco.replace(/\D/g, "").padStart(8, "0");
+  const parent = input.parentIco.replace(/\D/g, "").padStart(8, "0");
+  if (!/^\d{8}$/.test(child) || !/^\d{8}$/.test(parent)) return;
+  if (child === parent) return;
+  memory.ownership ??= { byParent: {} };
+  const entries = (memory.ownership.byParent[parent] ??= []);
+  const now = Date.now();
+  const existing = entries.find(
+    (e) => e.childIco === child && (e.validFrom ?? null) === (input.validFrom ?? null),
   );
+  if (existing) {
+    existing.seenAt = now;
+    if (input.validTo && !existing.validTo) existing.validTo = input.validTo;
+  } else {
+    entries.push({
+      childIco: child,
+      parentIco: parent,
+      validFrom: input.validFrom ?? null,
+      validTo: input.validTo ?? null,
+      source: input.source ?? "ARES_VR_akcionari",
+      seenAt: now,
+    });
+  }
+  scheduleFlush();
+}
+
+/** O(1) lookup: vrať seznam dceřinek pro daný parent IČO.
+ *  `includeHistorical=false` filtruje pryč záznamy s validTo (vymazané). */
+export function getChildrenByParent(
+  parentIco: string,
+  includeHistorical = false,
+): string[] {
+  load();
+  const parent = parentIco.replace(/\D/g, "").padStart(8, "0");
+  const entries = memory.ownership?.byParent[parent] ?? [];
+  const filtered = includeHistorical ? entries : entries.filter((e) => !e.validTo);
+  return [...new Set(filtered.map((e) => e.childIco))];
+}
+
+/** Vrať raw OwnershipEntry[] pro debug / UI tooltip (datum od/do, source). */
+export function getOwnershipDetails(
+  parentIco: string,
+  includeHistorical = false,
+): OwnershipEntry[] {
+  load();
+  const parent = parentIco.replace(/\D/g, "").padStart(8, "0");
+  const entries = memory.ownership?.byParent[parent] ?? [];
+  return includeHistorical ? entries : entries.filter((e) => !e.validTo);
 }
 
 /** Najdi všechny memberships osoby. */
@@ -268,16 +350,22 @@ export function indexStats(): {
   personsCount: number;
   membershipsCount: number;
   subjectsCount: number;
+  ownershipParentsCount: number;
+  ownershipEdgesCount: number;
   lastUpdated: string;
   path: string;
 } {
   load();
   let count = 0;
   for (const p of Object.values(memory.persons)) count += p.memberships.length;
+  let edges = 0;
+  for (const list of Object.values(memory.ownership?.byParent ?? {})) edges += list.length;
   return {
     personsCount: Object.keys(memory.persons).length,
     membershipsCount: count,
     subjectsCount: Object.keys(memory.subjects ?? {}).length,
+    ownershipParentsCount: Object.keys(memory.ownership?.byParent ?? {}).length,
+    ownershipEdgesCount: edges,
     lastUpdated: memory.lastUpdated,
     path: dataPath(),
   };

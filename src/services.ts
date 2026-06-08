@@ -451,6 +451,48 @@ export async function fullDueDiligenceService(client: AresClient, icoInput: stri
   // pro reverse holding discovery (najdi firmy kde parent je akcionář).
   upsertSubject(normalized, obchodniJmeno ?? null);
 
+  // Ownership cache: pro každého akcionáře (a.s.) NEBO společníka (s.r.o.)
+  // v aktuálním VR záznamu vlož vztah parent=majitel → child=tento subjekt.
+  // Drtivá většina českých firem jsou s.r.o., ne a.s., proto musíme číst
+  // OBOJÍ. Holding discovery pak najde dceřinky O(1) místo reverse scan.
+  //
+  // Struktura se liší:
+  //   • akcionari[].clenoveOrganu[].pravnickaOsoba.ico   (vnořené bloky)
+  //   • spolecnici[].pravnickaOsoba.ico                  (flat)
+  type Clen = {
+    datumZapisu?: string;
+    datumVymazu?: string | null;
+    pravnickaOsoba?: { ico?: string };
+  };
+  type AkcionarBlock = {
+    datumZapisu?: string;
+    datumVymazu?: string | null;
+    clenoveOrganu?: Clen[];
+  };
+  const vrZaznamy = (vr as {
+    zaznamy?: Array<{ akcionari?: AkcionarBlock[]; spolecnici?: Clen[] }>;
+  } | null)?.zaznamy ?? [];
+  function addOwner(clen: Clen, fallbackFrom?: string | null, fallbackTo?: string | null) {
+    const ownerIco = clen.pravnickaOsoba?.ico;
+    if (!ownerIco || !/^\d{7,8}$/.test(ownerIco)) return;
+    upsertOwnership({
+      childIco: normalized,
+      parentIco: ownerIco,
+      validFrom: clen.datumZapisu ?? fallbackFrom ?? null,
+      validTo: clen.datumVymazu ?? fallbackTo ?? null,
+    });
+  }
+  for (const zaznam of vrZaznamy) {
+    for (const blok of zaznam.akcionari ?? []) {
+      for (const clen of blok.clenoveOrganu ?? []) {
+        addOwner(clen, blok.datumZapisu, blok.datumVymazu);
+      }
+    }
+    for (const clen of zaznam.spolecnici ?? []) {
+      addOwner(clen);
+    }
+  }
+
   // Hook do lokálního indexu osoba→firmy: vložíme všechny aktivní členy
   // statutárního orgánu ze ARES VR. Postupně se index plní s každým DD.
   for (const m of members) {
@@ -719,7 +761,12 @@ export { getPersonVazbyService } from "./persons/service.js";
 export { discoverHolding } from "./holding/discover.js";
 
 // ─── Local persistent index osoba → firmy + subjekt inventář ──────────────────
-import { listSubjects, upsertMembership, upsertSubject } from "./persons_index/store.js";
+import {
+  listSubjects,
+  upsertMembership,
+  upsertOwnership,
+  upsertSubject,
+} from "./persons_index/store.js";
 
 // ─── Veřejný rejstřík (OR) přes verejnerejstriky.msp.gov.cz ───────────────────
 import { VR_ATTRIBUTION, fetchVrDetailByIco } from "./justice_vr/client.js";
