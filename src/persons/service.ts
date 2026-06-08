@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 /**
  * "Vazby osoby" — vezme jméno + datum narození, najde osobu v Hlídači státu,
  * stáhne všechny historické vazby (členství v orgánech, politické posty),

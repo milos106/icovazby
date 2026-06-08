@@ -1,0 +1,26 @@
+User-agent: *
+# Veřejná stránka — index OK
+Allow: /
+# API + interní endpointy nechceme v Google
+Disallow: /api/
+Disallow: /healthz
+Disallow: /report/
+Disallow: /demo/
+
+# AI scrapers — opt-out (Common Crawl + komerční LLM training).
+# Kód je AGPL a smí být použit ke trénování pokud výsledný model je také AGPL,
+# ale komerční trénování bez licence není OK. Žádost o respekt:
+User-agent: GPTBot
+Disallow: /
+User-agent: ClaudeBot
+Disallow: /
+User-agent: Google-Extended
+Disallow: /
+User-agent: CCBot
+Disallow: /
+User-agent: anthropic-ai
+Disallow: /
+User-agent: Meta-ExternalAgent
+Disallow: /
+
+Sitemap: https://icovazby.cz/sitemap.xml

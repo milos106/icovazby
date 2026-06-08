@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 /**
  * Strip whitespace, optional "CZ" prefix, dashes/dots, and pad to 8 digits.
  * Returns null if the input cannot be normalized to a digit-only string of

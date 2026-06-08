@@ -1179,7 +1179,44 @@ function historyBar() {
   };
 }
 
+function alertSubscribe() {
+  return {
+    email: "",
+    open: false,
+    submitting: false,
+    notice: "",
+    error: "",
+    async submit(ico) {
+      this.error = "";
+      this.notice = "";
+      if (!/^\S+@\S+\.\S+$/.test(this.email)) {
+        this.error = "Neplatný e-mail.";
+        return;
+      }
+      this.submitting = true;
+      try {
+        const r = await fetch("/api/alerts/subscribe", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email: this.email, ico }),
+        });
+        const data = await r.json();
+        if (!r.ok) throw new Error(data.message || "Chyba při odběru.");
+        this.notice = data.pendingVerification
+          ? "Zkontroluj e-mail a klikni na potvrzovací odkaz."
+          : "Odběr aktivní.";
+        this.email = "";
+      } catch (e) {
+        this.error = e.message;
+      } finally {
+        this.submitting = false;
+      }
+    },
+  };
+}
+
 // Expose factories on window for Alpine
+window.alertSubscribe = alertSubscribe;
 window.searchSection = searchSection;
 window.ddSection = ddSection;
 window.graphSection = graphSection;

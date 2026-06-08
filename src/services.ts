@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 /**
  * Pure service layer — takes an AresClient + input args, returns structured
  * JSON ready for the HTTP layer. No framework dependencies, no MCP. Mirrors
@@ -263,7 +264,11 @@ export async function fullDueDiligenceService(client: AresClient, icoInput: stri
   if (subject.datumZaniku) {
     findings.push({ level: "red", message: `Subjekt zanikl ${subject.datumZaniku}.` });
   }
-  if (statutariCount === 0 && !subject.datumZaniku) {
+  // OSVČ (107) a zahraniční fyzická osoba (108) statutární orgán ve VR mít
+  // ze zákona nemůžou — nehlásit jako varování (false-positive žluté).
+  const pf = String(subject.pravniForma ?? "");
+  const isFyzickaOsoba = pf === "107" || pf === "108";
+  if (statutariCount === 0 && !subject.datumZaniku && !isFyzickaOsoba) {
     findings.push({
       level: "yellow",
       message: "Žádný aktivní statutární orgán ve VR — před podpisem ověř.",

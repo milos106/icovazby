@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 /**
  * Holding discovery — auto-rozkrytí struktury holdingu z parent IČO.
  *
@@ -20,12 +21,18 @@
  *   - cap na fetchované firmy za běhu (4× maxIcos) — chrání proti explozi
  */
 
+import pLimit from "p-limit";
 import type { AresClient } from "../ares/client.js";
 import { validateIco as validateIcoFn } from "../ares/normalize.js";
 import { flattenMembers } from "../ares/vr.js";
+import { cached } from "../cache.js";
 import { InvalidInputError } from "../errors.js";
 import { fetchVrDetailByIco } from "../justice_vr/client.js";
 import { findMemberships, listSubjects } from "../persons_index/store.js";
+
+// Globální per-běh limit souběžných ARES/VR calls. Bez něj jeden holding
+// na velkou firmu pošle desítky requestů paralelně a banne nás z ARES.
+const aresLimit = pLimit(Number(process.env.HOLDING_CONCURRENCY ?? 3));
 
 export interface DiscoveredCompany {
   ico: string;
@@ -80,7 +87,7 @@ async function getStatutaryPersons(
 ): Promise<Array<{ jmeno: string; prijmeni: string; datumNarozeni: string }>> {
   const persons: Array<{ jmeno: string; prijmeni: string; datumNarozeni: string }> = [];
   try {
-    const vr = await client.getVrRecord(ico);
+    const vr = await cached(`vr:raw:${ico}`, () => aresLimit(() => client.getVrRecord(ico)));
     const members = flattenMembers(vr, { activeOnly: true });
     for (const m of members) {
       const fo = m.fyzickaOsoba;
@@ -99,7 +106,7 @@ async function getStatutaryPersons(
  */
 async function getAkcionarLegalEntities(ico: string): Promise<string[]> {
   try {
-    const detail = await fetchVrDetailByIco(ico);
+    const detail = await cached(`vrportal:${ico}`, () => aresLimit(() => fetchVrDetailByIco(ico)));
     if (!detail) return [];
     const out: string[] = [];
     for (const raw of (detail.akcionar?.osoby ?? []) as Array<{
@@ -158,7 +165,7 @@ export async function discoverHolding(
   const parentStatutary = new Set<string>();
   let parentObchodniJmeno: string | null = null;
   try {
-    const subject = await client.getEconomicSubject(parent);
+    const subject = await cached(`subj:${parent}`, () => aresLimit(() => client.getEconomicSubject(parent)));
     parentObchodniJmeno = subject.obchodniJmeno ?? null;
   } catch {
     /* ignore */
@@ -290,7 +297,7 @@ export async function discoverHolding(
     const reverseHits = await Promise.all(
       subjects.slice(0, fetchCap).map(async (ico) => {
         try {
-          const detail = await fetchVrDetailByIco(ico);
+          const detail = await cached(`vrportal:${ico}`, () => aresLimit(() => fetchVrDetailByIco(ico)));
           if (!detail) return null;
           // Akcionář kontrola: parent IČO mezi akcionáři této firmy?
           const akcionari = await getAkcionarLegalEntities(ico);
@@ -337,12 +344,15 @@ export async function discoverHolding(
   }
 
   // Krok E: doplnit obchodní jména pro kandidáty (rychlý ARES profile lookup).
-  // Paralelně, ale s rozumným cap.
+  // Paralelně přes p-limit, aby se ARES nezaplavil.
   const candList = [...candidates.values()];
   await Promise.all(
     candList.slice(0, maxIcos).map(async (c) => {
       try {
-        const subject = await client.getEconomicSubject(c.ico);
+        const subject = await cached(
+          `subj:${c.ico}`,
+          () => aresLimit(() => client.getEconomicSubject(c.ico)),
+        );
         c.obchodniJmeno = subject.obchodniJmeno ?? null;
       } catch {
         /* firma možná zanikla nebo invalid ICO */

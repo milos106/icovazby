@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 /**
  * Minimal TypeScript types matching ARES v3 response shapes. ARES uses Czech
  * field names; we keep them verbatim so downstream consumers can correlate

@@ -1,10 +1,13 @@
 {
-  "name": "ares-web",
-  "version": "0.2.0",
+  "name": "icovazby",
+  "version": "0.3.0",
   "private": true,
-  "description": "Web application for Czech business registry due-diligence — search companies, run risk checks, map cross-company connections. Built on the public ARES API.",
-  "license": "MIT",
+  "description": "Webová prověrka českých firem a jejich propojení — agreguje ARES, OR, RŽP, ADIS DPH, ISIR, ČNB JERRS, EU sankce a Hlídač státu do risk skóre + holding discovery + cross-company graph.",
+  "license": "AGPL-3.0-or-later",
   "author": "milos106 <max118@seznam.cz>",
+  "repository": "https://github.com/milos106/icovazby",
+  "homepage": "https://github.com/milos106/icovazby",
+  "bugs": "https://github.com/milos106/icovazby/issues",
   "type": "module",
   "engines": {
     "node": ">=20"
@@ -22,6 +25,9 @@
     "@fastify/static": "^8.0.4",
     "fast-xml-parser": "^5.8.0",
     "fastify": "^5.2.1",
+    "lru-cache": "^11.5.1",
+    "nodemailer": "^8.0.10",
+    "p-limit": "^7.3.0",
     "p-retry": "^6.2.0",
     "undici": "^6.21.0",
     "zod": "^3.23.8"
@@ -29,6 +35,7 @@
   "devDependencies": {
     "@biomejs/biome": "^1.9.4",
     "@types/node": "^20.17.10",
+    "@types/nodemailer": "^8.0.0",
     "tsup": "^8.3.5",
     "tsx": "^4.19.2",
     "typescript": "^5.7.2",

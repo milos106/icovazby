@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 /**
  * Veřejný rejstřík (OR) klient — nová cesta přes verejnerejstriky.msp.gov.cz.
  *

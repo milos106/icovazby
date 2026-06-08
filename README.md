@@ -1,146 +1,180 @@
-# IČO vazby (ares-web)
+# IČO vazby
 
-> Webová aplikace pro **prověrku českých firem a jejich propojení** — vyhledávání podle IČO a názvu, kompletní profil firmy s 🟢🟡🔴 risk skóre, mapa propojení statutárů (Mermaid), holding discovery, detekce virtuálních adres. Bez AI, bez přihlášení, data z 11+ veřejných zdrojů.
+> **Webová prověrka českých firem a jejich propojení.** Otevřený softwarový balík, který agreguje 10+ veřejných českých registrů (ARES, OR, RŽP, ADIS DPH, ISIR, ČNB JERRS, EU sankce, Hlídač státu) do jednoho průchodu: identifikace + 🟢🟡🔴 risk skóre + holding discovery + cross-company person graph + e-mail alerty + PDF prověrka.
 >
-> **Local-only projekt.** Není veřejně hostovaný ani na npm; spouští se z téhož repozitáře.
+> **Self-hosted, AGPL-3.0.** Žádný cloud, žádné login. Spustíš si vlastní instanci nebo přispěješ kódem.
+
+[![License: AGPL v3](https://img.shields.io/badge/License-AGPL_v3-blue.svg)](https://www.gnu.org/licenses/agpl-3.0)
+[![Node 20+](https://img.shields.io/badge/node-%3E%3D20-brightgreen)](https://nodejs.org/)
+
+⚠ **AS IS, bez záruky.** Aplikace agreguje veřejná data — pro právně závazné rozhodnutí ověřuj v primárních zdrojích. Maintainer nenese odpovědnost za rozhodnutí na základě výstupů.
+
+---
 
 ## Co umí
 
 | Sekce | Co dělá |
 |---|---|
-| **🛡️ Profil firmy** | IČO nebo název → 🟢🟡🔴 risk badge + findings + identifikace + DPH + jednatelé + OR + UBO + dotace + smlouvy + sankce + insolvence + JERRS + živnosti + holding discovery. Vše v jedné sekci s rozbalovacími kartami. |
-| **Mapa propojení** | 2–50 IČO → osoby ve více firmách + Mermaid graf. Volitelně i historické vazby (nominee detection). |
-| **Hledat na adrese** | Detekce virtuálních kanceláří. > 50 firem = ⚠️, > 500 = 🚨. |
-| **Export do fakturace** | Tlačítka Fakturoid / iDoklad / Pohoda → zkopíruje JSON do schránky, paste do fakturačního systému. |
-| **Historie + oblíbené** | Posledních 10 hledání v localStorage + bookmark hvězdičkou. Sticky dropdown v hlavičce. |
-| **Shareable URL** | `?ico=26185610&action=dd` deep-link → automaticky otevře report. Funguje pro DD, graf (`?icos=…`), adresu (`?address=…`). |
+| **🛡️ Profil firmy** | IČO nebo název → 🟢🟡🔴 risk badge + findings + identifikace + DPH + jednatelé + OR + UBO + dotace + smlouvy + sankce + insolvence + JERRS + živnosti. Rozbalovací karty s persistovaným stavem. |
+| **🔍 Rozkrýt holding** | Auto-trigger pro a.s./s.r.o. — BFS po sdílených jednatelech + akcionářích z OR portálu. Najde subsidiaries i přes 2. úroveň. |
+| **🌐 Mapa propojení** | 2–50 IČO → osoby ve více firmách + Mermaid graf. Volitelně historické vazby (nominee detection). |
+| **🔗 Vazby osoby** | Klik na jednatele → všechny jeho firmy (z lokálního indexu osoba→firmy budovaného postupně). |
+| **🏢 Hledat na adrese** | Detekce virtuálních kanceláří (>50 firem = ⚠️, >500 = 🚨). |
+| **📄 PDF prověrka** | `/report/:ico` → printable HTML s auto-print, uložíš jako PDF deliverable. |
+| **🔔 E-mail alerty** | Subscribe pro periodickou kontrolu změn statutára / insolvence / zániku. |
+| **🚀 Demo route** | `/demo/26185610` a `/demo/45274649` — bez tokenu, pre-cached, pro landing. |
+| **Export do fakturace** | Fakturoid / iDoklad / Pohoda JSON. |
+| **Historie + oblíbené** | LocalStorage, žádný backend. Shareable `?ico=…` URL. |
+| **Tmavý režim** | System-aware + manuální toggle, persistentní. |
 
 ## Stack
 
-- **Backend:** Fastify (TS), zod, undici, p-retry — žádné databáze, žádný stav.
-- **Frontend:** vanilla HTML + Tailwind CDN + Alpine.js + Mermaid 11 — bez build stepu.
-- **Data:** veřejné ARES REST API (CC BY 4.0). Žádné externí volání mimo ARES.
+- **Backend:** Fastify (TS), zod, undici, p-retry, p-limit, lru-cache, nodemailer — žádná databáze (kromě JSON souboru pro subscribers).
+- **Frontend:** vanilla HTML + Tailwind CDN + Alpine.js + Mermaid 11 + Inter font — bez build stepu.
+- **Data:** veřejná REST API českých registrů. Žádný proxy, žádné scraping, žádný AI vrstva.
 
 ## Spuštění lokálně
 
 ```sh
-git clone git@github.com:milos106/ares-web.git
-cd ares-web
+git clone https://github.com/<your>/icovazby.git
+cd icovazby
 npm install
+cp .env.example .env
+# vyplň HLIDAC_API_TOKEN (volitelně) v .env
 npm run build
 npm start
 ```
 
-Otevři **http://127.0.0.1:3000** v browseru.
+Otevři **http://127.0.0.1:3000**.
 
-Pro vývoj s hot reloadem:
+Hot reload pro vývoj: `npm run dev`.
 
-```sh
-npm run dev
-```
-
-## Konfigurace (env vars)
+## Konfigurace (env)
 
 | Variable | Default | Popis |
 |---|---|---|
 | `PORT` | `3000` | Listen port |
-| `HOST` | `127.0.0.1` | Bind host. Nastav `0.0.0.0` pokud chceš LAN přístup. |
+| `HOST` | `127.0.0.1` | Bind. Pro LAN nastav `0.0.0.0`. |
 | `RATE_LIMIT_PER_MIN` | `60` | Per-IP HTTP rate limit |
-| `ARES_RATE_PER_SECOND` | `5` | Token bucket pro upstream ARES. Drž ≤ 8 (MFČR stop 500/min). |
+| `RATE_LIMIT_HEAVY_PER_MIN` | `10` | Limit pro `/api/holding/discover` + `/api/cross-persons` (multiplier endpoints) |
+| `DD_CACHE_TTL_MS` | `86400000` | LRU cache TTL pro DD a VR (24h) |
+| `HOLDING_CONCURRENCY` | `3` | Souběžné upstream calls v holding discovery |
+| `ARES_RATE_PER_SECOND` | `5` | Token bucket pro ARES upstream. Drž ≤ 8. |
 | `ARES_TIMEOUT_MS` | `15000` | Timeout ARES requestu |
-| `ARES_RETRIES` | `3` | Retry budget pro retriable chyby |
+| `ARES_RETRIES` | `3` | Retry budget |
+| `HLIDAC_API_TOKEN` | _(volitelný)_ | Bez něj se HS sekce neukážou. Vlastní si vyřídíš na hlidacstatu.cz/api. |
+| `SMTP_HOST` / `SMTP_USER` / `SMTP_PASS` | _(volitelné)_ | Bez nich alerts mailer jen loguje do konzole. |
+| `ALERTS_CHECK_MIN` | `360` | Interval kontroly subscriptions v minutách (6h) |
 | `LOG_LEVEL` | `info` | Pino log level |
 
-## REST API
+## Architektura ve velkém
+
+```
+┌─────────────┐   HTTP    ┌────────────────────────────────────┐
+│   Browser   │ ────────▶ │  Fastify (src/server.ts)           │
+│  Alpine.js  │           │  ├── rate-limit (per-IP, scoped)   │
+└─────────────┘           │  ├── LRU cache (24h pro DD/VR)     │
+                          │  └── per-request HS token (ALS)    │
+                          └──┬───────┬───────┬─────────┬───────┘
+                             │       │       │         │
+                          ┌──▼──┐ ┌──▼──┐ ┌──▼──┐  ┌───▼────┐
+                          │ARES │ │ VR  │ │ HS  │  │ ADIS / │
+                          │MFČR │ │MSp  │ │tkn  │  │ČNB/EU  │
+                          └─────┘ └─────┘ └─────┘  └────────┘
+```
+
+- **`src/services.ts`** — pure business logic, framework-free.
+- **`src/holding/discover.ts`** — BFS po grafu firma→firma, dva typy hran.
+- **`src/graph/crossCompanyPersons.ts`** — Mermaid graph builder.
+- **`src/persons_index/store.ts`** — lokální cache osoba→firmy + subjekty inventář.
+- **`src/alerts/`** — subscribe → diff snapshot → SMTP.
+- **`src/report/html.ts`** — printable HTML pro PDF export.
+- **`src/cache.ts`** — LRU dekorátor.
+
+## REST API (vybrané)
 
 | Endpoint | Co dělá |
 |---|---|
-| `GET /healthz` | Liveness check |
-| `GET /api/validate/:ico` | Mod-11 checksum, bez network volání |
-| `GET /api/company/:ico` | Profil firmy z ARES agregátu |
-| `GET /api/dd/:ico` | Plný report hloubkové prověrky (paralelně 3 endpointy) |
-| `GET /api/licenses/:ico` | Živnostenská oprávnění z RŽP |
-| `GET /api/res/:ico` | Statistická klasifikace (velikost, sektor, NUTS) z RES |
-| `GET /api/export/:ico/:target` | Fakturoid / iDoklad / Pohoda payload (`target` = jeden z těchto tří) |
-| `GET /api/search/companies?obchodniJmeno=…&sidloPsc=…` | Hledání podle názvu / PSČ |
-| `GET /api/search/address?adresa=…` | Hledání podle adresy |
-| `POST /api/cross-persons` | Body: `{ icos: string[], includeHistorical?: bool, emitMermaid?: bool }` |
+| `GET /healthz` | Liveness + cache stats + integration flags |
+| `GET /api/dd/:ico` | Plný DD report (24h cache) |
+| `GET /api/vr/:ico` | Detail OR (24h cache) |
+| `GET /report/:ico` | **Printable HTML report pro PDF** |
+| `GET /demo/:ico` | **Demo bez tokenu** (jen pre-selected IČO) |
+| `POST /api/holding/discover` | Body: `{ ico, depth?, maxIcos? }` → subsidiaries |
+| `POST /api/cross-persons` | Body: `{ icos[], includeHistorical? }` → osoby + Mermaid |
+| `POST /api/alerts/subscribe` | Body: `{ email, ico }` → potvrzovací e-mail |
+| `GET /api/alerts/verify/:token` | Aktivace odběru |
+| `DELETE /api/alerts/:id` | Unsubscribe |
 
-Vrací JSON, vždy s `_attribution` blokem.
+Detailní seznam: `grep "app\\.\\(get\\|post\\|delete\\)" src/server.ts`.
 
-## Architektonický vztah k ares-mcp
+## Datové zdroje a licence
 
-`ares-web` reuse-uje business logiku z [ares-mcp](https://github.com/milos106/ares-mcp) (soubory v `src/ares/`, `src/graph/`, `src/errors.ts`) — to jsou stejné typy a klient. Rozdílné jsou jen vrstvy navrch:
+| Zdroj | Licence | Komerční | Atribuce |
+|---|---|---|---|
+| **ARES** (MFČR) | CC BY 4.0 | ✅ | „Source: ARES, MFČR" |
+| **Veřejný rejstřík (OR)** | Z. č. 304/2013 Sb. | ✅ | „Source: VR, MSp ČR" |
+| **ADIS** | § 96a z. o DPH | ✅ | „Source: MFČR ADIS" |
+| **Hlídač státu** | CC BY 3.0 CZ | ✅ s atribucí | ⚠ Funkční odkaz na hlidacstatu.cz povinný |
+| **ISIR** | § 419 z. č. 182/2006 Sb. | ✅ pod limitem | „Source: ISIR / MSp ČR" |
+| **ČNB JERRS / kurzy** | nař. vlády 425/2016 Sb. | ✅ | „Source: ČNB" |
+| **EU Consolidated Sanctions** | Commission Decision 2011/833/EU | ✅ | „Source: EU Commission" |
 
-- **ares-mcp** = MCP server pro AI klienty (Claude Desktop, Cursor)
-- **ares-web** = REST API + statický web pro lidi v browseru
-
-Žádná z těch vrstev nepotřebuje druhou — můžeš mít nasazené jen jedno, nebo obojí.
-
-## Datové zdroje a jejich licence
-
-Aplikace integruje veřejné datové zdroje. Každý má vlastní licenci a vlastní povinnost atribuce:
-
-| Zdroj | Použito pro | Licence | Atribuce | Komerční |
-|---|---|---|---|---|
-| **ARES** (MFČR) | Profil, statutáři, NACE, sídlo | CC BY 4.0 | „Source: ARES, MFČR" | ✅ |
-| **ADIS** (Finanční správa) | Nespolehlivý plátce DPH + zveřejněné účty | Veřejná data § 96a z. o DPH | „Source: MFČR ADIS" | ✅ |
-| **Hlídač státu** _(v přípravě, vyžaduje token)_ | Veřejné zakázky, smlouvy, UBO, dotace | **CC BY 3.0 CZ** | ⚠️ **POVINNÝ funkční odkaz na hlidacstatu.cz** zobrazený vždy s daty i v patičce | ✅ s atribucí; komerční bez atribuce vyžaduje smlouvu s api@hlidacstatu.cz |
-| **ISIR** (Justice ČR) _(v přípravě)_ | Detail insolvenčního řízení | Veřejná data § 419 z. č. 182/2006 Sb. | „Source: ISIR / MSp ČR" | ✅ pod limitem 3000/den, 50/min |
-| **Veřejný rejstřík (OR)** | Plný strukturovaný výpis: akcie, kapitál, statutární orgán, dozorčí rada, akcionáři, historie firmy (ostatní skutečnosti) | Z. č. 304/2013 Sb. (veřejně přístupné) | „Source: Veřejný rejstřík, MSp ČR" | ✅ |
-| **ČNB — denní kurzy** | CZK→cizí měna widget v headeru, tooltipy převodů | Veřejná data ČNB | „Source: ČNB" | ✅ |
-| **ČNB — JERRS open-data** | Indikátor regulovaného subjektu (banka, směnárna, NPSU…) | Otevřená data dle nař. vlády 425/2016 Sb. | „Source: ČNB" | ✅ |
-| **EU Consolidated Sanctions List** | Screening jmen statutárních orgánů proti EU sankcím | **Commission Decision 2011/833/EU** (free reuse) | „Source: EU Commission — FPI / FSF" | ✅ **včetně komerčního použití** |
-
-### Hlídač státu — atribuční povinnost (citát z licence CC BY 3.0)
-
-> „Musíte vždy a bezpodmínečně uvést původ dat a autorství zdrojových dat (na internetu plný, funkční internetový odkaz na Hlídač státu). Nesmíte přidat žádná další technická či právní omezení nad rámec této licence."
-
-Toto je proto v patičce aplikace zobrazeno explicitně, pokud je integrace aktivní (HLIDAC_API_TOKEN nastaven).
-
-### EU sankce — přímý přístup, ne přes OpenSanctions
-
-Původně jsme uvažovali OpenSanctions wrapper (CC BY-NC 4.0, nelze komerčně), ale EU's vlastní Open Data Portal **explicitně publikuje** unauthenticated XML feed konsolidovaného sankčního listu:
-
-```
-https://webgate.ec.europa.eu/fsd/fsf/public/files/xmlFullSanctionsList_1_1/content?token=dG9rZW4tMjAxNw
-```
-
-Token `dG9rZW4tMjAxNw` (base64 „token-2017") je dokumentovaný jako veřejná URL distribuce datasetu na [data.europa.eu](https://data.europa.eu/data/datasets/consolidated-list-of-persons-groups-and-entities-subject-to-eu-financial-sanctions). Licence: **Commission Decision 2011/833/EU** — volné užití včetně komerčního, vyžaduje pouze uvedení zdroje. Žádné non-commercial restrikce.
-
-Můžeš override URL přes env `EU_SANCTIONS_URL` (např. pokud si zaregistruješ vlastní EU Login token pro vyšší stabilitu).
-
-## Atribuce a licence dat
-
-ARES data jsou publikována pod **Creative Commons Attribution 4.0 (CC BY 4.0)**. Při použití výstupů aplikace musíš uvádět zdroj:
-
-> Source: ARES — Administrativní registr ekonomických subjektů, © Ministerstvo financí ČR, https://ares.gov.cz/, licensed under CC BY 4.0.
-
-Footer každé stránky obsahuje plnou atribuci + GDPR upozornění + affiliation disclaimer („nesouvisí s MFČR").
+Aplikace všechny atribuce vykresluje automaticky v patičce + u příslušných sekcí.
 
 ## GDPR
 
-Výpisy z ARES obsahují osobní údaje (jména, data narození jednatelů). ARES je publikuje na základě veřejné listiny (čl. 6(1)(e) GDPR). **Pokud tato data ukládáš nebo zpracováváš downstream, stáváš se správcem** ve smyslu nařízení (EU) 2016/679 a máš vlastní povinnosti (privacy policy, právní základ, práva subjektů údajů).
+Výstupy obsahují osobní údaje (jména, data narození jednatelů), publikované veřejně podle čl. 6(1)(e) GDPR. **Pokud výsledky ukládáš nebo dále zpracováváš, stáváš se správcem osobních údajů** a máš vlastní povinnosti (privacy policy, právní základ, práva subjektů údajů, doba uchování).
 
-ares-web sám **nelogguje request body** ani neukládá výsledky — každý dotaz proletí beze stopy.
+Tento software:
+- **Neloggue request body.**
+- **Necachuje výsledky DD** v perzistentním úložišti (jen in-memory LRU, vyprší po 24h, padne s restartem procesu).
+- **Ukládá** pouze e-mail subscribers (pokud používáš alerty) do `data/subscriptions.json`. Subscriber má právo na výmaz přes `DELETE /api/alerts/:id`.
 
-## Licence kódu
+## Trademark / brand policy
 
-MIT — viz [LICENSE](./LICENSE). Licence dat (CC BY 4.0) je nezávislá.
+Název **„IČO vazby"**, logo a doména `icovazby.cz` jsou veřejně používány autorem od r. 2026 jako brand projektu. Můžete forknout kód a provozovat vlastní instanci pod AGPL-3.0 podmínkami, ale **NESMÍTE** používat název „IČO vazby" ani matoucí varianty (např. „ICO vazby", „IČOvazby", „IcoVazby") pro odvozenou službu, která by mohla být zaměňována s touto. Pro fork zvolte vlastní název (např. „RegistryCheck CZ", „FirmaScan"). Práva k brandu jsou nezávislá na AGPL právech ke zdrojovému kódu — chráněna § 425 a § 2976 obč. zák. (ochrana názvu, nekalá soutěž) i bez formální ochranné známky.
 
-## Acceptable use ARES
+## Licence kódu — AGPL-3.0
 
-MFČR limituje ARES na **500 dotazů/min na uživatele**. ares-web defaultně tahá max 5 req/s = 300/min, takže pod stropem zůstaneš. Pokud někdy přesáhneš (např. paralelně několik instancí), MFČR si vyhrazuje právo IP zablokovat.
+Tento projekt je licencován pod **GNU Affero General Public License v3.0 or later** ([LICENSE](./LICENSE)).
+
+**Co to znamená:**
+- ✅ Můžeš použít, modifikovat, distribuovat zdarma.
+- ✅ Můžeš nasadit jako vnitrofiremní nástroj.
+- ⚠ **Pokud nabízíš modifikovanou verzi jako webovou službu třetím stranám, musíš publikovat zdrojový kód tvých úprav** (AGPL SaaS klauzule).
+- ⚠ Odvozené dílo musí být také AGPL-3.0.
+
+**Komerční licence:** držitel autorských práv (původní autor) může poskytnout alternativní (uzavřenou) licenci za poplatek. Kontakt: viz `SECURITY.md`.
+
+Licence dat (CC BY 4.0 ARES, CC BY 3.0 HS, …) jsou **nezávislé** na licenci kódu.
+
+## Acceptable use upstream API
+
+| Zdroj | Limit | Naše ochrana |
+|---|---|---|
+| ARES | 500/min na uživatele (MFČR) | `ARES_RATE_PER_SECOND=5` (= 300/min) + LRU cache |
+| Hlídač státu | per-token (uživatel si vyřídí) | per-request token přes `X-Hlidac-Token` header |
+| VR portál (justice) | bez explicitního limitu | `HOLDING_CONCURRENCY=3` + LRU cache |
+| ISIR | 3000/den, 50/min | Cache + p-retry |
+
+Pokud nasadíš veřejně, **doporučujeme za reverse proxy s vlastním WAF** (Cloudflare free tier postačí).
 
 ## Testy
 
 ```sh
-npm test                              # 14 unit testů, vitest, mock klient
-node tests/e2e.playwright.mjs         # 8 E2E proti běžícímu serveru
+npm test                              # vitest, mock klient
+node tests/e2e.playwright.mjs         # E2E proti běžícímu serveru
 ```
 
-E2E test pokrývá: profil + URL state + RES klasifikaci + clipboard export + DD deep-link + Mermaid graf + shell detekci + history dropdown.
+## Contribute
 
-## Status projektu
+Viz [CONTRIBUTING.md](./CONTRIBUTING.md).
 
-v0.2 — MVP rozšířený o RES/RŽP detaily, export do 3 fakturačních systémů, localStorage historie + oblíbené, shareable URL deep-links, vitest + Playwright pokrytí. Žádný placený SaaS, žádný npm publish, jen lokální použití.
+## Security
+
+Pro odhalené zranitelnosti viz [SECURITY.md](./SECURITY.md).
+
+## Status
+
+`v0.3` — MVP s production-ready hardening (rate limit, cache, p-limit), 3 deliverable features (PDF, demo, e-mail alerty) a první OSS release pod AGPL-3.0.

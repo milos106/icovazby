@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 /**
  * ares-web — Fastify HTTP server exposing a Czech business-registry due-
  * diligence web app. Serves a static SPA from public/ and a small REST API
@@ -13,6 +14,7 @@ import fastifyStatic from "@fastify/static";
 import Fastify, { type FastifyReply, type FastifyRequest } from "fastify";
 import { z } from "zod";
 import { AresClient } from "./ares/client.js";
+import { cached, cacheStats } from "./cache.js";
 import { AresError, toToolErrorPayload } from "./errors.js";
 import { HlidacStatuMissingTokenError } from "./hlidacstatu/client.js";
 import { hsTokenContext } from "./hlidacstatu/token_context.js";
@@ -65,9 +67,10 @@ await app.register(fastifyRateLimit, {
     (req.headers["cf-connecting-ip"] as string) ||
     (req.headers["x-forwarded-for"] as string)?.split(",")[0]?.trim() ||
     req.ip,
-  errorResponseBuilder: () => ({
+  errorResponseBuilder: (_req, ctx) => ({
+    statusCode: 429,
     error: "RATE_LIMITED",
-    message: "Příliš mnoho dotazů, zkuste to za chvíli.",
+    message: `Příliš mnoho dotazů, zkuste to za ${Math.ceil(ctx.ttl / 1000)} s.`,
   }),
 });
 
@@ -86,6 +89,14 @@ app.addHook("onRequest", async (req) => {
   const raw = req.headers["x-hlidac-token"];
   const token = typeof raw === "string" ? raw.trim() : Array.isArray(raw) ? raw[0]?.trim() : "";
   if (token) hsTokenContext.enterWith(token);
+});
+
+// AGPL evidence: X-Powered-By na každý response. Pomáhá identifikovat
+// instance, které tento kód provozují — důkazní materiál pokud někdo
+// porušuje §13 (povinné publikování modifikovaného zdroje).
+app.addHook("onSend", async (_req, reply, payload) => {
+  reply.header("X-Powered-By", "icovazby/0.3.0 (AGPL-3.0)");
+  return payload;
 });
 
 const client = new AresClient({
@@ -117,8 +128,9 @@ function sendError(reply: FastifyReply, err: unknown): void {
 // ─── Health ───────────────────────────────────────────────────────────────────
 app.get("/healthz", async () => ({
   ok: true,
-  version: "0.1.0",
+  version: "0.3.0",
   uptimeSeconds: Math.floor(process.uptime()),
+  cache: cacheStats(),
   integrations: {
     ares: true,
     adis: true,
@@ -161,10 +173,104 @@ app.get("/api/company/:ico", async (req: FastifyRequest, reply) => {
 });
 
 // ─── Due diligence ────────────────────────────────────────────────────────────
+// Demo endpointy — cached snapshoty pre-selected firem (Agrofert, ČEZ).
+// Nevolají Hlídač státu (nevyžadují token), takže fungují pro každého
+// kdo přistoupí na landing /demo/26185610. 24h cache.
+const DEMO_ICOS = new Set(["26185610", "45274649"]);
+const demoCache = new Map<string, { ts: number; data: unknown }>();
+const DEMO_TTL_MS = 24 * 60 * 60 * 1000;
+
+app.get("/demo/:ico", async (req: FastifyRequest, reply) => {
+  const ico = (req.params as { ico: string }).ico;
+  if (!DEMO_ICOS.has(ico)) {
+    reply.status(404).send({ error: "DEMO_NOT_AVAILABLE", message: "Demo je dostupné jen pro IČO: " + [...DEMO_ICOS].join(", ") });
+    return;
+  }
+  const cached = demoCache.get(ico);
+  if (cached && Date.now() - cached.ts < DEMO_TTL_MS) {
+    reply.send(cached.data);
+    return;
+  }
+  try {
+    const data = await fullDueDiligenceService(client, ico);
+    demoCache.set(ico, { ts: Date.now(), data });
+    reply.send(data);
+  } catch (e) {
+    sendError(reply, e);
+  }
+});
+
+// ─── E-mail alerts (subscribe / verify / unsubscribe) ────────────────────────
+import { subscribe, verify, unsubscribe } from "./alerts/store.js";
+import { sendMail } from "./alerts/mailer.js";
+import { startScheduler } from "./alerts/checker.js";
+
+const subscribeSchema = z.object({
+  email: z.string().email(),
+  ico: z.string().regex(/^\d{7,8}$/),
+});
+
+app.post("/api/alerts/subscribe", async (req: FastifyRequest, reply) => {
+  try {
+    const body = subscribeSchema.parse(req.body);
+    const sub = await subscribe(body.email, body.ico);
+    if (!sub.verifiedAt) {
+      const base = process.env.PUBLIC_BASE_URL ?? `http://${HOST}:${PORT}`;
+      const link = `${base}/api/alerts/verify/${sub.verificationToken}`;
+      await sendMail({
+        to: sub.email,
+        subject: "IČO vazby: potvrď odběr alertů",
+        text: `Pro aktivaci alertů pro IČO ${sub.ico} klikni: ${link}\n\nPokud jsi o odběr nežádal, zprávu ignoruj.`,
+      });
+    }
+    reply.send({ ok: true, pendingVerification: !sub.verifiedAt });
+  } catch (e) {
+    if (e instanceof z.ZodError) {
+      reply.status(400).send({ error: "INVALID_INPUT", issues: e.issues });
+      return;
+    }
+    sendError(reply, e);
+  }
+});
+
+app.get("/api/alerts/verify/:token", async (req: FastifyRequest, reply) => {
+  const token = (req.params as { token: string }).token;
+  const sub = await verify(token);
+  if (!sub) {
+    reply.status(404).type("text/html").send(
+      '<!DOCTYPE html><html><body style="font-family:sans-serif;padding:24px;color:#dc2626">Neplatný nebo už použitý odkaz.</body></html>',
+    );
+    return;
+  }
+  reply.type("text/html").send(
+    `<!DOCTYPE html><html><body style="font-family:sans-serif;padding:24px"><h2 style="color:#059669">✓ Odběr aktivován</h2><p>Budeme tě informovat o změnách u IČO ${sub.ico}.</p><p><a href="/">Zpět na IČO vazby</a></p></body></html>`,
+  );
+});
+
+app.delete("/api/alerts/:id", async (req: FastifyRequest, reply) => {
+  const id = (req.params as { id: string }).id;
+  const ok = await unsubscribe(id);
+  reply.send({ ok });
+});
+
+// Printable HTML report — uživatel ho otevře v novém tabu, browser
+// auto-invokuje window.print() → uloží jako PDF.
+app.get("/report/:ico", async (req: FastifyRequest, reply) => {
+  try {
+    const ico = (req.params as { ico: string }).ico;
+    const report = await fullDueDiligenceService(client, ico);
+    const { renderDdReportHtml } = await import("./report/html.js");
+    reply.type("text/html").send(renderDdReportHtml(report as never));
+  } catch (e) {
+    sendError(reply, e);
+  }
+});
+
 app.get("/api/dd/:ico", async (req: FastifyRequest, reply) => {
   try {
     const ico = (req.params as { ico: string }).ico;
-    reply.send(await fullDueDiligenceService(client, ico));
+    const data = await cached(`dd:${ico}`, () => fullDueDiligenceService(client, ico));
+    reply.send(data);
   } catch (e) {
     sendError(reply, e);
   }
@@ -220,7 +326,8 @@ app.get("/api/cnb/rates", async (_req: FastifyRequest, reply) => {
 app.get("/api/vr/:ico", async (req: FastifyRequest, reply) => {
   try {
     const ico = (req.params as { ico: string }).ico;
-    reply.send(await getVrDetailService(ico));
+    const data = await cached(`vr:${ico}`, () => getVrDetailService(ico));
+    reply.send(data);
   } catch (e) {
     sendError(reply, e);
   }
@@ -368,7 +475,13 @@ const holdingSchema = z.object({
   depth: z.coerce.number().int().min(1).max(3).optional(),
   maxIcos: z.coerce.number().int().min(5).max(200).optional(),
 });
-app.post("/api/holding/discover", async (req: FastifyRequest, reply) => {
+// Tighter limit pro heavy endpoint — discover dělá až 50× ARES calls.
+// Default 10/min, override přes RATE_LIMIT_HEAVY_PER_MIN.
+const HEAVY_LIMIT = parseEnvNumber(process.env.RATE_LIMIT_HEAVY_PER_MIN, 10);
+
+app.post("/api/holding/discover", {
+  config: { rateLimit: { max: HEAVY_LIMIT, timeWindow: "1 minute" } },
+}, async (req: FastifyRequest, reply) => {
   try {
     const parsed = holdingSchema.safeParse(req.body);
     if (!parsed.success) {
@@ -387,7 +500,9 @@ const crossSchema = z.object({
   includeHistorical: z.boolean().optional(),
   emitMermaid: z.boolean().optional(),
 });
-app.post("/api/cross-persons", async (req: FastifyRequest, reply) => {
+app.post("/api/cross-persons", {
+  config: { rateLimit: { max: HEAVY_LIMIT, timeWindow: "1 minute" } },
+}, async (req: FastifyRequest, reply) => {
   try {
     const parsed = crossSchema.safeParse(req.body);
     if (!parsed.success) {
@@ -482,6 +597,7 @@ try {
   await app.listen({ port: PORT, host: HOST });
   logStartupBanner();
   void warmup();
+  startScheduler(client);
 } catch (err) {
   app.log.error(err as Error);
   process.exit(1);

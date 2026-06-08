@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: 🔒 Security vulnerability
+    url: https://github.com/milos106/icovazby/security/advisories/new
+    about: Pro bezpečnostní chyby použij private advisory, ne veřejné issue.
+  - name: 📖 Čti dokumentaci
+    url: https://github.com/milos106/icovazby#readme
+    about: README + CONTRIBUTING + SECURITY pokrývají většinu otázek.

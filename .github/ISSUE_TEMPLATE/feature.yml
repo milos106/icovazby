@@ -1,0 +1,36 @@
+name: 💡 Feature request
+description: Návrh na novou funkčnost
+labels: ["enhancement"]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Jaký problém řešíš
+      description: "Začni problémem, ne řešením. Co teď nejde / je nepohodlné?"
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Návrh řešení
+      description: "Jak by to mohlo fungovat. Hrubá UX/API skica je dost."
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Co jsi zvažoval místo toho
+      description: "Existují jiné cesty? Proč nestačí?"
+
+  - type: dropdown
+    id: scope
+    attributes:
+      label: Scope
+      options:
+        - Frontend (UI/UX)
+        - Backend (API)
+        - Datový zdroj / integrace
+        - Deploy / ops
+        - Dokumentace
+    validations:
+      required: true

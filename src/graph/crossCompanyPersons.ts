@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 import type { VrOdpoved } from "../ares/types.js";
 import {
   currentObchodniJmeno,
@@ -72,7 +73,6 @@ export function buildCrossCompanyGraph(
   const personMap = new Map<string, SharedPerson>();
   // legal-entity IČO → memberships (separate space from personKey)
   const legalMap = new Map<string, SharedPerson>();
-  let totalActive = 0;
 
   for (const { ico, vr } of companies) {
     const primary = pickPrimaryZaznam(vr);
@@ -80,9 +80,6 @@ export function buildCrossCompanyGraph(
     companyMeta.push({ ico, obchodniJmeno, vrFound: vr !== null && (vr.zaznamy?.length ?? 0) > 0 });
 
     const members = flattenMembers(vr, { activeOnly: !includeHistorical });
-    // totalActivePersons remains "active only" so the headline stays comparable
-    // across includeHistorical=true/false runs.
-    totalActive += members.filter((m) => !m.datumVymazu).length;
 
     for (const m of members) {
       if (m.fyzickaOsoba) {
@@ -136,7 +133,10 @@ export function buildCrossCompanyGraph(
 
   return {
     companies: companyMeta,
-    totalActivePersons: totalActive,
+    // Počítáme unikátní osoby/PO (deduplikace přes personKey), takže UI tile
+    // a rozkliknutý seznam mají stejné číslo. Dřív se sčítaly raw rows ze
+    // všech VR, což generovalo 32 vs 26 nekonzistenci u Agrofertu.
+    totalActivePersons: activePersons.length,
     activePersons,
     sharedPersons,
     mermaid: renderMermaid(companyMeta, sharedPersons),

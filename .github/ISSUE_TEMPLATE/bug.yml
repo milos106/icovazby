@@ -1,0 +1,50 @@
+name: 🐛 Bug report
+description: Něco nefunguje jak má
+labels: ["bug"]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: Co se stalo
+      description: Stručně co nefunguje
+      placeholder: "Při vyhledání IČO 12345678 se zobrazí ..."
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Co jsi očekával
+    validations:
+      required: true
+
+  - type: textarea
+    id: repro
+    attributes:
+      label: Kroky reprodukce
+      placeholder: |
+        1. Otevři https://...
+        2. Klikni na ...
+        3. Vidíš ...
+    validations:
+      required: true
+
+  - type: input
+    id: version
+    attributes:
+      label: Verze
+      description: Z `/healthz` nebo z `git rev-parse HEAD`
+      placeholder: "0.3.0"
+
+  - type: input
+    id: ico
+    attributes:
+      label: Relevantní IČO (pokud reprodukovatelné konkrétním subjektem)
+      placeholder: "26185610"
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Server log (pokud dostupný)
+      description: "`journalctl -u icovazby -n 50` nebo browser console log"
+      render: shell
