@@ -316,11 +316,13 @@ export async function discoverHolding(
     .filter((ico) => ico !== parent && !candidates.has(ico) && !visited.has(ico));
   if (subjects.length > 0) {
     const reverseHits = await Promise.all(
-      // Reverse scan má vyšší cap (5000) než BFS — projíždíme jen lokálně
-      // známé subjects, ARES VR call je paralelní s rate-limit. Pro 16k
-      // subjects to znamená cca 30 s; můžeme za to spolehlivě najít všechny
-      // akcionářské vazby (např. ZZN Polabí je s indexem ~10 000).
-      subjects.slice(0, 5000).map(async (ico) => {
+      // Reverse scan cap = 800 firem (kompromis rychlost vs pokrytí).
+      // Při p-limit=3 a ARES ~200ms/call to znamená ~55 s — pod Cloudflare
+      // timeout (100s). Vyšší cap by způsobil 504. Trade-off: některé
+      // málo-frekventované firmy v inventory (např. ZZN Polabí s indexem
+      // ~10k) se nemusí prohledat; user může pomoci vyhledáním přes
+      // přímé IČO které doplní jeho jednatele do indexu.
+      subjects.slice(0, 800).map(async (ico) => {
         try {
           // Akcionáře získáme z ARES VR (authoritativní zdroj, vždy odpovídá).
           // VR portal /api/rejstriky/detail je v ověřovacím provozu a často
