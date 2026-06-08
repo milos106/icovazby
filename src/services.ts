@@ -302,6 +302,63 @@ function tally(findings: RiskFinding[]): RiskLevel {
   return "green";
 }
 
+/**
+ * Po DD na firmu (PD MONT) projde její jednatele (Petr Dubický) a zkusí
+ * najít jejich OSVČ záznam v ARES (přes search by jméno + filtr pravniForma
+ * 107/108). Po match DOB uloží self-membership do persons_index.
+ *
+ * Důsledek: holding discovery pro PD MONT pak najde i Dubický OSVČ
+ * (49801431) bez nutnosti aby uživatel ručně dělal DD na OSVČ.
+ */
+async function enrichJednateleOsvc(
+  members: ReturnType<typeof flattenMembers>,
+  client: AresClient,
+): Promise<void> {
+  for (const m of members) {
+    const fo = m.fyzickaOsoba;
+    if (!fo?.jmeno || !fo.prijmeni || !fo.datumNarozeni) continue;
+    try {
+      const query = `${fo.jmeno} ${fo.prijmeni}`;
+      const result = await client.searchEconomicSubjects({
+        obchodniJmeno: query,
+        pocet: 20,
+      });
+      for (const s of result.ekonomickeSubjekty ?? []) {
+        // Jen aktivní OSVČ (107) nebo zahraniční FO (108)
+        if (s.datumZaniku || !s.ico) continue;
+        const pf = String(s.pravniForma ?? "");
+        if (pf !== "107" && pf !== "108") continue;
+        // Match DOB — získej detail s RŽP info
+        try {
+          const rzp = await client.getRzpRecord(s.ico);
+          const op = rzp?.zaznamy?.[0]?.osobaPodnikatel;
+          if (op?.datumNarozeni === fo.datumNarozeni) {
+            upsertMembership({
+              jmeno: fo.jmeno,
+              prijmeni: fo.prijmeni,
+              titulPred: fo.titulPredJmenem ?? null,
+              displayName: `${fo.jmeno} ${fo.prijmeni}`,
+              datumNarozeni: fo.datumNarozeni,
+              ico: s.ico,
+              obchodniJmeno: s.obchodniJmeno ?? null,
+              funkce: "Podnikatel (OSVČ)",
+              organ: "RŽP",
+              datumZapisu: null,
+              datumVymazu: null,
+              source: "ARES_RZP",
+            });
+            upsertSubject(s.ico, s.obchodniJmeno ?? null);
+          }
+        } catch {
+          /* žádné RŽP — skip */
+        }
+      }
+    } catch {
+      /* search selhal — skip jednatele */
+    }
+  }
+}
+
 export async function fullDueDiligenceService(client: AresClient, icoInput: string) {
   const { valid, normalized, reason } = validateIcoFn(icoInput);
   if (!valid || !normalized) throw new InvalidInputError(`Invalid IČO: ${icoInput}`, { reason });
@@ -437,6 +494,12 @@ export async function fullDueDiligenceService(client: AresClient, icoInput: stri
       source: "ARES_VR",
     });
   }
+
+  // Async fire-and-forget: pro každého jednatele firmy zkus najít jeho OSVČ
+  // záznam přes ARES (search by name) a uložit self-membership do indexu.
+  // Tím se po DD na firmu jako PD MONT automaticky objeví i OSVČ Dubický
+  // v holding discovery — bez nutnosti uživatele ručně dělat DD na OSVČ.
+  void enrichJednateleOsvc(members, client).catch(() => {});
 
   return {
     ico: normalized,
