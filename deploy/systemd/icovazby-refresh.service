@@ -1,0 +1,28 @@
+[Unit]
+Description=icovazby weekly refresh (re-fetch oldest 2000 subjects)
+After=icovazby.service network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=icovazby
+Group=icovazby
+WorkingDirectory=/opt/icovazby
+EnvironmentFile=/opt/icovazby/.env
+Environment=ARES_WEB_DATA_DIR=/opt/icovazby/data
+Environment=REFRESH_BATCH=2000
+Environment=REFRESH_CONCURRENCY=4
+ExecStart=/usr/bin/node /opt/icovazby/scripts/refresh_existing.mjs
+StandardOutput=append:/var/log/icovazby-refresh.log
+StandardError=append:/var/log/icovazby-refresh.log
+
+# Nice + idle — pozadí
+Nice=15
+IOSchedulingClass=idle
+
+# Sandbox
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+NoNewPrivileges=true
+ReadWritePaths=/opt/icovazby/data /var/log

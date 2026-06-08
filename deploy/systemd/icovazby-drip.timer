@@ -1,0 +1,13 @@
+[Unit]
+Description=icovazby drip harvest hourly trigger
+Requires=icovazby-drip.service
+
+[Timer]
+# Hourly = běží každou celou hodinu. Náhodný delay ±10 min rozprostírá
+# zátěž a deduplikuje ARES requesty, kdyby běželo víc instancí.
+OnCalendar=hourly
+RandomizedDelaySec=10min
+Persistent=true
+
+[Install]
+WantedBy=timers.target

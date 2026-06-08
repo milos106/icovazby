@@ -1,0 +1,12 @@
+[Unit]
+Description=icovazby weekly refresh trigger (Sunday 3:00 AM)
+Requires=icovazby-refresh.service
+
+[Timer]
+# Neděle 3:00 ráno — minimální user traffic.
+OnCalendar=Sun *-*-* 03:00:00
+RandomizedDelaySec=30min
+Persistent=true
+
+[Install]
+WantedBy=timers.target

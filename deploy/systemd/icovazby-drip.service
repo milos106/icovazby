@@ -1,0 +1,27 @@
+[Unit]
+Description=icovazby drip harvest (hourly ARES inventory growth)
+After=icovazby.service network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=icovazby
+Group=icovazby
+WorkingDirectory=/opt/icovazby
+EnvironmentFile=/opt/icovazby/.env
+Environment=ARES_WEB_DATA_DIR=/opt/icovazby/data
+Environment=DRIP_PER_RUN=20
+ExecStart=/usr/bin/node /opt/icovazby/scripts/drip_harvest.mjs
+StandardOutput=append:/var/log/icovazby-drip.log
+StandardError=append:/var/log/icovazby-drip.log
+
+# Tvrdá nice + IO penalizace — pozadí, nesmí brzdit web requesty
+Nice=10
+IOSchedulingClass=idle
+
+# Sandbox
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+NoNewPrivileges=true
+ReadWritePaths=/opt/icovazby/data /var/log
