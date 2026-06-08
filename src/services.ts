@@ -104,7 +104,7 @@ export async function searchCompaniesService(
     sidlo: sidloParam,
     pocet,
     start,
-  });
+  }).catch(() => ({ pocetCelkem: 0, ekonomickeSubjekty: [] }) as never);
 
   // Fallback: ARES dělá whole-word match na obchodniJmeno. „simpleso" nenajde
   // „simplesolar s.r.o." protože „simpleso" není celé slovo. Postupně zkracujeme
@@ -115,18 +115,57 @@ export async function searchCompaniesService(
   if ((result.pocetCelkem ?? 0) === 0 && original && original.length > 4 && !original.includes(" ")) {
     for (let len = original.length - 1; len >= 4; len--) {
       const shorter = original.slice(0, len);
-      const r = await client.searchEconomicSubjects({
-        obchodniJmeno: shorter,
-        sidlo: sidloParam,
-        pocet,
-        start,
-      });
-      if ((r.pocetCelkem ?? 0) > 0) {
-        result = r;
-        usedQuery = shorter;
-        fallbackUsed = true;
+      try {
+        const r = await client.searchEconomicSubjects({
+          obchodniJmeno: shorter,
+          sidlo: sidloParam,
+          pocet,
+          start,
+        });
+        if ((r.pocetCelkem ?? 0) > 0 && (r.pocetCelkem ?? 0) <= 500) {
+          // <=500: chceme rozumný výsledek, ne 800+ neselektivních hitů
+          result = r;
+          usedQuery = shorter;
+          fallbackUsed = true;
+          break;
+        }
+      } catch {
+        // ARES vrací CHYBA_VSTUPU pro >1000 hitů (např. "agro" → 1249).
+        // Pokračujeme krácení dál — vlastně už jsme moc krátko a další zkrácení
+        // dá ještě víc hitů. Vyhozením stop loop.
         break;
       }
+    }
+  }
+
+  // Druhý fallback: lokální subjects inventory. Pokud uživatel již někdy
+  // vyhledal Agrofert a teď napíše "agrofer", najdeme ho v lokálním indexu
+  // přes substring match na obchodniJmeno. Lepší UX než „nic nenalezeno".
+  let localFallbackUsed = false;
+  if ((result.pocetCelkem ?? 0) === 0 && original && original.length >= 3) {
+    const needle = original.toLowerCase();
+    const localHits = listSubjects()
+      .filter((s) => (s.obchodniJmeno || "").toLowerCase().includes(needle))
+      .slice(0, pocet);
+    if (localHits.length > 0) {
+      localFallbackUsed = true;
+      return {
+        celkemNalezeno: localHits.length,
+        vraceno: localHits.length,
+        usedQuery: original,
+        fallbackUsed: true,
+        localFallbackUsed: true,
+        originalQuery: original,
+        vysledky: localHits.map((s) => ({
+          ico: s.ico,
+          obchodniJmeno: s.obchodniJmeno ?? "(neznámé)",
+          sidlo: null,
+          pravniForma: null,
+          datumVzniku: null,
+          datumZaniku: null,
+        })),
+        _attribution: ARES_ATTRIBUTION,
+      };
     }
   }
 
@@ -135,6 +174,7 @@ export async function searchCompaniesService(
     vraceno: result.ekonomickeSubjekty?.length ?? 0,
     usedQuery,
     fallbackUsed,
+    localFallbackUsed,
     originalQuery: original ?? null,
     vysledky:
       result.ekonomickeSubjekty?.map((s) => ({
@@ -616,7 +656,7 @@ export { getPersonVazbyService } from "./persons/service.js";
 export { discoverHolding } from "./holding/discover.js";
 
 // ─── Local persistent index osoba → firmy + subjekt inventář ──────────────────
-import { upsertMembership, upsertSubject } from "./persons_index/store.js";
+import { listSubjects, upsertMembership, upsertSubject } from "./persons_index/store.js";
 
 // ─── Veřejný rejstřík (OR) přes verejnerejstriky.msp.gov.cz ───────────────────
 import { VR_ATTRIBUTION, fetchVrDetailByIco } from "./justice_vr/client.js";

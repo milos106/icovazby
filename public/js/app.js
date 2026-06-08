@@ -241,7 +241,9 @@ function searchSection() {
           this.results = r.vysledky || [];
           this.totalFound = r.celkemNalezeno || 0;
           this.fallbackNotice = "";
-          if (r.fallbackUsed && r.usedQuery && r.originalQuery && r.usedQuery !== r.originalQuery) {
+          if (r.localFallbackUsed) {
+            this.fallbackNotice = `ARES nenalezl „${r.originalQuery}" (vyhledává jen celá slova). Z lokální historie vyhledávání nabízíme:`;
+          } else if (r.fallbackUsed && r.usedQuery && r.originalQuery && r.usedQuery !== r.originalQuery) {
             this.fallbackNotice = `ARES nenalezl přesně „${r.originalQuery}" (vyhledává celá slova). Zobrazujem výsledky pro „${r.usedQuery}".`;
           }
           if (this.results.length === 0) this.error = `Nic nenalezeno pro "${q}".`;
