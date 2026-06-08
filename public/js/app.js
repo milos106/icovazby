@@ -772,12 +772,14 @@ function holdingDiscovery() {
     maybeAutoRun(detail) {
       if (!detail?.ico) return;
       if (this.lastRunIco === detail.ico) return;
-      // Heuristika: a.s. (ARES kód 121, ale akceptujeme i textovou variantu
-      // „AS") s ≥5 aktivními členy představenstva. Tipicky parent holdingu.
+      // Heuristika: spusť auto-trigger pro libovolnou firmu s ≥1 aktivním
+      // statutárem, SKIP jen pro pure OSVČ (pravniForma 107/108) kde není
+      // co rozkrývat (jednatel = subjekt sám). Tím se chytnou i menší s.r.o.
+      // s vazbou na další firmy přes jednatele (PD MONT → Dubický OSVČ).
       const pf = String(detail.pravniForma || "");
-      const isAS = pf === "121" || pf === "AS" || /^121$/.test(pf);
-      const isLikelyHolding = isAS && (detail.aktivniCount || 0) >= 5;
-      if (!isLikelyHolding) return;
+      const isOSVC = pf === "107" || pf === "108";
+      const hasStatutar = (detail.aktivniCount || 0) >= 1;
+      if (isOSVC || !hasStatutar) return;
       this.autoTriggered = true;
       this.run(detail.ico);
     },

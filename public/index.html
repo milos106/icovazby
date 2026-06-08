@@ -1627,8 +1627,9 @@
                   </select>
                 </label>
                 <span class="text-xs text-slate-500 dark:text-slate-400" x-show="result">
-                  Nalezeno <span class="font-semibold" x-text="result?.totalIcos"></span> firem
-                  (<span class="text-emerald-700 dark:text-emerald-400 font-medium" x-text="result?.discovered?.filter(c=>c.confidence==='high').length"></span>
+                  Holding má <span class="font-semibold" x-text="(result?.totalIcos || 0) + 1"></span> firem
+                  (parent + <span x-text="result?.totalIcos"></span> subsidiaries;
+                  <span class="text-emerald-700 dark:text-emerald-400 font-medium" x-text="result?.discovered?.filter(c=>c.confidence==='high').length"></span>
                   high<template x-if="result?.discovered?.filter(c=>c.confidence==='medium').length">
                     <span>, <span x-text="result?.discovered?.filter(c=>c.confidence==='medium').length"></span> med</span>
                   </template>),
