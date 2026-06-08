@@ -110,6 +110,43 @@
       .dark .risk-yellow { background: linear-gradient(135deg, #451a03, #78350f); border-color: #fbbf24; color: #fef3c7; }
       [x-cloak] { display: none !important; }
       .mermaid svg { max-width: 100%; height: auto; }
+      /* Plynulé chevron rotation v hlavičkách rozbalovacích karet —
+         menší detail s velkým efektem na perceived polish. */
+      .dd-card-header .chevron {
+        transition: transform 200ms cubic-bezier(0.16, 1, 0.3, 1);
+        display: inline-block;
+      }
+      .dd-card[data-collapsed="true"] .dd-card-header .chevron {
+        transform: rotate(0deg);
+      }
+      .dd-card[data-collapsed="false"] .dd-card-header .chevron,
+      .dd-card:not([data-collapsed]) .dd-card-header .chevron {
+        transform: rotate(90deg);
+      }
+      /* Subtle slide na hover pro klikatelné name buttons (statutáři,
+         shared persons) — micro-interaction. */
+      .name-link {
+        transition: padding-left 150ms ease-out, color 150ms ease-out;
+      }
+      .name-link:hover {
+        padding-left: 4px;
+      }
+      /* Kbd badge styling pro shortcut hint v search input. */
+      kbd.kbd-hint {
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 11px;
+        padding: 2px 6px;
+        border-radius: 4px;
+        background-color: rgb(241 245 249);
+        color: rgb(71 85 105);
+        border: 1px solid rgb(226 232 240);
+        font-weight: 500;
+      }
+      .dark kbd.kbd-hint {
+        background-color: rgb(51 65 85);
+        color: rgb(203 213 225);
+        border-color: rgb(71 85 105);
+      }
       /* Mermaid kontrast: text v nodech je nastaven přes classDef color:
          na serveru (pastelové fill + slate-900 text fungují v obou režimech).
          Edge labely a font-weight musíme ale řídit z CSS protože v Mermaid
@@ -310,16 +347,22 @@
             risk prověrka načte automaticky.
           </p>
           <form @submit.prevent="run()" class="flex gap-2 flex-wrap">
-            <input
-              type="text"
-              x-model="query"
-              placeholder="např. 26185610  nebo  AGROFERT"
-              class="flex-1 min-w-[200px] px-4 py-2 border dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none"
-              autofocus
-            />
+            <div class="relative flex-1 min-w-[200px]">
+              <input
+                type="text"
+                x-model="query"
+                placeholder="např. 26185610  nebo  AGROFERT"
+                class="w-full px-4 py-2 pr-20 border dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none"
+                autofocus
+              />
+              <div class="hidden md:flex items-center gap-1 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">
+                <kbd class="kbd-hint">⌘</kbd>
+                <kbd class="kbd-hint">K</kbd>
+              </div>
+            </div>
             <button
               type="submit"
-              class="px-6 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 disabled:opacity-50"
+              class="px-6 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 active:bg-emerald-800 disabled:opacity-50 transition-colors"
               :disabled="loading"
               x-text="loading ? 'Hledám…' : 'Najít'"
             ></button>
@@ -453,17 +496,22 @@
             <div class="md:grid md:grid-cols-[180px_1fr] md:gap-6">
               <!-- Sidebar (jen md+) -->
               <aside class="hidden md:block">
-                <nav class="sticky top-20 space-y-0.5 text-sm" aria-label="Sekce profilu">
-                  <a href="#dd-profil" class="block px-3 py-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300">👤 Profil</a>
-                  <a href="#dd-vr" class="block px-3 py-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300">⚖️ OR</a>
-                  <a href="#dd-ubo" class="block px-3 py-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300">👥 UBO</a>
-                  <a href="#dd-dotace" class="block px-3 py-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300">💸 Dotace</a>
-                  <a href="#dd-smlouvy" class="block px-3 py-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300">💰 Smlouvy</a>
-                  <a href="#dd-adis" class="block px-3 py-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300">🏦 DPH</a>
-                  <a href="#dd-isir" class="block px-3 py-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300">⚖️ Insolvence</a>
-                  <a href="#dd-jerrs" class="block px-3 py-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300">🏦 ČNB</a>
-                  <a href="#dd-sankce" class="block px-3 py-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300">🇪🇺 Sankce</a>
-                  <a href="#dd-zivno" class="block px-3 py-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300">🏷️ Živnosti</a>
+                <nav
+                  x-data="sidebarScrollSpy()"
+                  x-init="init()"
+                  class="sticky top-20 space-y-0.5 text-sm"
+                  aria-label="Sekce profilu"
+                >
+                  <a href="#dd-profil" :class="active === 'dd-profil' ? 'bg-slate-100 dark:bg-slate-700/60 text-slate-900 dark:text-slate-100 font-medium' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700/40 hover:text-slate-900 dark:hover:text-slate-100'" class="block px-3 py-1.5 rounded-lg transition-colors">👤 Profil</a>
+                  <a href="#dd-vr" :class="active === 'dd-vr' ? 'bg-slate-100 dark:bg-slate-700/60 text-slate-900 dark:text-slate-100 font-medium' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700/40 hover:text-slate-900 dark:hover:text-slate-100'" class="block px-3 py-1.5 rounded-lg transition-colors">⚖️ OR</a>
+                  <a href="#dd-ubo" :class="active === 'dd-ubo' ? 'bg-slate-100 dark:bg-slate-700/60 text-slate-900 dark:text-slate-100 font-medium' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700/40 hover:text-slate-900 dark:hover:text-slate-100'" class="block px-3 py-1.5 rounded-lg transition-colors">👥 UBO</a>
+                  <a href="#dd-dotace" :class="active === 'dd-dotace' ? 'bg-slate-100 dark:bg-slate-700/60 text-slate-900 dark:text-slate-100 font-medium' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700/40 hover:text-slate-900 dark:hover:text-slate-100'" class="block px-3 py-1.5 rounded-lg transition-colors">💸 Dotace</a>
+                  <a href="#dd-smlouvy" :class="active === 'dd-smlouvy' ? 'bg-slate-100 dark:bg-slate-700/60 text-slate-900 dark:text-slate-100 font-medium' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700/40 hover:text-slate-900 dark:hover:text-slate-100'" class="block px-3 py-1.5 rounded-lg transition-colors">💰 Smlouvy</a>
+                  <a href="#dd-adis" :class="active === 'dd-adis' ? 'bg-slate-100 dark:bg-slate-700/60 text-slate-900 dark:text-slate-100 font-medium' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700/40 hover:text-slate-900 dark:hover:text-slate-100'" class="block px-3 py-1.5 rounded-lg transition-colors">🏦 DPH</a>
+                  <a href="#dd-isir" :class="active === 'dd-isir' ? 'bg-slate-100 dark:bg-slate-700/60 text-slate-900 dark:text-slate-100 font-medium' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700/40 hover:text-slate-900 dark:hover:text-slate-100'" class="block px-3 py-1.5 rounded-lg transition-colors">⚖️ Insolvence</a>
+                  <a href="#dd-jerrs" :class="active === 'dd-jerrs' ? 'bg-slate-100 dark:bg-slate-700/60 text-slate-900 dark:text-slate-100 font-medium' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700/40 hover:text-slate-900 dark:hover:text-slate-100'" class="block px-3 py-1.5 rounded-lg transition-colors">🏦 ČNB</a>
+                  <a href="#dd-sankce" :class="active === 'dd-sankce' ? 'bg-slate-100 dark:bg-slate-700/60 text-slate-900 dark:text-slate-100 font-medium' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700/40 hover:text-slate-900 dark:hover:text-slate-100'" class="block px-3 py-1.5 rounded-lg transition-colors">🇪🇺 Sankce</a>
+                  <a href="#dd-zivno" :class="active === 'dd-zivno' ? 'bg-slate-100 dark:bg-slate-700/60 text-slate-900 dark:text-slate-100 font-medium' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700/40 hover:text-slate-900 dark:hover:text-slate-100'" class="block px-3 py-1.5 rounded-lg transition-colors">🏷️ Živnosti</a>
                   <div class="pt-3 mt-3 border-t dark:border-slate-700 space-y-1">
                     <button
                       type="button"
@@ -582,7 +630,7 @@
                           <button
                             type="button"
                             @click="openPersonVazby(c.jmeno, c.datumNarozeni)"
-                            class="font-semibold underline text-emerald-700 dark:text-emerald-400 hover:text-emerald-800 text-left"
+                            class="name-link font-semibold underline text-emerald-700 dark:text-emerald-400 hover:text-emerald-800 text-left"
                             :title="'Najít vazby osoby ' + c.jmeno"
                           >
                             <span x-text="c.jmeno"></span>
@@ -605,7 +653,7 @@
               <div id="dd-vr" :data-collapsed="!$store.ddCollapse.isExpanded('dd-vr')" class="dd-card border border-slate-200/80 dark:border-slate-700 rounded-xl p-5 shadow-sm hover:shadow-md transition-shadow md:col-span-2 scroll-mt-32" x-data="ddVrLoader()" x-init="load(report.ico)">
                 <div class="dd-card-header flex items-baseline justify-between gap-2 mb-2 flex-wrap cursor-pointer select-none" @click="$store.ddCollapse.toggle('dd-vr')">
                   <h4 class="font-bold flex items-center gap-2">
-                    <span class="text-slate-400 w-3 inline-block" x-text="$store.ddCollapse.isExpanded('dd-vr') ? '▼' : '▶'"></span>
+                    <span class="text-slate-400 w-3 inline-block chevron">▶</span>
                     <span>⚖️ Veřejný rejstřík (OR)</span>
                     <span class="text-xs font-normal text-slate-500 dark:text-slate-400">— plný výpis: akcie, kapitál, historie</span>
                   </h4>
@@ -668,7 +716,7 @@
                                 <button
                                   type="button"
                                   @click="openPersonVazby(m.fullName, m.datumNarozeni)"
-                                  class="font-semibold underline text-emerald-700 dark:text-emerald-400 hover:text-emerald-800 text-left"
+                                  class="name-link font-semibold underline text-emerald-700 dark:text-emerald-400 hover:text-emerald-800 text-left"
                                   :title="'Najít vazby osoby ' + m.fullName"
                                 >
                                   <span x-text="m.fullName"></span>
@@ -799,7 +847,7 @@
               <div id="dd-ubo" :data-collapsed="!$store.ddCollapse.isExpanded('dd-ubo')" class="dd-card border border-slate-200/80 dark:border-slate-700 rounded-xl p-5 shadow-sm hover:shadow-md transition-shadow md:col-span-2 scroll-mt-32" x-data="ddUboLoader()" x-init="load(report.ico)">
                 <div class="dd-card-header flex items-baseline justify-between gap-2 mb-2 flex-wrap cursor-pointer select-none" @click="$store.ddCollapse.toggle('dd-ubo')">
                   <h4 class="font-bold flex items-center gap-2">
-                    <span class="text-slate-400 w-3 inline-block" x-text="$store.ddCollapse.isExpanded('dd-ubo') ? '▼' : '▶'"></span>
+                    <span class="text-slate-400 w-3 inline-block chevron">▶</span>
                     <span>👥 Skuteční majitelé (UBO)</span>
                     <span class="text-xs font-normal text-slate-500 dark:text-slate-400">— evidence dle z. č. 37/2021 Sb.</span>
                   </h4>
@@ -901,7 +949,7 @@
               <div id="dd-dotace" :data-collapsed="!$store.ddCollapse.isExpanded('dd-dotace')" class="dd-card border border-slate-200/80 dark:border-slate-700 rounded-xl p-5 shadow-sm hover:shadow-md transition-shadow md:col-span-2 scroll-mt-32" x-data="ddDotaceLoader()" x-init="load(report.ico)">
                 <div class="dd-card-header flex items-baseline justify-between gap-2 mb-2 flex-wrap cursor-pointer select-none" @click="$store.ddCollapse.toggle('dd-dotace')">
                   <h4 class="font-bold flex items-center gap-2">
-                    <span class="text-slate-400 w-3 inline-block" x-text="$store.ddCollapse.isExpanded('dd-dotace') ? '▼' : '▶'"></span>
+                    <span class="text-slate-400 w-3 inline-block chevron">▶</span>
                     <span>💸 Dotace</span>
                     <span class="text-xs font-normal text-slate-500 dark:text-slate-400">— CEDR + EU fondy + MMR/MPSV/MŠMT/SZIF/…</span>
                   </h4>
@@ -1035,7 +1083,7 @@
               <div id="dd-smlouvy" :data-collapsed="!$store.ddCollapse.isExpanded('dd-smlouvy')" class="dd-card border border-slate-200/80 dark:border-slate-700 rounded-xl p-5 shadow-sm hover:shadow-md transition-shadow md:col-span-2 scroll-mt-32" x-data="ddSmlouvyLoader()" x-init="load(report.ico)">
                 <div class="dd-card-header flex items-baseline justify-between gap-2 mb-2 flex-wrap cursor-pointer select-none" @click="$store.ddCollapse.toggle('dd-smlouvy')">
                   <h4 class="font-bold flex items-center gap-2">
-                    <span class="text-slate-400 w-3 inline-block" x-text="$store.ddCollapse.isExpanded('dd-smlouvy') ? '▼' : '▶'"></span>
+                    <span class="text-slate-400 w-3 inline-block chevron">▶</span>
                     <span>💰 Smlouvy se státem</span>
                     <span class="text-xs font-normal text-slate-500 dark:text-slate-400">— Registr smluv (z. č. 340/2015 Sb.)</span>
                   </h4>
@@ -1146,7 +1194,7 @@
               <div id="dd-adis" :data-collapsed="!$store.ddCollapse.isExpanded('dd-adis')" class="dd-card border border-slate-200/80 dark:border-slate-700 rounded-xl p-5 shadow-sm hover:shadow-md transition-shadow scroll-mt-32" x-data="ddAdisLoader()" x-init="load(report.ico)">
                 <h4 class="dd-card-header font-bold mb-2 flex items-center justify-between gap-2 cursor-pointer select-none" @click="$store.ddCollapse.toggle('dd-adis')">
                   <span class="flex items-center gap-2">
-                    <span class="text-slate-400 w-3 inline-block" x-text="$store.ddCollapse.isExpanded('dd-adis') ? '▼' : '▶'"></span>
+                    <span class="text-slate-400 w-3 inline-block chevron">▶</span>
                     <span>🏦 DPH compliance (MFČR ADIS)</span>
                   </span>
                   <div class="relative" x-data="{ open: false }" @click.outside="open = false">
@@ -1218,7 +1266,7 @@
               <div id="dd-isir" :data-collapsed="!$store.ddCollapse.isExpanded('dd-isir')" class="dd-card border border-slate-200/80 dark:border-slate-700 rounded-xl p-5 shadow-sm hover:shadow-md transition-shadow scroll-mt-32" x-data="ddIsirLoader()" x-init="load(report.ico)">
                 <h4 class="dd-card-header font-bold mb-2 flex items-center justify-between gap-2 cursor-pointer select-none" @click="$store.ddCollapse.toggle('dd-isir')">
                   <span class="flex items-center gap-2">
-                    <span class="text-slate-400 w-3 inline-block" x-text="$store.ddCollapse.isExpanded('dd-isir') ? '▼' : '▶'"></span>
+                    <span class="text-slate-400 w-3 inline-block chevron">▶</span>
                     <span>⚖️ Insolvence</span>
                   </span>
                   <div class="relative" x-data="{ open: false }" @click.outside="open = false">
@@ -1350,7 +1398,7 @@
               >
                 <h4 class="dd-card-header font-bold mb-2 flex items-center justify-between gap-2 cursor-pointer select-none" @click="$store.ddCollapse.toggle('dd-jerrs')">
                   <span class="flex items-center gap-2">
-                    <span class="text-slate-400 w-3 inline-block" x-text="$store.ddCollapse.isExpanded('dd-jerrs') ? '▼' : '▶'"></span>
+                    <span class="text-slate-400 w-3 inline-block chevron">▶</span>
                     <span>🏦 ČNB — regulovaný subjekt</span>
                   </span>
                   <div class="relative" x-data="{ open: false }" @click.outside="open = false">
@@ -1428,7 +1476,7 @@
               >
                 <h4 class="dd-card-header font-bold mb-2 flex items-center justify-between gap-2 cursor-pointer select-none" @click="$store.ddCollapse.toggle('dd-sankce')">
                   <span class="flex items-center gap-2">
-                    <span class="text-slate-400 w-3 inline-block" x-text="$store.ddCollapse.isExpanded('dd-sankce') ? '▼' : '▶'"></span>
+                    <span class="text-slate-400 w-3 inline-block chevron">▶</span>
                     <span>🇪🇺 Screening EU sankcí</span>
                   </span>
                   <div class="relative" x-data="{ open: false }" @click.outside="open = false">
@@ -1520,7 +1568,7 @@
               <div id="dd-zivno" :data-collapsed="!$store.ddCollapse.isExpanded('dd-zivno')" class="dd-card border border-slate-200/80 dark:border-slate-700 rounded-xl p-5 shadow-sm hover:shadow-md transition-shadow scroll-mt-32">
                 <h4 class="dd-card-header font-bold mb-2 flex items-center justify-between gap-2 cursor-pointer select-none" @click="$store.ddCollapse.toggle('dd-zivno')">
                   <span class="flex items-center gap-2">
-                    <span class="text-slate-400 w-3 inline-block" x-text="$store.ddCollapse.isExpanded('dd-zivno') ? '▼' : '▶'"></span>
+                    <span class="text-slate-400 w-3 inline-block chevron">▶</span>
                     <span>🏷️ Živnostenská oprávnění</span>
                   </span>
                   <div class="relative" x-data="{ open: false }" @click.outside="open = false">
@@ -1990,7 +2038,7 @@
                         <button
                           type="button"
                           @click="openPersonVazby(p.jmeno, p.datumNarozeni)"
-                          class="font-semibold underline text-emerald-700 dark:text-emerald-400 hover:text-emerald-800 text-left"
+                          class="name-link font-semibold underline text-emerald-700 dark:text-emerald-400 hover:text-emerald-800 text-left"
                           :title="'Najít vazby osoby ' + p.jmeno"
                         >
                           <span x-text="p.jmeno"></span>

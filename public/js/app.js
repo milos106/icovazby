@@ -1011,6 +1011,74 @@ function hsTokenSettings() {
   };
 }
 
+/**
+ * Sidebar scroll-spy — IntersectionObserver na všech kartách v Profilu,
+ * zvýrazní v sidebaru tu, která je aktuálně v rootMargin top zóně.
+ * Threshold 0 + rootMargin '-80px 0px -50% 0px' = highlight zóna je
+ * horních cca 50% viewportu od stickyho headeru.
+ */
+function sidebarScrollSpy() {
+  return {
+    active: "dd-profil",
+    observer: null,
+    init() {
+      // Počkat až se DOM ustálí (Alpine + Mermaid render).
+      requestAnimationFrame(() => {
+        this.setup();
+      });
+    },
+    setup() {
+      const ids = [
+        "dd-profil", "dd-vr", "dd-ubo", "dd-dotace", "dd-smlouvy",
+        "dd-adis", "dd-isir", "dd-jerrs", "dd-sankce", "dd-zivno",
+      ];
+      const targets = ids.map((id) => document.getElementById(id)).filter(Boolean);
+      if (targets.length === 0) return;
+      this.observer = new IntersectionObserver(
+        (entries) => {
+          // Pick the section whose top is CLOSEST to the trigger line (top of
+          // active zone, just below sticky header). To dělá scroll-spy přesnější
+          // — postupně se highlight stahuje s tím jak uživatel scrolluje. Bez
+          // tohoto by se aktivovala vždy nejvyšší viditelná sekce (často ta
+          // předchozí kterou už uživatel přeskočil).
+          const visible = entries
+            .filter((e) => e.isIntersecting)
+            .sort((a, b) => Math.abs(a.boundingClientRect.top) - Math.abs(b.boundingClientRect.top));
+          if (visible.length > 0) this.active = visible[0].target.id;
+        },
+        {
+          // Úzká „active zone" hned pod sticky headerem — minimalizuje
+          // překryv mezi sousedními kartami.
+          rootMargin: "-110px 0px -80% 0px",
+          threshold: 0,
+        },
+      );
+      for (const t of targets) this.observer.observe(t);
+    },
+  };
+}
+
+/**
+ * Globální keyboard shortcuts:
+ * - "/" nebo Cmd+K → focus search input
+ * - Escape → odběr fokusu / zavření popoverů (Alpine to řeší samo přes
+ *   click.outside, ale Esc je rychlejší)
+ */
+document.addEventListener("alpine:init", () => {
+  document.addEventListener("keydown", (e) => {
+    const tag = (e.target?.tagName || "").toLowerCase();
+    const inEditable = tag === "input" || tag === "textarea" || tag === "select" || e.target?.isContentEditable;
+    if (!inEditable && (e.key === "/" || (e.key === "k" && (e.metaKey || e.ctrlKey)))) {
+      e.preventDefault();
+      const input = document.querySelector('section#profil input[type="text"]');
+      if (input) {
+        input.focus();
+        input.select();
+      }
+    }
+  });
+});
+
 function themeToggle() {
   return {
     isDark: false,
@@ -1090,3 +1158,4 @@ window.personVazbySection = personVazbySection;
 window.featuresStatus = featuresStatus;
 window.cnbRatesWidget = cnbRatesWidget;
 window.hsTokenSettings = hsTokenSettings;
+window.sidebarScrollSpy = sidebarScrollSpy;
