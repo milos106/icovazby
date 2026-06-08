@@ -243,7 +243,13 @@ export function upsertSubject(ico: string, obchodniJmeno?: string | null): void 
 /** Seznam všech known subjekts (firmy z DD historie). */
 export function listSubjects(): IndexedSubject[] {
   load();
-  return Object.values(memory.subjects ?? {});
+  // Sort by seenAt desc — nedávno viděné firmy první. Holding discovery
+  // reverse scan má cap 800; pokud user právě před chvílí vyhledal firmu
+  // X (čímž ji upsertSubject pushnul s aktuálním seenAt), dostane v listě
+  // přednost před tisíci preseed firem a reverse scan ji projde.
+  return Object.values(memory.subjects ?? {}).sort(
+    (a, b) => (b.seenAt ?? 0) - (a.seenAt ?? 0),
+  );
 }
 
 /** Najdi všechny memberships osoby. */
