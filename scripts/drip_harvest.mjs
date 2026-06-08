@@ -34,8 +34,10 @@ import {
 const PER_RUN = Number(process.env.DRIP_PER_RUN ?? 20);
 const STATE_FILE = resolve(INDEX_FILE, "..", ".drip-state.json");
 
-// Top 100 slov v českých obchodních jménech — pokrývá široké spektrum
-// odvětví (stavebnictví, doprava, IT, zemědělství, výroba, služby).
+// ~130 slov v českých obchodních jménech — pokrývá široké spektrum:
+// stavebnictví, doprava, IT, zemědělství, výroba, služby, plus targeted
+// loterní/herní odvětví a PR/marketing/media (nutné pro pokrytí osobních
+// historických vazeb ze SAZKa / Tipsport / mediálních holdingů).
 const KEYWORDS = [
   "stavební", "doprava", "servis", "obchod", "výroba", "služby", "montáže",
   "instalace", "stavby", "konzult", "projekt", "trade", "group", "holding",
@@ -53,6 +55,14 @@ const KEYWORDS = [
   "škola", "education", "sport", "fitness", "wellness", "hotel", "restaurace",
   "café", "kavárna", "bar", "pizzeria", "klinika", "lékárna", "zdraví",
   "rehabilitace", "veterin", "kosmetika", "salon", "kadeřnic",
+  // Loterní/herní odvětví — pro pokrytí struktur typu SAZKA, Tipsport, Fortuna
+  "loter", "herna", "casino", "kasino", "sázk", "lottery", "betting",
+  "bookmaker", "tipsport", "fortuna", "synot", "jackpot", "bingo", "tombol",
+  // PR / marketing / media — komunikační odvětví, kde sedí často stejní
+  // statutáři jako v herním
+  "PR", "public relations", "branding", "komunikace", "kreativ", "promo",
+  "event", "production", "publishing", "vydavatel", "noviny", "magazín",
+  "rozhlas", "televize", "studio film", "post-production",
 ];
 
 function loadState() {
