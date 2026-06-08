@@ -94,15 +94,48 @@ export async function searchCompaniesService(
     const psc = Number(args.sidloPsc.replace(/\s/g, ""));
     if (Number.isFinite(psc)) sidlo.psc = psc;
   }
-  const result = await client.searchEconomicSubjects({
-    obchodniJmeno: args.obchodniJmeno,
-    sidlo: Object.keys(sidlo).length > 0 ? sidlo : undefined,
-    pocet: Math.min(args.limit ?? 25, 100),
-    start: args.offset ?? 0,
+  const sidloParam = Object.keys(sidlo).length > 0 ? sidlo : undefined;
+  const pocet = Math.min(args.limit ?? 25, 100);
+  const start = args.offset ?? 0;
+
+  let usedQuery = args.obchodniJmeno;
+  let result = await client.searchEconomicSubjects({
+    obchodniJmeno: usedQuery,
+    sidlo: sidloParam,
+    pocet,
+    start,
   });
+
+  // Fallback: ARES dělá whole-word match na obchodniJmeno. „simpleso" nenajde
+  // „simplesolar s.r.o." protože „simpleso" není celé slovo. Postupně zkracujeme
+  // query o jeden znak až do 4 znaků, dokud nenajdeme hit. Tím uživatel
+  // dostane výsledky i pro neúplné zadání.
+  const original = args.obchodniJmeno?.trim();
+  let fallbackUsed = false;
+  if ((result.pocetCelkem ?? 0) === 0 && original && original.length > 4 && !original.includes(" ")) {
+    for (let len = original.length - 1; len >= 4; len--) {
+      const shorter = original.slice(0, len);
+      const r = await client.searchEconomicSubjects({
+        obchodniJmeno: shorter,
+        sidlo: sidloParam,
+        pocet,
+        start,
+      });
+      if ((r.pocetCelkem ?? 0) > 0) {
+        result = r;
+        usedQuery = shorter;
+        fallbackUsed = true;
+        break;
+      }
+    }
+  }
+
   return {
     celkemNalezeno: result.pocetCelkem ?? 0,
     vraceno: result.ekonomickeSubjekty?.length ?? 0,
+    usedQuery,
+    fallbackUsed,
+    originalQuery: original ?? null,
     vysledky:
       result.ekonomickeSubjekty?.map((s) => ({
         ico: s.ico,

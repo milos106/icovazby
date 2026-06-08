@@ -184,6 +184,7 @@ function searchSection() {
     profile: null,
     results: [],
     totalFound: 0,
+    fallbackNotice: "",
     resData: null,
     licensesData: null,
     exportNotice: "",
@@ -216,6 +217,7 @@ function searchSection() {
       this.profile = null;
       this.results = [];
       this.totalFound = 0;
+      this.fallbackNotice = "";
       this._resetExpansions();
       const q = (this.query || "").trim().replace(/\s+/g, " ");
       if (!q) return;
@@ -238,6 +240,10 @@ function searchSection() {
           const r = await jsonFetch(u);
           this.results = r.vysledky || [];
           this.totalFound = r.celkemNalezeno || 0;
+          this.fallbackNotice = "";
+          if (r.fallbackUsed && r.usedQuery && r.originalQuery && r.usedQuery !== r.originalQuery) {
+            this.fallbackNotice = `ARES nenalezl přesně „${r.originalQuery}" (vyhledává celá slova). Zobrazujem výsledky pro „${r.usedQuery}".`;
+          }
           if (this.results.length === 0) this.error = `Nic nenalezeno pro "${q}".`;
           // Pokud z name-search vypadne jediný hit → auto-trigger DD na něj.
           if (this.results.length === 1) {
@@ -445,17 +451,18 @@ function graphSection() {
       document.getElementById("graph")?.scrollIntoView({ behavior: "smooth", block: "start" });
     },
     /**
-     * Profil firmy v searchSection se „přelije" do Mapy propojení: pokud IČO
-     * v textarea ještě není, přidá ho. Nespouští run() — uživatel si doplní
-     * další IČO a kliknutím Vykreslit explicitně potvrdí. Tím se sekce udržuje
-     * v sync bez automatického refreshe grafu pro každé prohlédnuté IČO.
+     * Nový profil firmy v searchSection RESETuje Mapu propojení na jediné
+     * to nové IČO. Předchozí výsledky se zahodí — jinak by se míchaly firmy
+     * z různých vyhledávání (PD MONT pak SimpleSolar = 2 holdingy v jednom
+     * grafu = nedává smysl). Holding discovery pak buď `seed()` IČO sadu
+     * dceřinek, nebo uživatel přidá ručně.
      */
     addIcoFromProfile(ico) {
       if (!ico) return;
-      const existing = this.parseIcos(this.raw);
-      if (existing.includes(ico)) return;
-      const combined = [...existing, ico].join("\n");
-      this.raw = combined;
+      this.raw = ico;
+      this.result = null;
+      this.mermaidSvg = "";
+      this.error = "";
     },
     /** Vyvolá vazby ze sharedPersons listu. */
     openPersonVazby(jmeno, datumNarozeni) {

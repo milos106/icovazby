@@ -398,6 +398,11 @@
           <!-- Multi-result list (jen při name search s víc shodami) -->
           <template x-if="results.length > 0">
             <div class="mt-4 space-y-2">
+              <!-- Fallback notice — ARES vyhledává jen celá slova, server musel zkrátit query -->
+              <template x-if="fallbackNotice">
+                <p class="text-xs text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/30 border border-amber-200 dark:border-amber-800 rounded px-2 py-1.5"
+                   x-text="fallbackNotice"></p>
+              </template>
               <p class="text-sm text-slate-600 dark:text-slate-400">
                 Nalezeno <span x-text="totalFound" class="font-semibold"></span> firem — klikni pro načtení profilu:
               </p>
