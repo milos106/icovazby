@@ -1,43 +1,36 @@
 #!/usr/bin/env node
 // SPDX-License-Identifier: AGPL-3.0-or-later
 /*
- * Drip harvest — periodicky (hodina-otrok) přidává firmy do inventory.
+ * Drip harvest — hodinový cron. Přidává firmy do inventory.
  *
- * Dva zdroje (priorita):
- *   1. ORPHAN PARENTS — IČO v ownership.byParent která ještě nejsou v
- *      subjects (= víme že tu firmu někdo vlastní nebo má jako akcionáře,
- *      ale samu firmu jsme nikdy nefetchovali). Takový bonus 1:1 — zlepší
- *      konektivitu grafu.
- *   2. KEYWORD ROTATION — 100 nejčastějších slov v českých obchodních
- *      jménech. Rotuje deterministicky podle uloženého stavu.
- *
- * Limit: 20 nových firem/běh (env DRIP_PER_RUN). Hourly = ~480/den.
- *
- * Atomic write merge s běžícím serverem — viz _shared.mjs.
+ * Priority:
+ *   1. Orphan parents (firmy které vystupují jako parent v ownership ale
+ *      samy ještě nejsou v subjects)
+ *   2. Keyword rotation (~130 slov, ratchet přes pravniForma pro wide queries)
  */
 
 import { readFileSync, writeFileSync, existsSync } from "node:fs";
 import { resolve } from "node:path";
 import {
-  ARES_BASE,
-  INDEX_FILE,
-  loadIndex,
-  mergeAndWrite,
+  DB_FILE,
   fetchAresSubject,
   fetchAresVr,
   searchAresByName,
-  makePersonKey,
   extractFromVr,
   currentObchodniJmeno,
+  upsertSubject,
+  upsertMembership,
+  upsertTentativeMembership,
+  upsertOwnership,
+  listAllSubjectIcos,
+  listOrphanParents,
+  stats,
+  getDb,
 } from "./_shared.mjs";
 
 const PER_RUN = Number(process.env.DRIP_PER_RUN ?? 20);
-const STATE_FILE = resolve(INDEX_FILE, "..", ".drip-state.json");
+const STATE_FILE = resolve(DB_FILE, "..", ".drip-state.json");
 
-// ~130 slov v českých obchodních jménech — pokrývá široké spektrum:
-// stavebnictví, doprava, IT, zemědělství, výroba, služby, plus targeted
-// loterní/herní odvětví a PR/marketing/media (nutné pro pokrytí osobních
-// historických vazeb ze SAZKa / Tipsport / mediálních holdingů).
 const KEYWORDS = [
   "stavební", "doprava", "servis", "obchod", "výroba", "služby", "montáže",
   "instalace", "stavby", "konzult", "projekt", "trade", "group", "holding",
@@ -55,33 +48,31 @@ const KEYWORDS = [
   "škola", "education", "sport", "fitness", "wellness", "hotel", "restaurace",
   "café", "kavárna", "bar", "pizzeria", "klinika", "lékárna", "zdraví",
   "rehabilitace", "veterin", "kosmetika", "salon", "kadeřnic",
-  // Loterní/herní odvětví — pro pokrytí struktur typu SAZKA, Tipsport, Fortuna
   "loter", "herna", "casino", "kasino", "sázk", "lottery", "betting",
   "bookmaker", "tipsport", "fortuna", "synot", "jackpot", "bingo", "tombol",
-  // PR / marketing / media — komunikační odvětví, kde sedí často stejní
-  // statutáři jako v herním
   "PR", "public relations", "branding", "komunikace", "kreativ", "promo",
   "event", "production", "publishing", "vydavatel", "noviny", "magazín",
   "rozhlas", "televize", "studio film", "post-production",
 ];
 
+const PRAVNI_FORMA_RATCHET = [
+  null,
+  { pravniForma: ["121"] },
+  { pravniForma: ["112"], sidloKodObce: 554782 },
+  { pravniForma: ["112"], sidloKodObce: 582786 },
+];
+
 function loadState() {
   if (!existsSync(STATE_FILE)) return { keywordIndex: 0 };
-  try {
-    return JSON.parse(readFileSync(STATE_FILE, "utf8"));
-  } catch {
-    return { keywordIndex: 0 };
-  }
+  try { return JSON.parse(readFileSync(STATE_FILE, "utf8")); } catch { return { keywordIndex: 0 }; }
 }
 
 function saveState(state) {
   writeFileSync(STATE_FILE, JSON.stringify(state, null, 2));
 }
 
-async function processIco(ico, current) {
-  // Skip pokud už máme
-  if (current.subjects[ico]) return null;
-
+async function processIco(ico, knownIcos) {
+  if (knownIcos.has(ico)) return null;
   try {
     const [subject, vr] = await Promise.allSettled([
       fetchAresSubject(ico),
@@ -91,195 +82,92 @@ async function processIco(ico, current) {
     if (!sub) return null;
 
     const vrVal = vr.status === "fulfilled" ? vr.value : null;
-    const obchodniJmeno =
-      sub.obchodniJmeno ?? currentObchodniJmeno(vrVal) ?? null;
-
-    const additions = {
-      subjects: {},
-      persons: {},
-      personsTentative: {},
-      ownership: {},
-    };
-
-    additions.subjects[ico] = {
-      ico,
-      obchodniJmeno,
-      seenAt: Date.now(),
-    };
+    const obchodniJmeno = sub.obchodniJmeno ?? currentObchodniJmeno(vrVal) ?? null;
+    upsertSubject(ico, obchodniJmeno);
+    knownIcos.add(ico);
 
     if (vrVal) {
       const { memberships, tentativeMemberships, ownership } = extractFromVr(vrVal, ico, obchodniJmeno);
-      for (const m of memberships) {
-        const key = makePersonKey(m.jmeno, m.prijmeni, m.datumNarozeni);
-        if (!additions.persons[key]) {
-          additions.persons[key] = {
-            displayName: `${m.jmeno} ${m.prijmeni}`,
-            jmeno: m.jmeno,
-            prijmeni: m.prijmeni,
-            titulPred: m.titulPred,
-            datumNarozeni: m.datumNarozeni,
-            memberships: [],
-          };
-        }
-        additions.persons[key].memberships.push({
-          ico: m.ico,
-          obchodniJmeno: m.obchodniJmeno,
-          funkce: m.funkce,
-          organ: m.organ,
-          datumZapisu: m.datumZapisu,
-          datumVymazu: m.datumVymazu,
-          source: "ARES_VR",
-          seenAt: Date.now(),
-        });
-      }
-      for (const m of tentativeMemberships) {
-        const tkey = m.jmeno.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().trim()
-          + "|"
-          + m.prijmeni.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().trim();
-        if (!additions.personsTentative[tkey]) {
-          additions.personsTentative[tkey] = {
-            displayName: `${m.jmeno} ${m.prijmeni}`,
-            jmeno: m.jmeno,
-            prijmeni: m.prijmeni,
-            memberships: [],
-          };
-        }
-        additions.personsTentative[tkey].memberships.push({
-          ico: m.ico,
-          obchodniJmeno: m.obchodniJmeno,
-          funkce: m.funkce,
-          organ: m.organ,
-          datumZapisu: m.datumZapisu,
-          datumVymazu: m.datumVymazu,
-          source: "ARES_VR",
-          seenAt: Date.now(),
-        });
-      }
-      for (const e of ownership) {
-        (additions.ownership[e.parentIco] ??= []).push(e);
-      }
+      for (const m of memberships) upsertMembership(m);
+      for (const m of tentativeMemberships) upsertTentativeMembership(m);
+      for (const e of ownership) upsertOwnership(e);
     }
-
-    return additions;
+    return { ico, obchodniJmeno };
   } catch (err) {
     console.error(`  fail ${ico}:`, err.message);
     return null;
   }
 }
 
-async function getOrphanParents(idx, max) {
-  const orphans = [];
-  for (const parentIco of Object.keys(idx.ownership?.byParent ?? {})) {
-    if (!idx.subjects[parentIco]) {
-      orphans.push(parentIco);
-      if (orphans.length >= max) break;
-    }
-  }
-  return orphans;
-}
-
-// Pravní formy pro zúžení wide keywords. ARES ratchet — když query
-// vrátí >1000 hits, postupně přidáváme filter pravniForma. 112=s.r.o.,
-// 101=fyzická osoba podnikající, 121=a.s.
-const PRAVNI_FORMA_RATCHET = [
-  null,                                  // bez filtru
-  { pravniForma: ["121"] },              // a.s. (méně početné)
-  { pravniForma: ["112"], sidloKodObce: 554782 }, // s.r.o. + Praha
-  { pravniForma: ["112"], sidloKodObce: 582786 }, // s.r.o. + Brno
-];
-
-async function harvestKeyword(keyword, idx, max) {
+async function harvestKeyword(keyword, knownIcos, max) {
   console.log(`Keyword "${keyword}" → ARES search`);
   for (const filter of PRAVNI_FORMA_RATCHET) {
     const { tooMany, results } = await searchAresByName(keyword, 100, filter ?? {});
     if (tooMany) {
-      console.log(`  filter ${JSON.stringify(filter) ?? "{}"} → too many, retry s užším filtrem`);
+      console.log(`  filter ${JSON.stringify(filter) ?? "{}"} → too many, retry`);
       continue;
     }
     const newIcos = [];
     for (const r of results) {
       const ico = String(r.ico ?? "").padStart(8, "0");
       if (!/^\d{8}$/.test(ico)) continue;
-      if (idx.subjects[ico]) continue;
+      if (knownIcos.has(ico)) continue;
       newIcos.push(ico);
       if (newIcos.length >= max) break;
     }
-    console.log(`  → ${results.length} hits${filter ? " (filter=" + JSON.stringify(filter) + ")" : ""}, ${newIcos.length} new`);
+    console.log(`  → ${results.length} hits, ${newIcos.length} new`);
     return newIcos;
   }
-  console.log(`  ⚠ keyword "${keyword}" vrací moc výsledků i s ratchety, skip`);
+  console.log(`  ⚠ keyword "${keyword}" vrací moc výsledků`);
   return [];
 }
 
 async function main() {
   const startedAt = Date.now();
-  const idx = loadIndex();
-  const state = loadState();
+  // Pre-load existující IČO do paměti pro rychlý lookup
+  const knownIcos = new Set(listAllSubjectIcos());
+  console.log(`Existující subjects: ${knownIcos.size}`);
 
-  const allAdditions = { subjects: {}, persons: {}, personsTentative: {}, ownership: {} };
+  const state = loadState();
   let processed = 0;
 
-  // Fáze 1: orphan parents (max polovina budget)
+  // Phase 1: orphan parents
   const orphanBudget = Math.ceil(PER_RUN / 2);
-  const orphans = await getOrphanParents(idx, orphanBudget);
-  console.log(`Orphan parents v inventory ke zpracování: ${orphans.length}`);
-
+  const orphans = listOrphanParents(orphanBudget);
+  console.log(`Orphan parents v ownership: ${orphans.length}`);
   for (const ico of orphans) {
     if (processed >= PER_RUN) break;
-    const add = await processIco(ico, idx);
+    const add = await processIco(ico, knownIcos);
     if (add) {
-      Object.assign(allAdditions.subjects, add.subjects);
-      Object.assign(allAdditions.persons, add.persons);
-      for (const [tkey, tperson] of Object.entries(add.personsTentative ?? {})) {
-        if (!allAdditions.personsTentative[tkey]) {
-          allAdditions.personsTentative[tkey] = tperson;
-        } else {
-          allAdditions.personsTentative[tkey].memberships.push(...tperson.memberships);
-        }
-      }
-      for (const [p, es] of Object.entries(add.ownership)) {
-        (allAdditions.ownership[p] ??= []).push(...es);
-      }
-      idx.subjects[ico] = add.subjects[ico];
       processed++;
-      console.log(`  + ${ico} ${add.subjects[ico].obchodniJmeno ?? ""}`);
+      console.log(`  + ${ico} ${add.obchodniJmeno ?? ""}`);
     }
   }
 
-  // Fáze 2: keyword harvest pro zbytek budgetu
+  // Phase 2: keyword rotation
   while (processed < PER_RUN) {
     const keyword = KEYWORDS[state.keywordIndex % KEYWORDS.length];
     state.keywordIndex = (state.keywordIndex + 1) % KEYWORDS.length;
-    const newIcos = await harvestKeyword(keyword, idx, PER_RUN - processed);
-
+    const newIcos = await harvestKeyword(keyword, knownIcos, PER_RUN - processed);
     for (const ico of newIcos) {
       if (processed >= PER_RUN) break;
-      const add = await processIco(ico, idx);
+      const add = await processIco(ico, knownIcos);
       if (add) {
-        Object.assign(allAdditions.subjects, add.subjects);
-        Object.assign(allAdditions.persons, add.persons);
-        for (const [p, es] of Object.entries(add.ownership)) {
-          (allAdditions.ownership[p] ??= []).push(...es);
-        }
-        idx.subjects[ico] = add.subjects[ico];
         processed++;
-        console.log(`  + ${ico} ${add.subjects[ico].obchodniJmeno ?? ""}`);
+        console.log(`  + ${ico} ${add.obchodniJmeno ?? ""}`);
       }
     }
-    // Pojistka: pokud keyword nedal žádné nové, zkus dál (max 5 keywords/běh)
     if (newIcos.length === 0 && state.keywordIndex % KEYWORDS.length === 0) break;
   }
 
-  if (processed > 0) {
-    mergeAndWrite(idx, allAdditions);
-  }
   saveState(state);
-
   const elapsed = ((Date.now() - startedAt) / 1000).toFixed(1);
-  console.log("");
-  console.log(`Drip hotovo za ${elapsed} s — ${processed} firem přidáno`);
-  console.log(`  orphan parents zbývá: ${(await getOrphanParents(idx, 9999)).length}`);
+  const s = stats();
+  console.log(`\nDrip hotovo za ${elapsed} s — ${processed} firem přidáno`);
+  console.log(`  Inventory: ${s.subjectsCount} subjektů, ${s.personsCount} osob, ${s.ownershipEdgesCount} ownership hran`);
+  console.log(`  orphan parents zbývá: ${listOrphanParents(9999).length}`);
   console.log(`  next keyword index: ${state.keywordIndex}`);
+  getDb().close();
 }
 
 main().catch((e) => {

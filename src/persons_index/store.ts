@@ -1,24 +1,30 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 /**
- * Lokální index osob → firmy, plněný inkrementálně.
+ * Thin wrapper nad SQLite db.ts. Zachovává původní exporty pro backward
+ * compatibility s consumer files (services.ts, holding/discover.ts atd.).
  *
- * Pozadí: ARES, OR ani HS neumějí veřejně vyhledat „ve kterých firmách
- * osoba X seděla". Pro VIP/politiky to HS umí přes /osoby/{nameId}, ale
- * pro běžné jednatele (Petr Dubický apod.) chybí jakákoliv cesta.
+ * Předchozí verze: in-memory + JSON soubor s debounce flush. Při růstu
+ * persons-index nad 15 MB se cold-start parse a každý write stávaly
+ * pomalými. SQLite (via better-sqlite3) řeší to definitivně — ACID,
+ * indexovaný read O(log n), transakční write.
  *
- * Tento modul řeší to inkrementálně: kdykoli ares-web zpracuje DD report
- * jakékoli firmy, vytáhneme všechny statutáře (ARES VR), členy
- * dozorčí rady, akcionáře (OR VR) a UBO (Hlídač státu) a uložíme je
- * do lokálního indexu osoba→firma. Postupně tak vzniká vlastní
- * vyhledávání napříč firmami, které uživatel kdy prošel.
- *
- * Persistence: jednoduchý JSON soubor v ARES_WEB_DATA_DIR (default
- * `./data/persons-index.json`). Žádné nativní deps, žádná DB.
- * Velikost: ~150 bajtů per membership, ~2 MB pro 10 000 záznamů.
+ * Pro migraci JSON → SQLite spusť: `node scripts/migrate_to_sqlite.mjs`
  */
 
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
-import { dirname, resolve } from "node:path";
+import {
+  dbFindPerson,
+  dbFindTentative,
+  dbGetChildrenByParent,
+  dbGetOwnershipDetails,
+  dbListSubjects,
+  dbStats,
+  dbUpsertMembership,
+  dbUpsertOwnership,
+  dbUpsertSubject,
+  dbUpsertTentativeMembership,
+} from "./db.js";
+
+// ─── Public types (původní z JSON éry) ───────────────────────────────────────
 
 export interface IndexedMembership {
   ico: string;
@@ -40,51 +46,21 @@ export interface IndexedPerson {
   memberships: IndexedMembership[];
 }
 
-/**
- * Subject = firma kterou uživatel kdykoli viděl (DD report nebo OR detail).
- * Slouží jako „inventář" pro reverse holding discovery: když rozkrýváme
- * holding parent X, projdeme všechny known subjekts a u každého
- * zkontrolujeme zda X je v jeho akcionářích/statutárech.
- */
 export interface IndexedSubject {
   ico: string;
   obchodniJmeno: string | null;
   seenAt: number;
 }
 
-/**
- * Verze 3: ownership cache — denormalizovaný index vlastnických vztahů
- * "rodič → seznam dceřinek". Plněno při DD lookup firmy z jejího
- * `akcionari[]` v ARES VR. Nahrazuje pomalé reverse scan, které volalo
- * ARES pro 800 firem živě a často timeoutovalo přes Cloudflare.
- *
- * Lookup `getChildrenByParent(parentIco)` je O(1) — žádné ARES calls
- * v reálném čase, žádný cap, žádný timeout.
- */
 export interface OwnershipEntry {
-  /** IČO dceřinky (firma vlastněná). */
   childIco: string;
-  /** IČO matky (akcionář). */
   parentIco: string;
-  /** datumZapisu z VR akcionari záznamu (null pokud neznámé). */
   validFrom: string | null;
-  /** datumVymazu z VR (null = aktivní akcionářský vztah). */
   validTo: string | null;
-  /** Zdroj vztahu. Zatím jen ARES VR akcionari, později UBO atd. */
   source: "ARES_VR_akcionari";
-  /** Kdy jsme tento vztah naposledy viděli (touch při re-fetchu). */
   seenAt: number;
 }
 
-/**
- * Verze 4: personsTentative bucket — bývalí statutáři, pro které ARES VR
- * neeviduje `datumNarozeni` (historická data oříznutá). Bez DOB nelze
- * sestavit unikátní klíč v hlavním personsIndex, takže by se tato data
- * úplně ztratila. Tentative bucket je drží pod méně přísným klíčem
- * `jmeno|prijmeni` s tím, že UI je nikdy nezobrazí jako definitivní
- * shodu — vždy jen jako „Možný jmenovec, ověř". Disambiguation přes
- * kontextové signály (overlap holdingu, NACE, časového období).
- */
 export interface IndexedTentativeMembership {
   ico: string;
   obchodniJmeno: string | null;
@@ -103,52 +79,8 @@ export interface IndexedTentativePerson {
   memberships: IndexedTentativeMembership[];
 }
 
-interface IndexFile {
-  version: number;
-  lastUpdated: string;
-  persons: Record<string, IndexedPerson>;
-  /** Verze 2: subjects index. Pro zpětnou kompatibilitu volitelný. */
-  subjects?: Record<string, IndexedSubject>;
-  /** Verze 3: ownership.byParent[parentIco] = [{childIco, ...}, ...]. */
-  ownership?: { byParent: Record<string, OwnershipEntry[]> };
-  /** Verze 4: tentative bucket — osoby bez datumNarozeni klíčované jen
-   *  podle jmeno+prijmeni. Lookup vrací „možné jmenovce", UI je vždy
-   *  označuje jako neověřené. */
-  personsTentative?: Record<string, IndexedTentativePerson>;
-}
+// ─── Key normalization (deterministic, stabilní napříč variantami) ────────────
 
-const VERSION = 4;
-const DEFAULT_DATA_DIR = "./data";
-const FILE_NAME = "persons-index.json";
-
-// Debounce: writeback se odložen o 500 ms; po dvanácti rychlých
-// updatech zapíšeme okamžitě. Chrání před přepisem souboru pro každý
-// jednotlivý request.
-const DEBOUNCE_MS = 500;
-const MAX_UNFLUSHED = 12;
-
-let memory: IndexFile = {
-  version: VERSION,
-  lastUpdated: new Date().toISOString(),
-  persons: {},
-  subjects: {},
-  ownership: { byParent: {} },
-  personsTentative: {},
-};
-let unflushed = 0;
-let flushTimer: NodeJS.Timeout | null = null;
-let loaded = false;
-
-function dataPath(): string {
-  const dir = process.env.ARES_WEB_DATA_DIR?.trim() || DEFAULT_DATA_DIR;
-  return resolve(dir, FILE_NAME);
-}
-
-/**
- * Normalizace klíče: lowercase + diacritics + collapse whitespace.
- * "Petr Dubický" + "1962-11-08" → "petr|dubicky|1962-11-08"
- * Klíč musí být deterministický a stabilní napříč variantami zápisu.
- */
 function normalize(s: string): string {
   return s
     .normalize("NFD")
@@ -162,159 +94,89 @@ function makeKey(jmeno: string, prijmeni: string, datumNarozeni: string): string
   return `${normalize(jmeno)}|${normalize(prijmeni)}|${datumNarozeni}`;
 }
 
-/** Klíč pro tentative bucket — bez DOB. Nejasný jmenovec! */
 function makeTentativeKey(jmeno: string, prijmeni: string): string {
   return `${normalize(jmeno)}|${normalize(prijmeni)}`;
 }
 
-function load(): void {
-  if (loaded) return;
-  try {
-    const path = dataPath();
-    if (existsSync(path)) {
-      const raw = readFileSync(path, "utf-8");
-      const parsed = JSON.parse(raw) as IndexFile;
-      if (parsed?.persons) {
-        // V1 → V2 → V3 → V4 migrace: subjects + ownership + personsTentative
-        // default na prázdné. Existující v3 dataset se převede transparentně.
-        memory = {
-          version: VERSION,
-          lastUpdated: parsed.lastUpdated ?? new Date().toISOString(),
-          persons: parsed.persons,
-          subjects: parsed.subjects ?? {},
-          ownership: parsed.ownership ?? { byParent: {} },
-          personsTentative: parsed.personsTentative ?? {},
-        };
-      }
-    }
-  } catch {
-    // Corrupted file → start fresh; memory už má prázdný default.
-  }
-  loaded = true;
-}
-
-function scheduleFlush(): void {
-  unflushed++;
-  if (unflushed >= MAX_UNFLUSHED) {
-    if (flushTimer) {
-      clearTimeout(flushTimer);
-      flushTimer = null;
-    }
-    flush();
-    return;
-  }
-  if (flushTimer) return;
-  flushTimer = setTimeout(() => {
-    flushTimer = null;
-    flush();
-  }, DEBOUNCE_MS);
-}
-
-function flush(): void {
-  try {
-    const path = dataPath();
-    const dir = dirname(path);
-    if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
-    memory.lastUpdated = new Date().toISOString();
-    writeFileSync(path, JSON.stringify(memory, null, 2), "utf-8");
-    unflushed = 0;
-  } catch {
-    // Disk full / read-only? Lokální index je best-effort. Nevyhazujeme.
-  }
-}
+// ─── Persons (s DOB) ──────────────────────────────────────────────────────────
 
 export interface UpsertInput {
   jmeno: string;
   prijmeni: string;
-  titulPred?: string | null;
-  displayName?: string;
+  titulPred: string | null;
+  displayName: string;
   datumNarozeni: string;
   ico: string;
-  obchodniJmeno?: string | null;
-  funkce?: string | null;
-  organ?: string | null;
-  datumZapisu?: string | null;
-  datumVymazu?: string | null;
+  obchodniJmeno: string | null;
+  funkce: string | null;
+  organ: string | null;
+  datumZapisu: string | null;
+  datumVymazu: string | null;
   source: IndexedMembership["source"];
 }
 
-/**
- * Vloží/aktualizuje membership záznam. Idempotentní — dva totožné
- * záznamy (stejné ico+funkce+source+datumZapisu) se merguji.
- */
 export function upsertMembership(input: UpsertInput): void {
-  load();
   const dob = input.datumNarozeni?.slice(0, 10);
   if (!dob || !/^\d{4}-\d{2}-\d{2}$/.test(dob)) return;
   if (!input.jmeno && !input.prijmeni) return;
-  const key = makeKey(input.jmeno, input.prijmeni, dob);
-  const now = Date.now();
-
-  let person = memory.persons[key];
-  if (!person) {
-    person = {
-      displayName: input.displayName || `${input.titulPred ? input.titulPred + " " : ""}${input.jmeno} ${input.prijmeni}`.trim(),
-      jmeno: input.jmeno,
-      prijmeni: input.prijmeni,
-      titulPred: input.titulPred ?? null,
-      datumNarozeni: dob,
-      memberships: [],
-    };
-    memory.persons[key] = person;
-  }
-
-  const newM: IndexedMembership = {
+  const personKey = makeKey(input.jmeno, input.prijmeni, dob);
+  dbUpsertMembership({
+    personKey,
+    displayName: input.displayName || `${input.titulPred ? `${input.titulPred} ` : ""}${input.jmeno} ${input.prijmeni}`.trim(),
+    jmeno: input.jmeno,
+    prijmeni: input.prijmeni,
+    titulPred: input.titulPred,
+    datumNarozeni: dob,
     ico: input.ico,
-    obchodniJmeno: input.obchodniJmeno ?? null,
-    funkce: input.funkce ?? null,
-    organ: input.organ ?? null,
-    datumZapisu: input.datumZapisu ?? null,
-    datumVymazu: input.datumVymazu ?? null,
+    obchodniJmeno: input.obchodniJmeno,
+    funkce: input.funkce,
+    organ: input.organ,
+    datumZapisu: input.datumZapisu,
+    datumVymazu: input.datumVymazu,
     source: input.source,
-    seenAt: now,
-  };
-  const existing = person.memberships.find(
-    (m) =>
-      m.ico === newM.ico &&
-      m.funkce === newM.funkce &&
-      m.source === newM.source &&
-      m.datumZapisu === newM.datumZapisu,
-  );
-  if (existing) {
-    existing.seenAt = now;
-    if (newM.datumVymazu && !existing.datumVymazu) existing.datumVymazu = newM.datumVymazu;
-    if (newM.obchodniJmeno && !existing.obchodniJmeno) existing.obchodniJmeno = newM.obchodniJmeno;
-  } else {
-    person.memberships.push(newM);
-  }
-  scheduleFlush();
+  });
 }
 
-/** Zaznamenej, že uživatel viděl firmu s tímto IČO. Slouží pro reverse
- *  holding discovery — projít všechny known subjekts a u každého
- *  zkontrolovat zda parent IČO je akcionář/statutář. */
+export function findMemberships(
+  jmeno: string,
+  prijmeni: string,
+  datumNarozeni: string,
+): IndexedPerson | null {
+  const dob = datumNarozeni.slice(0, 10);
+  const key = makeKey(jmeno, prijmeni, dob);
+  const person = dbFindPerson(key);
+  if (!person) return null;
+  return {
+    displayName: person.displayName,
+    jmeno: person.jmeno,
+    prijmeni: person.prijmeni,
+    titulPred: person.titulPred,
+    datumNarozeni: person.datumNarozeni,
+    memberships: person.memberships.map((m) => ({
+      ico: m.ico,
+      obchodniJmeno: m.obchodniJmeno,
+      funkce: m.funkce || null,
+      organ: m.organ,
+      datumZapisu: m.datumZapisu || null,
+      datumVymazu: m.datumVymazu,
+      source: m.source as IndexedMembership["source"],
+      seenAt: m.seenAt,
+    })),
+  };
+}
+
+// ─── Subjects ─────────────────────────────────────────────────────────────────
+
 export function upsertSubject(ico: string, obchodniJmeno?: string | null): void {
-  load();
-  const key = ico.replace(/\D/g, "").padStart(8, "0");
-  if (!/^\d{8}$/.test(key)) return;
-  memory.subjects ??= {};
-  const existing = memory.subjects[key];
-  memory.subjects[key] = {
-    ico: key,
-    obchodniJmeno: obchodniJmeno ?? existing?.obchodniJmeno ?? null,
-    seenAt: Date.now(),
-  };
-  scheduleFlush();
+  dbUpsertSubject(ico, obchodniJmeno ?? null);
 }
 
-/** Seznam všech known subjekts (firmy z DD historie). */
 export function listSubjects(): IndexedSubject[] {
-  load();
-  return Object.values(memory.subjects ?? {});
+  return dbListSubjects();
 }
 
-/** Upsert ownership relace parent → child z VR akcionari záznamu.
- *  Idempotentní podle (childIco, parentIco, validFrom). */
+// ─── Ownership ────────────────────────────────────────────────────────────────
+
 export function upsertOwnership(input: {
   childIco: string;
   parentIco: string;
@@ -322,63 +184,38 @@ export function upsertOwnership(input: {
   validTo: string | null;
   source?: OwnershipEntry["source"];
 }): void {
-  load();
-  const child = input.childIco.replace(/\D/g, "").padStart(8, "0");
-  const parent = input.parentIco.replace(/\D/g, "").padStart(8, "0");
-  if (!/^\d{8}$/.test(child) || !/^\d{8}$/.test(parent)) return;
-  if (child === parent) return;
-  memory.ownership ??= { byParent: {} };
-  const entries = (memory.ownership.byParent[parent] ??= []);
-  const now = Date.now();
-  const existing = entries.find(
-    (e) => e.childIco === child && (e.validFrom ?? null) === (input.validFrom ?? null),
-  );
-  if (existing) {
-    existing.seenAt = now;
-    if (input.validTo && !existing.validTo) existing.validTo = input.validTo;
-  } else {
-    entries.push({
-      childIco: child,
-      parentIco: parent,
-      validFrom: input.validFrom ?? null,
-      validTo: input.validTo ?? null,
-      source: input.source ?? "ARES_VR_akcionari",
-      seenAt: now,
-    });
-  }
-  scheduleFlush();
+  dbUpsertOwnership({
+    childIco: input.childIco,
+    parentIco: input.parentIco,
+    validFrom: input.validFrom,
+    validTo: input.validTo,
+    source: input.source ?? "ARES_VR_akcionari",
+  });
 }
 
-/** O(1) lookup: vrať seznam dceřinek pro daný parent IČO.
- *  `includeHistorical=false` filtruje pryč záznamy s validTo (vymazané). */
 export function getChildrenByParent(
   parentIco: string,
   includeHistorical = false,
 ): string[] {
-  load();
-  const parent = parentIco.replace(/\D/g, "").padStart(8, "0");
-  const entries = memory.ownership?.byParent[parent] ?? [];
-  const filtered = includeHistorical ? entries : entries.filter((e) => !e.validTo);
-  return [...new Set(filtered.map((e) => e.childIco))];
+  return dbGetChildrenByParent(parentIco, includeHistorical);
 }
 
-/** Vrať raw OwnershipEntry[] pro debug / UI tooltip (datum od/do, source). */
 export function getOwnershipDetails(
   parentIco: string,
   includeHistorical = false,
 ): OwnershipEntry[] {
-  load();
-  const parent = parentIco.replace(/\D/g, "").padStart(8, "0");
-  const entries = memory.ownership?.byParent[parent] ?? [];
-  return includeHistorical ? entries : entries.filter((e) => !e.validTo);
+  return dbGetOwnershipDetails(parentIco, includeHistorical).map((d) => ({
+    childIco: d.childIco,
+    parentIco: d.parentIco,
+    validFrom: d.validFrom || null,
+    validTo: d.validTo,
+    source: d.source as OwnershipEntry["source"],
+    seenAt: d.seenAt,
+  }));
 }
 
-/** Najdi všechny memberships osoby. */
-/**
- * Vlož tentative membership — osobu BEZ data narození. Používáno
- * pro historické statutáře, pro které ARES neeviduje DOB. Vrácený match
- * při lookupu je vždy označen jako „možný jmenovec".
- */
+// ─── Tentative ────────────────────────────────────────────────────────────────
+
 export function upsertTentativeMembership(input: {
   jmeno: string;
   prijmeni: string;
@@ -391,22 +228,13 @@ export function upsertTentativeMembership(input: {
   datumVymazu?: string | null;
   source: IndexedTentativeMembership["source"];
 }): void {
-  load();
   if (!input.jmeno || !input.prijmeni || !input.ico) return;
-  const key = makeTentativeKey(input.jmeno, input.prijmeni);
-  memory.personsTentative ??= {};
-  let person = memory.personsTentative[key];
-  if (!person) {
-    person = {
-      displayName: input.displayName,
-      jmeno: input.jmeno,
-      prijmeni: input.prijmeni,
-      memberships: [],
-    };
-    memory.personsTentative[key] = person;
-  }
-  const now = Date.now();
-  const newM: IndexedTentativeMembership = {
+  const tentativeKey = makeTentativeKey(input.jmeno, input.prijmeni);
+  dbUpsertTentativeMembership({
+    tentativeKey,
+    displayName: input.displayName,
+    jmeno: input.jmeno,
+    prijmeni: input.prijmeni,
     ico: input.ico,
     obchodniJmeno: input.obchodniJmeno ?? null,
     funkce: input.funkce ?? null,
@@ -414,45 +242,34 @@ export function upsertTentativeMembership(input: {
     datumZapisu: input.datumZapisu ?? null,
     datumVymazu: input.datumVymazu ?? null,
     source: input.source,
-    seenAt: now,
-  };
-  const existing = person.memberships.find(
-    (m) =>
-      m.ico === newM.ico &&
-      m.funkce === newM.funkce &&
-      m.source === newM.source &&
-      m.datumZapisu === newM.datumZapisu,
-  );
-  if (existing) {
-    existing.seenAt = now;
-    if (newM.datumVymazu && !existing.datumVymazu) existing.datumVymazu = newM.datumVymazu;
-    if (newM.obchodniJmeno && !existing.obchodniJmeno) existing.obchodniJmeno = newM.obchodniJmeno;
-  } else {
-    person.memberships.push(newM);
-  }
-  scheduleFlush();
+  });
 }
 
-/** Vyhledej tentative kandidáty pro jmeno+prijmeni (bez DOB). */
 export function findTentativeMemberships(
   jmeno: string,
   prijmeni: string,
 ): IndexedTentativePerson | null {
-  load();
   const key = makeTentativeKey(jmeno, prijmeni);
-  return memory.personsTentative?.[key] ?? null;
+  const person = dbFindTentative(key);
+  if (!person) return null;
+  return {
+    displayName: person.displayName,
+    jmeno: person.jmeno,
+    prijmeni: person.prijmeni,
+    memberships: person.memberships.map((m) => ({
+      ico: m.ico,
+      obchodniJmeno: m.obchodniJmeno,
+      funkce: m.funkce || null,
+      organ: m.organ,
+      datumZapisu: m.datumZapisu || null,
+      datumVymazu: m.datumVymazu,
+      source: m.source as IndexedTentativeMembership["source"],
+      seenAt: m.seenAt,
+    })),
+  };
 }
 
-export function findMemberships(
-  jmeno: string,
-  prijmeni: string,
-  datumNarozeni: string,
-): IndexedPerson | null {
-  load();
-  const dob = datumNarozeni.slice(0, 10);
-  const key = makeKey(jmeno, prijmeni, dob);
-  return memory.persons[key] ?? null;
-}
+// ─── Stats ────────────────────────────────────────────────────────────────────
 
 export function indexStats(): {
   personsCount: number;
@@ -465,30 +282,22 @@ export function indexStats(): {
   lastUpdated: string;
   path: string;
 } {
-  load();
-  let count = 0;
-  for (const p of Object.values(memory.persons)) count += p.memberships.length;
-  let edges = 0;
-  for (const list of Object.values(memory.ownership?.byParent ?? {})) edges += list.length;
-  let tentativeMembers = 0;
-  for (const p of Object.values(memory.personsTentative ?? {})) tentativeMembers += p.memberships.length;
+  const s = dbStats();
   return {
-    personsCount: Object.keys(memory.persons).length,
-    membershipsCount: count,
-    subjectsCount: Object.keys(memory.subjects ?? {}).length,
-    ownershipParentsCount: Object.keys(memory.ownership?.byParent ?? {}).length,
-    ownershipEdgesCount: edges,
-    tentativeCount: Object.keys(memory.personsTentative ?? {}).length,
-    tentativeMembershipsCount: tentativeMembers,
-    lastUpdated: memory.lastUpdated,
-    path: dataPath(),
+    personsCount: s.personsCount,
+    membershipsCount: s.membershipsCount,
+    subjectsCount: s.subjectsCount,
+    ownershipParentsCount: s.ownershipParentsCount,
+    ownershipEdgesCount: s.ownershipEdgesCount,
+    tentativeCount: s.tentativeCount,
+    tentativeMembershipsCount: s.tentativeMembershipsCount,
+    lastUpdated: new Date().toISOString(),
+    path: s.path,
   };
 }
 
+/** Legacy no-op. Dříve flush JSON, teď SQLite je transactional auto-commit. */
 export function forceFlush(): void {
-  if (flushTimer) {
-    clearTimeout(flushTimer);
-    flushTimer = null;
-  }
-  flush();
+  // SQLite WAL flush by se dělal přes db.pragma('wal_checkpoint(TRUNCATE)'),
+  // ale není potřeba — Node.js process exit volá close handler automaticky.
 }

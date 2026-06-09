@@ -2,121 +2,111 @@
 /*
  * Sdílené helpery pro drip_harvest + refresh_existing + backfill_ownership.
  *
- * Hlavní problém: tyto skripty běží jako samostatný node process, ale
- * server icovazby zapisuje do stejného persons-index.json. Race se
- * minimalizuje takto:
- *   1. Skript načte stav, něco vypočte, fetchne ARES.
- *   2. Těsně před zápisem se znovu načte aktuální stav ze souboru
- *      (server mohl mezitím zapsat) a merge se s novými daty skriptu.
- *   3. Atomic write (temp + rename) — soubor není nikdy částečně přepsaný.
- *
- * Konflikt by mohl ztratit jen několik vteřin user clickových upsertů.
- * Při SQLite migraci se to vyřeší definitivně.
+ * Od R1 (SQLite migrace): scripts píší přímo do SQLite přes better-sqlite3.
+ * Žádný race s běžícím serverem — SQLite má WAL mode, multiple readers +
+ * one writer současně. Server čte při dotazu, scripts příležitostně píší.
  */
 
-import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
-import { resolve } from "node:path";
+import { existsSync, mkdirSync } from "node:fs";
+import { dirname, resolve } from "node:path";
+import Database from "better-sqlite3";
 
 const DATA_DIR = process.env.ARES_WEB_DATA_DIR?.trim() || "./data";
-export const INDEX_FILE = resolve(DATA_DIR, "persons-index.json");
+export const DB_FILE = resolve(DATA_DIR, "persons-index.sqlite");
 export const ARES_BASE = "https://ares.gov.cz/ekonomicke-subjekty-v-be/rest";
 
-export function loadIndex() {
-  if (!existsSync(INDEX_FILE)) {
-    return {
-      version: 4,
-      lastUpdated: new Date().toISOString(),
-      persons: {},
-      subjects: {},
-      ownership: { byParent: {} },
-      personsTentative: {},
-    };
-  }
-  const raw = JSON.parse(readFileSync(INDEX_FILE, "utf8"));
-  raw.subjects ??= {};
-  raw.persons ??= {};
-  raw.ownership ??= { byParent: {} };
-  raw.personsTentative ??= {};
-  return raw;
-}
+let dbInstance = null;
 
-export function atomicWrite(data) {
-  data.lastUpdated = new Date().toISOString();
-  const dir = resolve(INDEX_FILE, "..");
+export function getDb() {
+  if (dbInstance) return dbInstance;
+  const dir = dirname(DB_FILE);
   if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
-  const tmp = `${INDEX_FILE}.tmp.${process.pid}`;
-  writeFileSync(tmp, JSON.stringify(data, null, 2));
-  renameSync(tmp, INDEX_FILE);
+  dbInstance = new Database(DB_FILE);
+  dbInstance.pragma("journal_mode = WAL");
+  dbInstance.pragma("synchronous = NORMAL");
+  dbInstance.pragma("foreign_keys = ON");
+  // Schema je vytvořeno serverem nebo migration scriptem. Pokud DB neexistuje,
+  // ujišťujeme se jen že tabulky existují (no-op pokud už jsou).
+  dbInstance.exec(`
+    CREATE TABLE IF NOT EXISTS subjects (
+      ico TEXT PRIMARY KEY,
+      obchodni_jmeno TEXT,
+      seen_at INTEGER NOT NULL
+    );
+    CREATE TABLE IF NOT EXISTS persons (
+      person_key TEXT PRIMARY KEY,
+      display_name TEXT NOT NULL,
+      jmeno TEXT NOT NULL,
+      prijmeni TEXT NOT NULL,
+      titul_pred TEXT,
+      datum_narozeni TEXT NOT NULL
+    );
+    CREATE TABLE IF NOT EXISTS memberships (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      person_key TEXT NOT NULL,
+      ico TEXT NOT NULL,
+      obchodni_jmeno TEXT,
+      funkce TEXT NOT NULL DEFAULT '',
+      organ TEXT,
+      datum_zapisu TEXT NOT NULL DEFAULT '',
+      datum_vymazu TEXT,
+      source TEXT NOT NULL,
+      seen_at INTEGER NOT NULL,
+      UNIQUE(person_key, ico, funkce, source, datum_zapisu)
+    );
+    CREATE TABLE IF NOT EXISTS ownership (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      parent_ico TEXT NOT NULL,
+      child_ico TEXT NOT NULL,
+      valid_from TEXT NOT NULL DEFAULT '',
+      valid_to TEXT,
+      source TEXT NOT NULL,
+      seen_at INTEGER NOT NULL,
+      UNIQUE(parent_ico, child_ico, valid_from)
+    );
+    CREATE TABLE IF NOT EXISTS persons_tentative (
+      tentative_key TEXT PRIMARY KEY,
+      display_name TEXT NOT NULL,
+      jmeno TEXT NOT NULL,
+      prijmeni TEXT NOT NULL
+    );
+    CREATE TABLE IF NOT EXISTS memberships_tentative (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      tentative_key TEXT NOT NULL,
+      ico TEXT NOT NULL,
+      obchodni_jmeno TEXT,
+      funkce TEXT NOT NULL DEFAULT '',
+      organ TEXT,
+      datum_zapisu TEXT NOT NULL DEFAULT '',
+      datum_vymazu TEXT,
+      source TEXT NOT NULL,
+      seen_at INTEGER NOT NULL,
+      UNIQUE(tentative_key, ico, funkce, source, datum_zapisu)
+    );
+  `);
+  return dbInstance;
 }
 
-/**
- * Re-read fresh state ze souboru, merge new* záznamy ze skriptu do něj
- * a atomic-write. Skript volá vždy po dokončení batchu.
- */
-export function mergeAndWrite(scriptState, additions) {
-  const fresh = loadIndex();
-
-  // Merge subjects: skript je autoritativní u entry kterou právě zapsal
-  for (const [ico, sub] of Object.entries(additions.subjects ?? {})) {
-    fresh.subjects[ico] = sub;
-  }
-
-  // Merge persons: appendovat nové memberships do existujících klíčů
-  for (const [key, person] of Object.entries(additions.persons ?? {})) {
-    if (!fresh.persons[key]) {
-      fresh.persons[key] = person;
-    } else {
-      const existing = fresh.persons[key];
-      const seen = new Set(
-        existing.memberships.map(
-          (m) => `${m.ico}|${m.funkce}|${m.source}|${m.datumZapisu ?? ""}`,
-        ),
-      );
-      for (const m of person.memberships) {
-        const sig = `${m.ico}|${m.funkce}|${m.source}|${m.datumZapisu ?? ""}`;
-        if (!seen.has(sig)) existing.memberships.push(m);
-      }
-    }
-  }
-
-  // Merge personsTentative — klíč jmeno|prijmeni bez DOB, sloučit memberships
-  fresh.personsTentative ??= {};
-  for (const [key, person] of Object.entries(additions.personsTentative ?? {})) {
-    if (!fresh.personsTentative[key]) {
-      fresh.personsTentative[key] = person;
-    } else {
-      const existing = fresh.personsTentative[key];
-      const seen = new Set(
-        existing.memberships.map(
-          (m) => `${m.ico}|${m.funkce}|${m.source}|${m.datumZapisu ?? ""}`,
-        ),
-      );
-      for (const m of person.memberships) {
-        const sig = `${m.ico}|${m.funkce}|${m.source}|${m.datumZapisu ?? ""}`;
-        if (!seen.has(sig)) existing.memberships.push(m);
-      }
-    }
-  }
-
-  // Merge ownership.byParent: append idempotentně podle (childIco, validFrom)
-  for (const [parent, edges] of Object.entries(additions.ownership ?? {})) {
-    const list = (fresh.ownership.byParent[parent] ??= []);
-    for (const e of edges) {
-      const exists = list.find(
-        (x) => x.childIco === e.childIco && (x.validFrom ?? null) === (e.validFrom ?? null),
-      );
-      if (exists) {
-        exists.seenAt = Date.now();
-        if (e.validTo && !exists.validTo) exists.validTo = e.validTo;
-      } else {
-        list.push(e);
-      }
-    }
-  }
-
-  atomicWrite(fresh);
-  return fresh;
+function normalize(s) {
+  return s
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim();
 }
+
+function makePersonKey(jmeno, prijmeni, datumNarozeni) {
+  return `${normalize(jmeno)}|${normalize(prijmeni)}|${datumNarozeni.slice(0, 10)}`;
+}
+
+function makeTentativeKey(jmeno, prijmeni) {
+  return `${normalize(jmeno)}|${normalize(prijmeni)}`;
+}
+
+export { makePersonKey, makeTentativeKey };
+
+// ─── ARES wrappers ────────────────────────────────────────────────────────────
 
 export async function fetchAresSubject(ico) {
   const res = await fetch(`${ARES_BASE}/ekonomicke-subjekty/${ico}`, {
@@ -136,15 +126,6 @@ export async function fetchAresVr(ico) {
   return await res.json();
 }
 
-/**
- * ARES search po `obchodniJmeno`. Když query vrací >1000 hits, ARES
- * odpoví 400 s `VYSTUP_PRILIS_MNOHO_VYSLEDKU` — vrátíme prázdné pole
- * a caller přejde na další keyword.
- *
- * Volitelně lze přidat `extraFilter` (pravniForma, czNace, sidloKodObce)
- * pro zúžení widow-keywords. Drip harvest rotuje pravniForma=112 (s.r.o.)
- * pro nejhrubší keywords.
- */
 export async function searchAresByName(query, max = 100, extraFilter = {}) {
   const body = { obchodniJmeno: query, pocet: max, start: 0, ...extraFilter };
   const res = await fetch(`${ARES_BASE}/ekonomicke-subjekty/vyhledat`, {
@@ -153,7 +134,6 @@ export async function searchAresByName(query, max = 100, extraFilter = {}) {
     body: JSON.stringify(body),
   });
   if (res.status === 400) {
-    // Pravděpodobně "too many results" — neberme to jako fatal
     const json = await res.json().catch(() => ({}));
     if (json.subKod === "VYSTUP_PRILIS_MNOHO_VYSLEDKU") {
       return { tooMany: true, results: [] };
@@ -165,22 +145,8 @@ export async function searchAresByName(query, max = 100, extraFilter = {}) {
   return { tooMany: false, results: json.ekonomickeSubjekty ?? [] };
 }
 
-/** Normalize CZ name → person index key (NFD strip + lowercase + collapse). */
-export function makePersonKey(jmeno, prijmeni, datumNarozeni) {
-  const norm = (s) =>
-    s
-      .normalize("NFD")
-      .replace(/[̀-ͯ]/g, "")
-      .toLowerCase()
-      .trim()
-      .replace(/\s+/g, " ");
-  return `${norm(jmeno)}|${norm(prijmeni)}|${datumNarozeni.slice(0, 10)}`;
-}
+// ─── VR extraction (statutáři + akcionáři + společníci) ──────────────────────
 
-/**
- * Extrahuj statutáry + akcionáře/společníky-PO z VR záznamu.
- * Vrátí { memberships: [...], ownership: [...] }.
- */
 export function extractFromVr(vr, ico, obchodniJmeno) {
   const memberships = [];
   const tentativeMemberships = [];
@@ -188,7 +154,6 @@ export function extractFromVr(vr, ico, obchodniJmeno) {
   if (!vr?.zaznamy) return { memberships, tentativeMemberships, ownership };
 
   for (const zaznam of vr.zaznamy) {
-    // Statutáři (fyzické osoby = jednatelé/členové DR)
     for (const organ of zaznam.statutarniOrgany ?? []) {
       for (const clen of organ.clenoveOrganu ?? []) {
         const fo = clen.fyzickaOsoba;
@@ -207,13 +172,10 @@ export function extractFromVr(vr, ico, obchodniJmeno) {
         if (fo.datumNarozeni) {
           memberships.push({ ...base, datumNarozeni: fo.datumNarozeni });
         } else {
-          // Bývalí statutáři před cca 2014 — DOB v ARES VR chybí.
-          // Půjde do tentative bucketu jako „možný jmenovec".
           tentativeMemberships.push(base);
         }
       }
     }
-    // Akcionáři (a.s.) — vnořené bloky
     for (const blok of zaznam.akcionari ?? []) {
       for (const clen of blok.clenoveOrganu ?? []) {
         const parentIco = clen.pravnickaOsoba?.ico;
@@ -224,11 +186,9 @@ export function extractFromVr(vr, ico, obchodniJmeno) {
           validFrom: clen.datumZapisu ?? blok.datumZapisu ?? null,
           validTo: clen.datumVymazu ?? blok.datumVymazu ?? null,
           source: "ARES_VR_akcionari",
-          seenAt: Date.now(),
         });
       }
     }
-    // Společníci (s.r.o.) — flat list
     for (const clen of zaznam.spolecnici ?? []) {
       const parentIco = clen.pravnickaOsoba?.ico;
       if (!parentIco || !/^\d{7,8}$/.test(parentIco)) continue;
@@ -238,14 +198,12 @@ export function extractFromVr(vr, ico, obchodniJmeno) {
         validFrom: clen.datumZapisu ?? null,
         validTo: clen.datumVymazu ?? null,
         source: "ARES_VR_akcionari",
-        seenAt: Date.now(),
       });
     }
   }
   return { memberships, tentativeMemberships, ownership };
 }
 
-/** Vrátí aktuální obchodní jméno z primárního VR záznamu. */
 export function currentObchodniJmeno(vr) {
   if (!vr?.zaznamy) return null;
   const primary = vr.zaznamy.find((z) => z.primarniZaznam) ?? vr.zaznamy[0];
@@ -256,6 +214,135 @@ export function currentObchodniJmeno(vr) {
   return primary.obchodniJmeno[0]?.hodnota ?? null;
 }
 
-export function nowMs() {
-  return Date.now();
+// ─── SQLite writers (batch-friendly) ──────────────────────────────────────────
+
+export function upsertSubject(ico, obchodniJmeno) {
+  const db = getDb();
+  const key = String(ico).replace(/\D/g, "").padStart(8, "0");
+  if (!/^\d{8}$/.test(key)) return;
+  db.prepare(`
+    INSERT INTO subjects (ico, obchodni_jmeno, seen_at) VALUES (?, ?, ?)
+    ON CONFLICT(ico) DO UPDATE SET
+      obchodni_jmeno = COALESCE(excluded.obchodni_jmeno, obchodni_jmeno),
+      seen_at = excluded.seen_at
+  `).run(key, obchodniJmeno ?? null, Date.now());
+}
+
+export function upsertMembership(m) {
+  if (!m.datumNarozeni || !/^\d{4}-\d{2}-\d{2}/.test(m.datumNarozeni)) return;
+  const personKey = makePersonKey(m.jmeno, m.prijmeni, m.datumNarozeni);
+  const db = getDb();
+  const now = Date.now();
+  db.prepare(`
+    INSERT INTO persons (person_key, display_name, jmeno, prijmeni, titul_pred, datum_narozeni)
+    VALUES (?, ?, ?, ?, ?, ?)
+    ON CONFLICT(person_key) DO NOTHING
+  `).run(
+    personKey,
+    `${m.jmeno} ${m.prijmeni}`,
+    m.jmeno,
+    m.prijmeni,
+    m.titulPred ?? null,
+    m.datumNarozeni.slice(0, 10),
+  );
+  db.prepare(`
+    INSERT INTO memberships (person_key, ico, obchodni_jmeno, funkce, organ, datum_zapisu, datum_vymazu, source, seen_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+    ON CONFLICT DO UPDATE SET
+      seen_at = excluded.seen_at,
+      datum_vymazu = COALESCE(excluded.datum_vymazu, datum_vymazu),
+      obchodni_jmeno = COALESCE(excluded.obchodni_jmeno, obchodni_jmeno)
+  `).run(
+    personKey,
+    m.ico,
+    m.obchodniJmeno ?? null,
+    m.funkce ?? "",
+    m.organ ?? null,
+    m.datumZapisu ?? "",
+    m.datumVymazu ?? null,
+    "ARES_VR",
+    now,
+  );
+}
+
+export function upsertTentativeMembership(m) {
+  if (!m.jmeno || !m.prijmeni) return;
+  const tkey = makeTentativeKey(m.jmeno, m.prijmeni);
+  const db = getDb();
+  const now = Date.now();
+  db.prepare(`
+    INSERT INTO persons_tentative (tentative_key, display_name, jmeno, prijmeni)
+    VALUES (?, ?, ?, ?)
+    ON CONFLICT(tentative_key) DO NOTHING
+  `).run(tkey, `${m.jmeno} ${m.prijmeni}`, m.jmeno, m.prijmeni);
+  db.prepare(`
+    INSERT INTO memberships_tentative (tentative_key, ico, obchodni_jmeno, funkce, organ, datum_zapisu, datum_vymazu, source, seen_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+    ON CONFLICT DO UPDATE SET
+      seen_at = excluded.seen_at,
+      datum_vymazu = COALESCE(excluded.datum_vymazu, datum_vymazu),
+      obchodni_jmeno = COALESCE(excluded.obchodni_jmeno, obchodni_jmeno)
+  `).run(
+    tkey,
+    m.ico,
+    m.obchodniJmeno ?? null,
+    m.funkce ?? "",
+    m.organ ?? null,
+    m.datumZapisu ?? "",
+    m.datumVymazu ?? null,
+    "ARES_VR",
+    now,
+  );
+}
+
+export function upsertOwnership(e) {
+  const db = getDb();
+  const child = String(e.childIco).replace(/\D/g, "").padStart(8, "0");
+  const parent = String(e.parentIco).replace(/\D/g, "").padStart(8, "0");
+  if (!/^\d{8}$/.test(child) || !/^\d{8}$/.test(parent) || child === parent) return;
+  db.prepare(`
+    INSERT INTO ownership (parent_ico, child_ico, valid_from, valid_to, source, seen_at)
+    VALUES (?, ?, ?, ?, ?, ?)
+    ON CONFLICT DO UPDATE SET
+      seen_at = excluded.seen_at,
+      valid_to = COALESCE(excluded.valid_to, valid_to)
+  `).run(parent, child, e.validFrom ?? "", e.validTo ?? null, e.source ?? "ARES_VR_akcionari", Date.now());
+}
+
+// ─── Read helpers ─────────────────────────────────────────────────────────────
+
+export function listAllSubjectIcos() {
+  return getDb().prepare(`SELECT ico FROM subjects`).all().map((r) => r.ico);
+}
+
+export function listOrphanParents(limit = 50) {
+  // Parenty v ownership.byParent kteří NEJSOU v subjects.
+  return getDb().prepare(`
+    SELECT DISTINCT o.parent_ico AS ico
+    FROM ownership o
+    LEFT JOIN subjects s ON s.ico = o.parent_ico
+    WHERE s.ico IS NULL
+    LIMIT ?
+  `).all(limit).map((r) => r.ico);
+}
+
+export function listOldestSubjects(limit) {
+  return getDb().prepare(`
+    SELECT ico, obchodni_jmeno AS obchodniJmeno, seen_at AS seenAt
+    FROM subjects
+    ORDER BY seen_at ASC
+    LIMIT ?
+  `).all(limit);
+}
+
+export function stats() {
+  const db = getDb();
+  const num = (sql) => db.prepare(sql).get().c;
+  return {
+    subjectsCount: num(`SELECT COUNT(*) AS c FROM subjects`),
+    personsCount: num(`SELECT COUNT(*) AS c FROM persons`),
+    membershipsCount: num(`SELECT COUNT(*) AS c FROM memberships`),
+    ownershipEdgesCount: num(`SELECT COUNT(*) AS c FROM ownership`),
+    tentativeCount: num(`SELECT COUNT(*) AS c FROM persons_tentative`),
+  };
 }

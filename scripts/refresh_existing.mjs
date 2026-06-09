@@ -1,169 +1,74 @@
 #!/usr/bin/env node
 // SPDX-License-Identifier: AGPL-3.0-or-later
 /*
- * Refresh existing — týdenní cron, re-fetchne ARES VR pro nejstarší
- * subjekty v inventory a updatuje memberships + ownership. Tím chytíme
- * změny ve statutárním orgánu, akcionářích a společnících (běžná
- * fluktuace v živých firmách).
- *
- * Strategie: vezmeme 2000 subjektů s nejstarším `seenAt`. Default cap
- * REFRESH_BATCH=2000 → při 16k inventory full cycle za ~8 týdnů.
- *
- * Atomic write merge s běžícím serverem — viz _shared.mjs.
+ * Refresh existing — týdenní cron. Re-fetchne ARES VR pro 2000 nejstarších
+ * subjektů, updatuje memberships + ownership v SQLite (transactional, safe).
  */
 
 import {
-  loadIndex,
-  mergeAndWrite,
   fetchAresVr,
-  makePersonKey,
   extractFromVr,
+  upsertMembership,
+  upsertTentativeMembership,
+  upsertOwnership,
+  upsertSubject,
+  listOldestSubjects,
+  getDb,
+  stats,
 } from "./_shared.mjs";
 
 const BATCH = Number(process.env.REFRESH_BATCH ?? 2000);
 const CONCURRENCY = Number(process.env.REFRESH_CONCURRENCY ?? 4);
 const PROGRESS_EVERY = 200;
 
-async function processOne(ico, obchodniJmenoFromSubject) {
+async function processOne(subj) {
   try {
-    const vr = await fetchAresVr(ico);
-    if (!vr) return null;
-    const { memberships, tentativeMemberships, ownership } = extractFromVr(
-      vr,
-      ico,
-      obchodniJmenoFromSubject,
-    );
-    return { memberships, tentativeMemberships, ownership };
+    const vr = await fetchAresVr(subj.ico);
+    if (!vr) return { changed: false };
+    const { memberships, tentativeMemberships, ownership } = extractFromVr(vr, subj.ico, subj.obchodniJmeno);
+    for (const m of memberships) upsertMembership(m);
+    for (const m of tentativeMemberships) upsertTentativeMembership(m);
+    for (const e of ownership) upsertOwnership(e);
+    // Touch subject seenAt
+    upsertSubject(subj.ico, subj.obchodniJmeno);
+    return { changed: memberships.length + tentativeMemberships.length + ownership.length > 0 };
   } catch {
-    return null;
+    return { changed: false };
   }
 }
 
 async function main() {
   const startedAt = Date.now();
-  const idx = loadIndex();
+  const candidates = listOldestSubjects(BATCH);
+  console.log(`Refresh batch: ${candidates.length} subjektů`);
 
-  const candidates = Object.values(idx.subjects ?? {})
-    .sort((a, b) => (a.seenAt ?? 0) - (b.seenAt ?? 0))
-    .slice(0, BATCH);
-
-  console.log(`Refresh batch: ${candidates.length} / ${Object.keys(idx.subjects).length} subjektů`);
-
-  const additions = { subjects: {}, persons: {}, personsTentative: {}, ownership: {} };
   let processed = 0;
   let withChanges = 0;
-  let edgesAdded = 0;
-  let membershipsAdded = 0;
-  let tentativeAdded = 0;
   const queue = candidates.slice();
 
   async function worker() {
     while (queue.length > 0) {
       const subj = queue.shift();
       if (!subj) break;
-      const result = await processOne(subj.ico, subj.obchodniJmeno);
+      const result = await processOne(subj);
       processed++;
-
-      if (result) {
-        let firmChanged = false;
-
-        for (const m of result.memberships) {
-          const key = makePersonKey(m.jmeno, m.prijmeni, m.datumNarozeni);
-          if (!additions.persons[key]) {
-            additions.persons[key] = {
-              displayName: `${m.jmeno} ${m.prijmeni}`,
-              jmeno: m.jmeno,
-              prijmeni: m.prijmeni,
-              titulPred: m.titulPred,
-              datumNarozeni: m.datumNarozeni,
-              memberships: [],
-            };
-          }
-          additions.persons[key].memberships.push({
-            ico: m.ico,
-            obchodniJmeno: m.obchodniJmeno,
-            funkce: m.funkce,
-            organ: m.organ,
-            datumZapisu: m.datumZapisu,
-            datumVymazu: m.datumVymazu,
-            source: "ARES_VR",
-            seenAt: Date.now(),
-          });
-          membershipsAdded++;
-          firmChanged = true;
-        }
-
-        for (const m of result.tentativeMemberships ?? []) {
-          const tkey = m.jmeno.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().trim()
-            + "|"
-            + m.prijmeni.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().trim();
-          if (!additions.personsTentative[tkey]) {
-            additions.personsTentative[tkey] = {
-              displayName: `${m.jmeno} ${m.prijmeni}`,
-              jmeno: m.jmeno,
-              prijmeni: m.prijmeni,
-              memberships: [],
-            };
-          }
-          additions.personsTentative[tkey].memberships.push({
-            ico: m.ico,
-            obchodniJmeno: m.obchodniJmeno,
-            funkce: m.funkce,
-            organ: m.organ,
-            datumZapisu: m.datumZapisu,
-            datumVymazu: m.datumVymazu,
-            source: "ARES_VR",
-            seenAt: Date.now(),
-          });
-          tentativeAdded++;
-          firmChanged = true;
-        }
-
-        for (const e of result.ownership) {
-          (additions.ownership[e.parentIco] ??= []).push(e);
-          edgesAdded++;
-          firmChanged = true;
-        }
-
-        // Touch subject seenAt aby se appearoval na konci sortu
-        additions.subjects[subj.ico] = {
-          ico: subj.ico,
-          obchodniJmeno: subj.obchodniJmeno,
-          seenAt: Date.now(),
-        };
-
-        if (firmChanged) withChanges++;
-      } else {
-        // i bez výsledku touch — nezacyklit na 404 subjects
-        additions.subjects[subj.ico] = {
-          ...subj,
-          seenAt: Date.now(),
-        };
-      }
-
+      if (result.changed) withChanges++;
       if (processed % PROGRESS_EVERY === 0) {
         const rate = processed / ((Date.now() - startedAt) / 1000);
-        console.log(
-          `[${processed}/${candidates.length}] ${rate.toFixed(1)} req/s | ` +
-            `${withChanges} změněno | ${edgesAdded} hran | ${membershipsAdded} členství`,
-        );
+        console.log(`[${processed}/${candidates.length}] ${rate.toFixed(1)} req/s | ${withChanges} změněno`);
       }
     }
   }
 
-  const workers = Array.from({ length: CONCURRENCY }, () => worker());
-  await Promise.all(workers);
-
-  mergeAndWrite(idx, additions);
+  await Promise.all(Array.from({ length: CONCURRENCY }, () => worker()));
 
   const elapsed = ((Date.now() - startedAt) / 1000).toFixed(1);
-  console.log("");
-  console.log(`Refresh hotov za ${elapsed} s`);
+  const s = stats();
+  console.log(`\nRefresh hotov za ${elapsed} s`);
   console.log(`  Zpracováno: ${processed} subjektů`);
-  console.log(`  Změněno (membership nebo ownership): ${withChanges}`);
-  console.log(`  Nových ownership hran: ${edgesAdded}`);
-  console.log(`  Nových membership záznamů (dedup ještě proběhne při merge): ${membershipsAdded}`);
-  console.log(`  Nových tentative záznamů (jmenovci bez DOB): ${tentativeAdded}`);
+  console.log(`  Změněno: ${withChanges}`);
+  console.log(`  Inventory: ${s.subjectsCount}/${s.personsCount}/${s.ownershipEdgesCount} (subjects/persons/ownership)`);
+  getDb().close();
 }
 
 main().catch((e) => {
