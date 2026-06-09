@@ -122,6 +122,30 @@ function initSchema(d: DbType): void {
     );
     CREATE INDEX IF NOT EXISTS idx_audit_ts ON audit_log(ts DESC);
     CREATE INDEX IF NOT EXISTS idx_audit_ico ON audit_log(target_ico);
+
+    -- ÚPV ochranné známky (otevřená data ST.96)
+    -- ÚPV neposkytuje IČO ani street adresu → fuzzy match podle
+    -- applicant_name_normalized + applicant_city. Datasource: ~300k záznamů,
+    -- 89% PO (s OrganizationStandardName), 11% jen FO (anonymizováno).
+    CREATE TABLE IF NOT EXISTS upv_trademarks (
+      application_number TEXT PRIMARY KEY,
+      application_date TEXT,
+      status_code TEXT,                    -- ST.96 MarkCurrentStatusCode
+      mark_category TEXT,                  -- "Individual mark" / "Collective" / "Certification"
+      mark_feature TEXT,                   -- "Word" / "Figurative" / "Combined" / "3D" / "Sound"
+      mark_text TEXT,                      -- MarkSignificantVerbalElementText (cs)
+      applicant_type TEXT NOT NULL,        -- 'PO' (legal entity) or 'FO' (natural person, anonymized)
+      applicant_name TEXT,                 -- OrganizationStandardName nebo NULL pro FO
+      applicant_name_normalized TEXT,      -- lower-case, stripped punctuation — pro fuzzy match
+      applicant_city TEXT,                 -- jen CityName (street/PSČ ÚPV neposkytuje)
+      nice_classes TEXT,                   -- CSV: "5,9,42"
+      image_file TEXT,                     -- relativní cesta k logu (.gif/.jpg), NULL pro Word marky
+      source_file TEXT,                    -- který ZIP balíček (pro debug)
+      updated_at INTEGER NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS idx_upv_applicant_norm ON upv_trademarks(applicant_name_normalized);
+    CREATE INDEX IF NOT EXISTS idx_upv_status ON upv_trademarks(status_code);
+    CREATE INDEX IF NOT EXISTS idx_upv_city ON upv_trademarks(applicant_city);
   `);
 }
 

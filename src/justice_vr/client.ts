@@ -22,7 +22,13 @@
 
 import { fetch as undiciFetch } from "undici";
 
-const BASE = "https://verejnerejstriky.msp.gov.cz";
+/**
+ * Pokud je nastavená VR_PROXY_URL (Cloudflare Worker), volání jdou přes proxy
+ * — obejde IP blok MSP na cloud rozsazích (Hetzner). Bez env var fallback
+ * na přímé volání (vhodné lokálně nebo pro residentní IP).
+ */
+const BASE = (process.env.VR_PROXY_URL || "https://verejnerejstriky.msp.gov.cz").replace(/\/+$/, "");
+const PROXY_TOKEN = process.env.VR_PROXY_TOKEN || "";
 const TIMEOUT_MS = 15000;
 const ICO_TO_SUBJECT_TTL_MS = 24 * 60 * 60 * 1000;
 const DETAIL_CACHE_TTL_MS = 6 * 60 * 60 * 1000;
@@ -123,6 +129,18 @@ export interface VrDetailRaw {
   ostatniSkutecnosti?: VrOstatniSkutecnosti;
 }
 
+/**
+ * Veřejný rejstřík (msp.gov.cz) WAF blokuje cloud IP rozsahy s 403. Lokálně
+ * 200, z VPS 403 — IP-based, neobejdé se přes UA. Specific error type
+ * umožňuje route handlerům vrátit graceful `{ ok: false }` místo crashe.
+ */
+export class VrAccessBlockedError extends Error {
+  constructor(public readonly path: string) {
+    super(`Veřejný rejstřík blokuje IP serveru (403) pro ${path}`);
+    this.name = "VrAccessBlockedError";
+  }
+}
+
 interface VrSearchHit {
   subjektId: number;
   nazev?: { value?: string };
@@ -140,13 +158,20 @@ async function getJson<T>(path: string): Promise<T> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
   try {
+    const headers: Record<string, string> = {
+      accept: "application/json",
+      "user-agent": "ares-web/0.2 (+https://github.com/milos106/ares-web)",
+    };
+    if (PROXY_TOKEN) headers["x-proxy-token"] = PROXY_TOKEN;
     const response = await undiciFetch(`${BASE}${path}`, {
-      headers: {
-        accept: "application/json",
-        "user-agent": "ares-web/0.2 (+https://github.com/milos106/ares-web)",
-      },
+      headers,
       signal: controller.signal,
     });
+    if (response.status === 403) {
+      // Veřejný rejstřík (msp.gov.cz) blokuje cloud IP rozsahy (Hetzner, AWS).
+      // Lokálně 200, z VPS 403. Specific error → graceful degradation v UI.
+      throw new VrAccessBlockedError(path);
+    }
     if (!response.ok) {
       throw new Error(`VR API HTTP ${response.status} for ${path}`);
     }

@@ -1,181 +1,176 @@
-<!DOCTYPE html>
-<html lang="cs">
+<!doctype html>
+<html lang="cs" class="h-full">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Zásady ochrany osobních údajů — IČO vazby</title>
-<style>
-  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Inter", "Helvetica Neue", sans-serif; max-width: 760px; margin: 0 auto; padding: 32px 20px 64px; color: #0f172a; line-height: 1.6; background: #fff; }
-  h1 { font-size: 26px; font-weight: 600; margin: 0 0 6px; letter-spacing: -0.01em; }
-  h2 { font-size: 18px; font-weight: 600; margin: 28px 0 10px; color: #1e293b; border-bottom: 1px solid #e2e8f0; padding-bottom: 4px; }
-  h3 { font-size: 15px; font-weight: 600; margin: 20px 0 6px; color: #334155; }
-  p, li { font-size: 14.5px; color: #1e293b; }
-  ul { padding-left: 22px; }
-  ul li { margin: 4px 0; }
-  a { color: #047857; text-decoration: underline; }
-  a:hover { color: #065f46; }
-  code, .ico { font-family: ui-monospace, "SF Mono", "JetBrains Mono", monospace; font-size: 13px; background: #f1f5f9; padding: 1px 5px; border-radius: 3px; }
-  .meta { font-size: 12px; color: #64748b; margin-bottom: 24px; }
-  .back { display: inline-block; margin-top: 32px; padding: 8px 14px; background: #0f172a; color: white; text-decoration: none; border-radius: 6px; font-size: 13px; }
-  .back:hover { background: #1e293b; color: white; }
-  .note { background: #fffbeb; border-left: 3px solid #d97706; padding: 10px 14px; font-size: 13.5px; margin: 16px 0; }
-</style>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Zásady ochrany osobních údajů — icovazby</title>
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    // Dark mode — sync s hlavním webem (klíč "icovazby:theme") + system preference.
+    (function() {
+      var stored = null;
+      try { stored = localStorage.getItem("icovazby:theme"); } catch (e) {}
+      var prefersDark = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
+      var dark = stored === "dark" || (stored === null && prefersDark);
+      if (dark) document.documentElement.classList.add("dark");
+    })();
+    function toggleTheme() {
+      var html = document.documentElement;
+      var willBeDark = !html.classList.contains("dark");
+      html.classList.toggle("dark", willBeDark);
+      try { localStorage.setItem("icovazby:theme", willBeDark ? "dark" : "light"); } catch (e) {}
+      var btn = document.getElementById("theme-toggle-btn");
+      if (btn) btn.textContent = willBeDark ? "☀️ Světlý" : "🌙 Tmavý";
+    }
+  </script>
+  <style>
+    .prose h1 { font-size: 2rem; font-weight: 700; margin-top: 0; margin-bottom: 1rem; }
+    .prose h2 { font-size: 1.5rem; font-weight: 600; margin-top: 2rem; margin-bottom: 0.75rem; }
+    .prose h3 { font-size: 1.125rem; font-weight: 600; margin-top: 1.5rem; margin-bottom: 0.5rem; }
+    .prose p { margin: 0.75rem 0; line-height: 1.6; }
+    .prose ul, .prose ol { padding-left: 1.5rem; margin: 0.75rem 0; }
+    .prose li { margin: 0.25rem 0; }
+    .prose a { color: #059669; text-decoration: underline; }
+    .prose code { background: rgba(0,0,0,0.05); padding: 0.1rem 0.3rem; border-radius: 0.25rem; font-size: 0.9em; }
+    .dark .prose code { background: rgba(255,255,255,0.1); }
+    .prose table { border-collapse: collapse; margin: 1rem 0; width: 100%; font-size: 0.9rem; }
+    .prose th, .prose td { border: 1px solid rgba(0,0,0,0.15); padding: 0.4rem 0.6rem; text-align: left; }
+    .dark .prose th, .dark .prose td { border-color: rgba(255,255,255,0.15); }
+    .prose th { background: rgba(0,0,0,0.04); font-weight: 600; }
+    .dark .prose th { background: rgba(255,255,255,0.05); }
+    .prose hr { border: 0; border-top: 1px solid rgba(0,0,0,0.15); margin: 2rem 0; }
+    .dark .prose hr { border-top-color: rgba(255,255,255,0.15); }
+    .prose blockquote { border-left: 4px solid #d1d5db; padding-left: 1rem; color: #6b7280; font-style: italic; }
+  </style>
 </head>
-<body>
-
-<h1>Zásady ochrany osobních údajů</h1>
-<p class="meta">Webová aplikace <strong>IČO vazby</strong> (icovazby.cz) · platné od 2026-06-08</p>
-
+<body class="bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100 min-h-screen">
+  <header class="border-b dark:border-slate-700 bg-white dark:bg-slate-800">
+    <div class="max-w-3xl mx-auto px-4 py-3 flex items-center gap-3">
+      <a href="/" class="flex items-center gap-2 hover:opacity-80">
+        <svg viewBox="0 0 64 64" class="w-7 h-7" xmlns="http://www.w3.org/2000/svg">
+          <path d="M 32 18 L 14 46" stroke="#10b981" stroke-width="3.5" stroke-linecap="round" fill="none"/>
+          <path d="M 32 18 L 32 46" stroke="#10b981" stroke-width="3.5" stroke-linecap="round" fill="none"/>
+          <path d="M 32 18 L 50 46" stroke="#10b981" stroke-width="3.5" stroke-linecap="round" fill="none"/>
+          <rect x="6" y="42" width="16" height="16" rx="3" fill="#10b981"/>
+          <rect x="24" y="42" width="16" height="16" rx="3" fill="#10b981"/>
+          <rect x="42" y="42" width="16" height="16" rx="3" fill="#10b981"/>
+          <circle cx="32" cy="18" r="11" fill="#065f46"/>
+          <circle cx="32" cy="18" r="7" fill="#34d399"/>
+        </svg>
+        <span class="font-semibold tracking-tight">IČO vazby</span>
+      </a>
+      <span class="text-slate-300 dark:text-slate-600">/</span>
+      <span class="text-sm text-slate-600 dark:text-slate-400">Zásady ochrany osobních údajů</span>
+      <span class="flex-1"></span>
+      <button type="button" id="theme-toggle-btn" onclick="toggleTheme()" class="text-sm px-2 py-1 border dark:border-slate-600 rounded hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors"
+              x-tmpl="theme-label">🌙 Tmavý</button>
+      <a href="/" class="text-sm underline text-emerald-700 dark:text-emerald-400">← zpět na hlavní</a>
+    </div>
+  </header>
+  <script>
+    // Inicializace textu tlačítka podle aktuálního stavu (provedeno po DOM ready, headerScript běží před body)
+    (function() {
+      var btn = document.getElementById("theme-toggle-btn");
+      if (btn) btn.textContent = document.documentElement.classList.contains("dark") ? "☀️ Světlý" : "🌙 Tmavý";
+    })();
+  </script>
+  <main class="max-w-3xl mx-auto px-4 py-8">
+    <article class="prose dark:prose-invert">
+      <h1>Zásady ochrany osobních údajů</h1>
+<p>Webová aplikace <strong>IČO vazby</strong> (icovazby.cz) · platné od 2026-06-08</p>
 <h2>1. Kdo je správce údajů</h2>
-<p>
-  Provozovatel webu icovazby.cz a správce osobních údajů ve smyslu nařízení (EU) 2016/679 (GDPR):
-</p>
+<p>Provozovatel webu icovazby.cz a správce osobních údajů ve smyslu nařízení (EU) 2016/679 (GDPR):</p>
 <ul>
-  <li><strong>Miloš Pospíšil</strong></li>
-  <li>kontakt: <a href="mailto:max118@seznam.cz">max118@seznam.cz</a></li>
-  <li>(fyzická osoba — nepodnikatel, web provozován jako veřejně přístupný OSS projekt)</li>
+<li><strong>SimpleSolar s.r.o.</strong></li>
+<li>IČO: 07315520</li>
+<li>DIČ: CZ07315520 (plátce DPH)</li>
+<li>Sídlo: Regnerova 1102, Mladá Boleslav III, 293 01 Mladá Boleslav</li>
+<li>zapsaná v obchodním rejstříku vedeném Krajským soudem v Praze</li>
+<li>jednatel: Ing. Miloš Pospíšil</li>
+<li>kontakt pro účely GDPR a žádosti subjektů údajů: <a href="mailto:info@simplesolar.cz">info@simplesolar.cz</a></li>
 </ul>
-
 <h2>2. Jaká data zpracováváme</h2>
-
 <h3>2.1 Data o firmách a fyzických osobách (jednatelích)</h3>
-<p>
-  Aplikace agreguje veřejně dostupná data o českých obchodních subjektech ze státních registrů:
-</p>
+<p>Aplikace agreguje veřejně dostupná data o českých obchodních subjektech ze státních registrů:</p>
 <ul>
-  <li>ARES (MFČR) — obchodní jméno, IČO, sídlo, NACE, DPH stav</li>
-  <li>Veřejný rejstřík (MSp ČR) — statutární orgán, akcionáři, obchodní listiny</li>
-  <li>Hlídač státu — veřejné zakázky, dotace, skuteční majitelé, insolvenční rejstřík</li>
-  <li>EU sanctions list, ČNB JERRS, ADIS DPH</li>
+<li>ARES (MFČR) — obchodní jméno, IČO, sídlo, NACE, DPH stav</li>
+<li>Veřejný rejstřík (MSp ČR) — statutární orgán, akcionáři, obchodní listiny</li>
+<li>Hlídač státu — veřejné zakázky, dotace, skuteční majitelé, insolvenční rejstřík</li>
+<li>EU sanctions list, ČNB JERRS, ADIS DPH</li>
+<li>ÚPV ochranné známky (otevřená data ST.96)</li>
 </ul>
-<p>
-  Tato data <strong>jsou veřejně publikovaná</strong> na základě právních předpisů
-  (§ 304/2013 Sb. o veřejných rejstřících, § 96a z. o DPH, § 419 z. č. 182/2006 Sb. atd.).
-  Obsahují <strong>jména, příjmení a data narození</strong> jednatelů a skutečných majitelů.
-</p>
-
-<div class="note">
-  ⚠ <strong>Pokud výsledky prověrky stahujete, ukládáte nebo dále zpracováváte</strong>
-  (např. jako součást vlastní compliance dokumentace, faktury, archivace),
-  stáváte se <strong>vy správcem osobních údajů</strong> a máte vlastní povinnosti
-  podle GDPR (informační povinnost vůči subjektům údajů, doba uchování,
-  právní základ zpracování).
-</div>
-
+<p>Tato data <strong>jsou veřejně publikovaná</strong> na základě právních předpisů (§ 304/2013 Sb. o veřejných rejstřících, § 96a z. o DPH, § 419 z. č. 182/2006 Sb. atd.). Obsahují <strong>jména, příjmení a data narození</strong> jednatelů a skutečných majitelů.</p>
+<blockquote>
+<p>⚠ <strong>Pokud výsledky prověrky stahujete, ukládáte nebo dále zpracováváte</strong> (např. jako součást vlastní compliance dokumentace, faktury, archivace), stáváte se <strong>vy správcem osobních údajů</strong> a máte vlastní povinnosti podle GDPR (informační povinnost vůči subjektům údajů, doba uchování, právní základ zpracování).</p>
+</blockquote>
 <h3>2.2 Data o uživatelích webu</h3>
 <p>Při běžném používání webu zpracováváme:</p>
 <ul>
-  <li>
-    <strong>IP adresa + User-Agent</strong> — pouze v logu HTTP serveru a Cloudflare CDN
-    pro účely bezpečnosti a anti-DDoS. Uchováváme po dobu 7 dnů. Právní základ: čl. 6(1)(f) GDPR
-    (oprávněný zájem na zabezpečení služby).
-  </li>
-  <li>
-    <strong>localStorage v prohlížeči</strong> — historie posledních 10 hledání, oblíbené záložky,
-    nastavení tmavého režimu, váš HS API token (pokud jste ho zadal). Tyto údaje
-    <strong>neopouštějí váš prohlížeč</strong> — server je nevidí.
-  </li>
-  <li>
-    <strong>E-mail (pokud aktivujete alerty)</strong> — pokud se přihlásíte k e-mail alertům
-    o změně statutárního orgánu, insolvence apod., váš e-mail ukládáme do souboru
-    <code>data/subscriptions.json</code> na serveru. Použijeme ho výhradně pro odesílání
-    notifikací o změnách u zvoleného IČO. Právní základ: čl. 6(1)(a) GDPR (souhlas — dvojí
-    opt-in přes ověřovací odkaz). Máte kdykoli právo na výmaz přes odhlašovací link.
-  </li>
+<li><strong>IP adresa + User-Agent</strong> — pouze v logu HTTP serveru a Cloudflare CDN pro účely bezpečnosti a anti-DDoS. Uchováváme po dobu 7 dnů. Právní základ: čl. 6(1)(f) GDPR (oprávněný zájem na zabezpečení služby).</li>
+<li><strong>localStorage v prohlížeči</strong> — historie posledních 10 hledání, oblíbené záložky, nastavení tmavého režimu, váš HS API token (pokud jste ho zadal). Tyto údaje <strong>neopouštějí váš prohlížeč</strong> — server je nevidí.</li>
+<li><strong>E-mail (pokud aktivujete alerty)</strong> — pokud se přihlásíte k e-mail alertům o změně statutárního orgánu, insolvence apod., váš e-mail ukládáme do souboru <code>data/subscriptions.json</code> na serveru. Použijeme ho výhradně pro odesílání notifikací o změnách u zvoleného IČO. Právní základ: čl. 6(1)(a) GDPR (souhlas — dvojí opt-in přes ověřovací odkaz). Máte kdykoli právo na výmaz přes odhlašovací link.</li>
 </ul>
-
 <h3>2.3 Server-side cache (sdílená napříč uživateli)</h3>
-<p>
-  Pro zrychlení odezvy a šetření kvóty veřejných API ukládáme dočasně v paměti serveru
-  (RAM, LRU cache, TTL 24 h) výsledky prověrek IČO. Tyto výsledky obsahují
-  jména a data narození jednatelů (= veřejně publikovaná data ze státních registrů,
-  viz 2.1). Cache <strong>není sdílena s třetími stranami</strong>, slouží výhradně
-  pro rychlejší obsluhu opakovaných dotazů a vyprší samočinně po restartu serveru
-  nebo 24 hodinách.
-</p>
-
-<h3>2.4 Lokální index osoba→firmy</h3>
-<p>
-  Aplikace si pro funkci „Vazby osoby" udržuje na disku (soubor <code>data/persons-index.json</code>)
-  index spojení jméno + datum narození → seznam firem, ve kterých daná osoba figuruje
-  jako jednatel. Tento index vzniká postupně z dat veřejných rejstříků (viz 2.1)
-  a slouží k rychlejšímu nalezení vazeb mezi firmami. Funguje pouze pro IČO, která byla
-  v aplikaci v minulosti vyhledávána.
-</p>
-
+<p>Pro zrychlení odezvy a šetření kvóty veřejných API ukládáme dočasně v paměti serveru (RAM, LRU cache, TTL 24 h) výsledky prověrek IČO. Tyto výsledky obsahují jména a data narození jednatelů (= veřejně publikovaná data ze státních registrů, viz 2.1). Cache <strong>není sdílena s třetími stranami</strong>, slouží výhradně pro rychlejší obsluhu opakovaných dotazů a vyprší samočinně po restartu serveru nebo 24 hodinách.</p>
+<h3>2.4 Lokální index osoba→firmy a SQLite databáze</h3>
+<p>Aplikace si pro funkci „Vazby osoby&quot; udržuje na disku (SQLite databáze <code>data/persons-index.sqlite</code>) index spojení jméno + datum narození → seznam firem, ve kterých daná osoba figuruje jako jednatel. Tento index vzniká postupně z dat veřejných rejstříků (viz 2.1) a slouží k rychlejšímu nalezení vazeb mezi firmami.</p>
+<p>Stejná databáze obsahuje i lokální index ochranných známek z ÚPV otevřených dat (<code>upv_trademarks</code>) pro rychlou DD prověrku. Index neobsahuje IČO přihlašovatelů (ÚPV ho neposkytuje), pouze jména právnických osob a anonymizovaná data fyzických.</p>
 <h2>3. Co NEzpracováváme</h2>
 <ul>
-  <li>❌ Body HTTP požadavků (server logger Pino default nezapisuje payload)</li>
-  <li>❌ Cookies pro tracking, analytics ani marketing — aplikace nepoužívá žádné cookies</li>
-  <li>❌ Žádné third-party tracking nástroje (Google Analytics, Facebook Pixel, atd.)</li>
-  <li>❌ Trvalé úložiště prověrek konkrétních uživatelů (server je stateless v RAM cache)</li>
+<li>❌ Body HTTP požadavků (server logger Pino default nezapisuje payload)</li>
+<li>❌ Cookies pro tracking, analytics ani marketing — aplikace nepoužívá žádné cookies</li>
+<li>❌ Žádné third-party tracking nástroje (Google Analytics, Facebook Pixel, atd.)</li>
+<li>❌ Trvalé úložiště prověrek konkrétních uživatelů (server je stateless v RAM cache)</li>
 </ul>
-
 <h2>4. Komu data předáváme</h2>
-<p>
-  Žádným třetím stranám pro účely marketingu, reklamy ani profilování. Jediní zpracovatelé
-  jsou techničtí poskytovatelé infrastruktury:
-</p>
+<p>Žádným třetím stranám pro účely marketingu, reklamy ani profilování. Jediní zpracovatelé jsou techničtí poskytovatelé infrastruktury:</p>
 <ul>
-  <li><strong>Hetzner Online GmbH</strong> (Německo) — hosting serveru</li>
-  <li><strong>Cloudflare, Inc.</strong> (USA, EU-US Data Privacy Framework) — CDN, DDoS protection, TLS terminace</li>
-  <li><strong>Hukot.net</strong> (ČR) — DNS hosting a e-mailové schránky domény</li>
+<li><strong>Hetzner Online GmbH</strong> (Německo) — hosting serveru</li>
+<li><strong>Cloudflare, Inc.</strong> (USA, EU-US Data Privacy Framework) — CDN, DDoS protection, TLS terminace</li>
+<li><strong>Hukot.net</strong> (ČR) — DNS hosting a e-mailové schránky domény</li>
 </ul>
-<p>
-  Při dotazu na veřejné registry (ARES, Hlídač státu, EU sanctions, ČNB JERRS,
-  verejnerejstriky.msp.gov.cz) odesíláme dotaz ze IP našeho serveru — tito poskytovatelé
-  v rámci své činnosti zaznamenávají naše IP, nikoli vaši.
-</p>
-
-<h2>5. Jak dlouho data uchováváme</h2>
+<p>Při dotazu na veřejné registry (ARES, Hlídač státu, EU sanctions, ČNB JERRS, verejnerejstriky.msp.gov.cz, ÚPV) odesíláme dotaz ze IP našeho serveru — tito poskytovatelé v rámci své činnosti zaznamenávají naše IP, nikoli vaši.</p>
+<h2>5. Audit log (AML compliance)</h2>
+<p>Pro účely AML compliance a bezpečnosti <strong>logujeme každý dotaz na konkrétní IČO</strong> (kdy, odkud IP, jaký IČO, User-Agent). Logy uchováváme <strong>3 roky</strong> podle § 16 AML zákona. Logy se nezveřejňují ani neprodávají třetím stranám. Slouží jen pro:</p>
 <ul>
-  <li>HTTP/Cloudflare logy: 7 dnů</li>
-  <li>RAM cache (DD reporty): 24 h</li>
-  <li>persons_index na disku: trvale (slouží k rostoucí kvalitě vazeb)</li>
-  <li>E-mail subscribery: do doby, dokud sám neudělíte odhlášení</li>
-  <li>localStorage v prohlížeči: kontrolujete sám/sama (lze smazat v prohlížeči kdykoli)</li>
+<li>Vyšetřování zneužití (rate limit abuse, scraping)</li>
+<li>Compliance s AML reporting povinnostmi (na vyžádání FAÚ)</li>
+<li>Soudní/policejní vyžádání podle zákona</li>
 </ul>
-
-<h2>6. Vaše práva</h2>
+<h2>6. Jak dlouho data uchováváme</h2>
+<ul>
+<li>HTTP/Cloudflare logy: 7 dnů</li>
+<li>RAM cache (DD reporty): 24 h</li>
+<li>persons_index na disku: trvale (slouží k rostoucí kvalitě vazeb)</li>
+<li>E-mail subscribery: do doby, dokud sám neudělíte odhlášení</li>
+<li>Audit log: 3 roky (AML compliance)</li>
+<li>localStorage v prohlížeči: kontrolujete sám/sama (lze smazat v prohlížeči kdykoli)</li>
+</ul>
+<h2>7. Vaše práva</h2>
 <p>Jako subjekt údajů máte podle GDPR právo:</p>
 <ul>
-  <li>požádat o přístup k vašim osobním údajům, které zpracováváme</li>
-  <li>požádat o opravu nepřesných údajů</li>
-  <li>požádat o výmaz („právo být zapomenut")</li>
-  <li>požádat o omezení zpracování</li>
-  <li>vznést námitku proti zpracování</li>
-  <li>požádat o přenositelnost údajů</li>
-  <li>odvolat souhlas (u e-mail alertů kdykoli přes odhlašovací link)</li>
-  <li>podat stížnost u <a href="https://www.uoou.cz/" target="_blank" rel="noopener">Úřadu pro ochranu osobních údajů</a></li>
+<li>požádat o přístup k vašim osobním údajům, které zpracováváme</li>
+<li>požádat o opravu nepřesných údajů</li>
+<li>požádat o výmaz („právo být zapomenut&quot;)</li>
+<li>požádat o omezení zpracování</li>
+<li>vznést námitku proti zpracování</li>
+<li>požádat o přenositelnost údajů</li>
+<li>odvolat souhlas (u e-mail alertů kdykoli přes odhlašovací link)</li>
+<li>podat stížnost u <a href="https://www.uoou.cz/">Úřadu pro ochranu osobních údajů</a></li>
 </ul>
-<p>
-  Žádosti zasílejte na <a href="mailto:max118@seznam.cz">max118@seznam.cz</a>.
-  Odpovíme do 30 dnů.
-</p>
+<p>Žádosti zasílejte na <a href="mailto:info@simplesolar.cz">info@simplesolar.cz</a>. Odpovíme do 30 dnů.</p>
+<h2>8. Bezpečnost</h2>
+<p>Web běží na HTTPS s validním TLS certifikátem (Cloudflare). Server používá rate-limiting, sandboxing přes systemd, OOM-cap a deny-by-default firewall. Kompletní bezpečnostní politika je publikována na <a href="https://github.com/milos106/icovazby/blob/main/SECURITY.md">GitHub SECURITY.md</a>.</p>
+<h2>9. Open Source</h2>
+<p>Zdrojový kód aplikace je veřejně publikovaný pod licencí <a href="https://www.gnu.org/licenses/agpl-3.0.html">GNU AGPL-3.0</a> na <a href="https://github.com/milos106/icovazby">github.com/milos106/icovazby</a>. Komukoli je k dispozici audit toho, jak aplikace skutečně zpracovává vaše údaje.</p>
+<h2>10. Změny zásad</h2>
+<p>Tyto zásady mohou být v budoucnu doplněny. Datum poslední revize je uvedeno nahoře. V případě podstatných změn (např. změna účelu zpracování, předávání novým zpracovatelům) budou stávající e-mail subscribery informováni e-mailem.</p>
 
-<h2>7. Bezpečnost</h2>
-<p>
-  Web běží na HTTPS s validním TLS certifikátem (Cloudflare). Server používá rate-limiting,
-  sandboxing přes systemd, OOM-cap a deny-by-default firewall. Kompletní bezpečnostní
-  politika je publikována na <a href="https://github.com/milos106/icovazby/blob/main/SECURITY.md" target="_blank" rel="noopener">GitHub SECURITY.md</a>.
-</p>
-
-<h2>8. Open Source</h2>
-<p>
-  Zdrojový kód aplikace je veřejně publikovaný pod licencí
-  <a href="https://www.gnu.org/licenses/agpl-3.0.html" target="_blank" rel="noopener">GNU AGPL-3.0</a>
-  na <a href="https://github.com/milos106/icovazby" target="_blank" rel="noopener">github.com/milos106/icovazby</a>.
-  Komukoli je k dispozici audit toho, jak aplikace skutečně zpracovává vaše údaje.
-</p>
-
-<h2>9. Změny zásad</h2>
-<p>
-  Tyto zásady mohou být v budoucnu doplněny. Datum poslední revize je uvedeno nahoře.
-  V případě podstatných změn (např. změna účelu zpracování, předávání novým zpracovatelům)
-  budou stávající e-mail subscribery informováni e-mailem.
-</p>
-
-<a href="/" class="back">← Zpět na IČO vazby</a>
-
+    </article>
+    <footer class="mt-12 pt-6 border-t dark:border-slate-700 text-xs text-slate-500 dark:text-slate-400">
+      <p>icovazby — open-source pod <a href="https://www.gnu.org/licenses/agpl-3.0.html" class="underline">AGPL-3.0-or-later</a>. <a href="/" class="underline">Hlavní web</a> · <a href="/terms.html" class="underline">Podmínky</a> · <a href="/disclaimer.html" class="underline">Omezení odpovědnosti</a> · <a href="/privacy.html" class="underline">Soukromí</a></p>
+    </footer>
+  </main>
 </body>
 </html>

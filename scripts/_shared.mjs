@@ -83,6 +83,25 @@ export function getDb() {
       seen_at INTEGER NOT NULL,
       UNIQUE(tentative_key, ico, funkce, source, datum_zapisu)
     );
+    CREATE TABLE IF NOT EXISTS upv_trademarks (
+      application_number TEXT PRIMARY KEY,
+      application_date TEXT,
+      status_code TEXT,
+      mark_category TEXT,
+      mark_feature TEXT,
+      mark_text TEXT,
+      applicant_type TEXT NOT NULL,
+      applicant_name TEXT,
+      applicant_name_normalized TEXT,
+      applicant_city TEXT,
+      nice_classes TEXT,
+      image_file TEXT,
+      source_file TEXT,
+      updated_at INTEGER NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS idx_upv_applicant_norm ON upv_trademarks(applicant_name_normalized);
+    CREATE INDEX IF NOT EXISTS idx_upv_status ON upv_trademarks(status_code);
+    CREATE INDEX IF NOT EXISTS idx_upv_city ON upv_trademarks(applicant_city);
   `);
   return dbInstance;
 }

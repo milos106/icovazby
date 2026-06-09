@@ -26,6 +26,17 @@ export class HlidacStatuMissingTokenError extends Error {
   }
 }
 
+/**
+ * 429 z Hlídače státu — denní/hodinový limit per token. Specific error type
+ * umožňuje route handlerům vrátit graceful `{ ok: false, reason: 'hs_rate_limited' }`.
+ */
+export class HlidacStatuRateLimitedError extends Error {
+  constructor(public readonly body: string) {
+    super(`Hlídač státu HTTP 429: ${body.slice(0, 200)}`);
+    this.name = "HlidacStatuRateLimitedError";
+  }
+}
+
 function getToken(): string {
   // Priority: per-request token (z X-Hlidac-Token hlavičky) > env token.
   // Tím je možné aby každý uživatel přinesl vlastní token a nesdílel rate
@@ -38,20 +49,20 @@ function getToken(): string {
 
 const TIMEOUT_MS = 15000;
 const cache = new Map<string, { at: number; value: unknown }>();
-const CACHE_TTL_MS = 6 * 60 * 60 * 1000; // 6 hodin
+// HS data (UBO, dotace, smlouvy, ISIR) se mění v jednotkách týdnů — 24 h
+// cache je bezpečná. Bumped z 6 h, aby šetřila daily quotu admin tokenu;
+// per-user tokeny (X-Hlidac-Token) jdou stejnou cache, tj. pomáhá to všem.
+const CACHE_TTL_MS = 24 * 60 * 60 * 1000;
+// Retry budget pro 429: 1 retry po 5 s. Krátké burst během vícekartového
+// DD profilu (5 paralelních HS callů najednou) tím přežijeme bez crashe,
+// ale neopakujeme donekonečna na vyčerpaný daily limit.
+const RATE_LIMIT_RETRY_DELAY_MS = 5000;
 
-async function getJson<T>(path: string): Promise<T> {
-  const key = path;
-  const cached = cache.get(key);
-  if (cached && Date.now() - cached.at < CACHE_TTL_MS) {
-    return cached.value as T;
-  }
-  const token = getToken();
+async function fetchOnce(path: string, token: string): Promise<Awaited<ReturnType<typeof undiciFetch>>> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
-  let response: Awaited<ReturnType<typeof undiciFetch>>;
   try {
-    response = await undiciFetch(`${BASE}${path}`, {
+    return await undiciFetch(`${BASE}${path}`, {
       headers: {
         accept: "application/json",
         authorization: `Token ${token}`,
@@ -62,8 +73,28 @@ async function getJson<T>(path: string): Promise<T> {
   } finally {
     clearTimeout(timer);
   }
+}
+
+async function getJson<T>(path: string): Promise<T> {
+  const key = path;
+  const cached = cache.get(key);
+  if (cached && Date.now() - cached.at < CACHE_TTL_MS) {
+    return cached.value as T;
+  }
+  const token = getToken();
+  let response = await fetchOnce(path, token);
+  // Single retry pro 429 — pomáhá při krátkém burst limitu (per-minute quota
+  // překročená kvůli paralelním DD callům). Pokud daily limit, druhý pokus
+  // vrátí znovu 429 → propaguje se jako HlidacStatuRateLimitedError.
+  if (response.status === 429) {
+    await new Promise((r) => setTimeout(r, RATE_LIMIT_RETRY_DELAY_MS));
+    response = await fetchOnce(path, token);
+  }
   if (!response.ok) {
     const body = await response.text().catch(() => "");
+    if (response.status === 429) {
+      throw new HlidacStatuRateLimitedError(body);
+    }
     throw new Error(`Hlídač státu HTTP ${response.status}: ${body.slice(0, 200)}`);
   }
   const json = (await response.json()) as T;

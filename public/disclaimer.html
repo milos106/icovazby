@@ -1,0 +1,182 @@
+<!doctype html>
+<html lang="cs" class="h-full">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Omezení odpovědnosti — icovazby</title>
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    // Dark mode — sync s hlavním webem (klíč "icovazby:theme") + system preference.
+    (function() {
+      var stored = null;
+      try { stored = localStorage.getItem("icovazby:theme"); } catch (e) {}
+      var prefersDark = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
+      var dark = stored === "dark" || (stored === null && prefersDark);
+      if (dark) document.documentElement.classList.add("dark");
+    })();
+    function toggleTheme() {
+      var html = document.documentElement;
+      var willBeDark = !html.classList.contains("dark");
+      html.classList.toggle("dark", willBeDark);
+      try { localStorage.setItem("icovazby:theme", willBeDark ? "dark" : "light"); } catch (e) {}
+      var btn = document.getElementById("theme-toggle-btn");
+      if (btn) btn.textContent = willBeDark ? "☀️ Světlý" : "🌙 Tmavý";
+    }
+  </script>
+  <style>
+    .prose h1 { font-size: 2rem; font-weight: 700; margin-top: 0; margin-bottom: 1rem; }
+    .prose h2 { font-size: 1.5rem; font-weight: 600; margin-top: 2rem; margin-bottom: 0.75rem; }
+    .prose h3 { font-size: 1.125rem; font-weight: 600; margin-top: 1.5rem; margin-bottom: 0.5rem; }
+    .prose p { margin: 0.75rem 0; line-height: 1.6; }
+    .prose ul, .prose ol { padding-left: 1.5rem; margin: 0.75rem 0; }
+    .prose li { margin: 0.25rem 0; }
+    .prose a { color: #059669; text-decoration: underline; }
+    .prose code { background: rgba(0,0,0,0.05); padding: 0.1rem 0.3rem; border-radius: 0.25rem; font-size: 0.9em; }
+    .dark .prose code { background: rgba(255,255,255,0.1); }
+    .prose table { border-collapse: collapse; margin: 1rem 0; width: 100%; font-size: 0.9rem; }
+    .prose th, .prose td { border: 1px solid rgba(0,0,0,0.15); padding: 0.4rem 0.6rem; text-align: left; }
+    .dark .prose th, .dark .prose td { border-color: rgba(255,255,255,0.15); }
+    .prose th { background: rgba(0,0,0,0.04); font-weight: 600; }
+    .dark .prose th { background: rgba(255,255,255,0.05); }
+    .prose hr { border: 0; border-top: 1px solid rgba(0,0,0,0.15); margin: 2rem 0; }
+    .dark .prose hr { border-top-color: rgba(255,255,255,0.15); }
+    .prose blockquote { border-left: 4px solid #d1d5db; padding-left: 1rem; color: #6b7280; font-style: italic; }
+  </style>
+</head>
+<body class="bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100 min-h-screen">
+  <header class="border-b dark:border-slate-700 bg-white dark:bg-slate-800">
+    <div class="max-w-3xl mx-auto px-4 py-3 flex items-center gap-3">
+      <a href="/" class="flex items-center gap-2 hover:opacity-80">
+        <svg viewBox="0 0 64 64" class="w-7 h-7" xmlns="http://www.w3.org/2000/svg">
+          <path d="M 32 18 L 14 46" stroke="#10b981" stroke-width="3.5" stroke-linecap="round" fill="none"/>
+          <path d="M 32 18 L 32 46" stroke="#10b981" stroke-width="3.5" stroke-linecap="round" fill="none"/>
+          <path d="M 32 18 L 50 46" stroke="#10b981" stroke-width="3.5" stroke-linecap="round" fill="none"/>
+          <rect x="6" y="42" width="16" height="16" rx="3" fill="#10b981"/>
+          <rect x="24" y="42" width="16" height="16" rx="3" fill="#10b981"/>
+          <rect x="42" y="42" width="16" height="16" rx="3" fill="#10b981"/>
+          <circle cx="32" cy="18" r="11" fill="#065f46"/>
+          <circle cx="32" cy="18" r="7" fill="#34d399"/>
+        </svg>
+        <span class="font-semibold tracking-tight">IČO vazby</span>
+      </a>
+      <span class="text-slate-300 dark:text-slate-600">/</span>
+      <span class="text-sm text-slate-600 dark:text-slate-400">Omezení odpovědnosti</span>
+      <span class="flex-1"></span>
+      <button type="button" id="theme-toggle-btn" onclick="toggleTheme()" class="text-sm px-2 py-1 border dark:border-slate-600 rounded hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors"
+              x-tmpl="theme-label">🌙 Tmavý</button>
+      <a href="/" class="text-sm underline text-emerald-700 dark:text-emerald-400">← zpět na hlavní</a>
+    </div>
+  </header>
+  <script>
+    // Inicializace textu tlačítka podle aktuálního stavu (provedeno po DOM ready, headerScript běží před body)
+    (function() {
+      var btn = document.getElementById("theme-toggle-btn");
+      if (btn) btn.textContent = document.documentElement.classList.contains("dark") ? "☀️ Světlý" : "🌙 Tmavý";
+    })();
+  </script>
+  <main class="max-w-3xl mx-auto px-4 py-8">
+    <article class="prose dark:prose-invert">
+      <h1>Omezení odpovědnosti (Disclaimer)</h1>
+<p><strong>Verze:</strong> 1.1
+<strong>Účinnost od:</strong> 2026-06-09
+<strong>Provozovatel:</strong> SimpleSolar s.r.o., IČO 07315520, sídlem Regnerova 1102, Mladá Boleslav III, 293 01 Mladá Boleslav</p>
+<h2>⚠️ Data jsou informativní, ne úřední</h2>
+<p>Informace prezentované službou <strong>icovazby.cz</strong> jsou:</p>
+<ul>
+<li><strong>Agregovány automaticky</strong> z veřejných registrů a databází</li>
+<li><strong>Zpracovány algoritmicky</strong> (parsování, fuzzy match, risk skóre)</li>
+<li><strong>Mohou obsahovat chyby</strong>, opoždění (latence ARES typicky 1–7 dní) nebo neúplnosti</li>
+<li><strong>Mohou se měnit</strong> mezi snapshotem v naší databázi a aktuálním stavem u primárního zdroje</li>
+</ul>
+<h2>Pro úřední účely VŽDY ověř u zdroje</h2>
+<table>
+<thead>
+<tr>
+<th>Účel</th>
+<th>Zdroj</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Výpis z OR</td>
+<td><a href="https://or.justice.cz">https://or.justice.cz</a></td>
+</tr>
+<tr>
+<td>ARES detail</td>
+<td><a href="https://ares.gov.cz">https://ares.gov.cz</a></td>
+</tr>
+<tr>
+<td>ADIS DPH plátci</td>
+<td><a href="https://adisspr.mfcr.cz/dpr/DphReg">https://adisspr.mfcr.cz/dpr/DphReg</a></td>
+</tr>
+<tr>
+<td>Insolvenční rejstřík</td>
+<td><a href="https://isir.justice.cz">https://isir.justice.cz</a></td>
+</tr>
+<tr>
+<td>EU sankce</td>
+<td><a href="https://eur-lex.europa.eu">https://eur-lex.europa.eu</a> (CFSP)</td>
+</tr>
+<tr>
+<td>Ochranné známky</td>
+<td><a href="https://isdv.upv.gov.cz">https://isdv.upv.gov.cz</a></td>
+</tr>
+<tr>
+<td>Hlídač státu (zakázky, dotace)</td>
+<td><a href="https://www.hlidacstatu.cz">https://www.hlidacstatu.cz</a></td>
+</tr>
+</tbody></table>
+<h2>Co služba <strong>NENÍ</strong></h2>
+<p>❌ <strong>Nenahrazuje výpis z obchodního rejstříku</strong> podle § 4 zákona č. 304/2013 Sb.
+   → pro úřední řízení potřebuješ ověřený výpis přímo z OR.</p>
+<p>❌ <strong>Nenahrazuje povinnosti AML/KYC</strong> podle z. č. 253/2008 Sb.
+   → pokud jsi povinná osoba (banka, advokát, účetní, realitka), tvoje KYC povinnosti zůstávají v plné výši. Služba je <strong>podpora</strong>, ne plnění.</p>
+<p>❌ <strong>Není právní poradenství.</strong>
+   → riziková skóre a rule-based hodnocení jsou heuristika, ne právní stanovisko.</p>
+<p>❌ <strong>Nemá oprávnění opravovat ani doplňovat</strong> údaje v primárních registrech.
+   → chyba? Nahlas přímo zdroji (ARES, OR, ÚPV, …).</p>
+<h2>Co služba <strong>JE</strong></h2>
+<p>✅ <strong>Rychlá orientace</strong> v ekosystému firmy (statutáři, vlastnické vazby, sankce, insolvence, značky, dotace)
+✅ <strong>Indikátor rizik</strong> založený na transparentních datech a otevřených pravidlech
+✅ <strong>Strukturovaný report</strong> pro interní debriefing, klientskou prezentaci, pre-due diligence
+✅ <strong>Open-source nástroj</strong> (AGPL-3.0) — kód si můžeš ověřit na <a href="https://github.com/milos106/icovazby">https://github.com/milos106/icovazby</a></p>
+<h2>Omezení odpovědnosti — právní rámec</h2>
+<p>V souladu s § 2898 občanského zákoníku ČR a obecnými principy unijního práva:</p>
+<ul>
+<li><strong>Provozovatel nepřebírá odpovědnost za škodu</strong> vzniklou rozhodnutím na základě dat ze služby</li>
+<li>Toto omezení <strong>neplatí</strong> pro úmyslné nebo hrubě nedbalé jednání provozovatele</li>
+<li>Pro placené tiers je odpovědnost omezena na výši zaplaceného předplatného (max 12 měsíců zpětně)</li>
+<li>Pro Free tier je odpovědnost <strong>vyloučena v maximálním rozsahu</strong> dovoleném zákonem (žádné plnění = žádný majetkový vztah)</li>
+</ul>
+<h2>Doporučení pro uživatele</h2>
+<p>Pokud rozhoduješ o:</p>
+<ul>
+<li><strong>Půjčce nad 100 tis. Kč</strong> → ověř ručně v OR + požádej o aktuální výpis z OR</li>
+<li><strong>Smlouvě o dílo / dodávce &gt; 500 tis. Kč</strong> → požádej druhou stranu o aktuální výpis + ověř DPH stav přímo v ADIS</li>
+<li><strong>M&amp;A / akvizici</strong> → najmi si <strong>právníka</strong> + udělej fyzickou due diligence</li>
+<li><strong>AML/KYC kontrole klienta</strong> → použij icovazby jako podpora, ale dokumentuj postup podle interních procedur a kontroluj zdroje</li>
+</ul>
+<h2>Žádost o smazání tvých údajů (pro fyzické osoby)</h2>
+<p>Pokud jsi <strong>fyzická osoba zapsaná v rejstříku</strong> (např. jednatel, společník, UBO) a chceš, aby naše služba <strong>přestala zobrazovat</strong> tvoje data:</p>
+<ol>
+<li>Napiš na <a href="mailto:info@simplesolar.cz">info@simplesolar.cz</a></li>
+<li>Doložení identity (kopie OP nebo elektronický podpis)</li>
+<li><strong>Smažeme tě z naší cache do 30 dní</strong></li>
+</ol>
+<p><strong>Pozor:</strong> to neovlivní primární zdroj. Pokud chceš být odstraněn(a) z OR / ARES, musíš to řešit přímo s rejstříkem (typicky není možné, jelikož jde o zákonnou publicitu).</p>
+<hr>
+<h2>Kontakt</h2>
+<p><strong>Provozovatel:</strong> SimpleSolar s.r.o.
+<strong>IČO:</strong> 07315520
+<strong>Sídlo:</strong> Regnerova 1102, Mladá Boleslav III, 293 01 Mladá Boleslav
+<strong>E-mail:</strong> <a href="mailto:info@simplesolar.cz">info@simplesolar.cz</a>
+<strong>Web:</strong> <a href="https://icovazby.cz">https://icovazby.cz</a></p>
+<p>Tento Disclaimer je nedílnou součástí <a href="TERMS.md">Podmínek služby</a>.</p>
+
+    </article>
+    <footer class="mt-12 pt-6 border-t dark:border-slate-700 text-xs text-slate-500 dark:text-slate-400">
+      <p>icovazby — open-source pod <a href="https://www.gnu.org/licenses/agpl-3.0.html" class="underline">AGPL-3.0-or-later</a>. <a href="/" class="underline">Hlavní web</a> · <a href="/terms.html" class="underline">Podmínky</a> · <a href="/disclaimer.html" class="underline">Omezení odpovědnosti</a> · <a href="/privacy.html" class="underline">Soukromí</a></p>
+    </footer>
+  </main>
+</body>
+</html>

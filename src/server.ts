@@ -7,6 +7,7 @@
  * Run: `npm run dev` (watch) or `npm run start` (built).
  */
 
+import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 import fastifyRateLimit from "@fastify/rate-limit";
@@ -16,7 +17,8 @@ import { z } from "zod";
 import { AresClient } from "./ares/client.js";
 import { cached, cacheStats } from "./cache.js";
 import { AresError, toToolErrorPayload } from "./errors.js";
-import { HlidacStatuMissingTokenError } from "./hlidacstatu/client.js";
+import { HlidacStatuMissingTokenError, HlidacStatuRateLimitedError } from "./hlidacstatu/client.js";
+import { VrAccessBlockedError } from "./justice_vr/client.js";
 import { hsTokenContext } from "./hlidacstatu/token_context.js";
 import { indexStats } from "./persons_index/store.js";
 import {
@@ -47,6 +49,28 @@ import { getTrademarksByCompany } from "./tmview/service.js";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const PUBLIC_DIR = join(HERE, "..", "public");
+
+// Single source of truth pro verzi: package.json. Použito pro /healthz
+// a pro injekci cache-busteru do index.html ({{VERSION}} placeholder).
+const PKG_VERSION = (() => {
+  try {
+    const pkg = JSON.parse(readFileSync(join(HERE, "..", "package.json"), "utf8"));
+    return String(pkg.version ?? "0.0.0");
+  } catch {
+    return "0.0.0";
+  }
+})();
+
+// Render index.html jednou při startu, replace {{VERSION}} → PKG_VERSION.
+// Server pak vrací předgenerovaný string z /  — žádné per-request I/O.
+const INDEX_HTML = (() => {
+  try {
+    return readFileSync(join(PUBLIC_DIR, "index.html"), "utf8")
+      .replaceAll("{{VERSION}}", PKG_VERSION);
+  } catch {
+    return "";
+  }
+})();
 
 function parseEnvNumber(v: string | undefined, fallback: number): number {
   if (!v) return fallback;
@@ -79,8 +103,30 @@ await app.register(fastifyRateLimit, {
 await app.register(fastifyStatic, {
   root: PUBLIC_DIR,
   prefix: "/",
-  index: ["index.html"],
+  // Auto-index VYPNUT — vlastní handler `/` níže injektuje {{VERSION}}
+  // z package.json. fastify-static jinak servíruje statiku z /js, /css, /data.
+  index: false,
 });
+
+// Vlastní `/` (a /index.html) handler — injektuje verzi z package.json
+// do cache-busteru `<script src=".../app.js?v=X.Y.Z">` + footer.
+// `cache-control: no-cache` aby browser vždy revalidoval HTML; statika
+// pak má vlastní long max-age + verze v query stringu = busted při releasu.
+const INDEX_ETAG = `W/"icovazby-${PKG_VERSION}"`;
+const serveIndex = async (req: FastifyRequest, reply: FastifyReply) => {
+  // Verze v ETagu — stejná verze vrátí 304 (browser použije cache), nová
+  // verze invaliduje. `no-store` navíc zakáže bfcache, aby user po deployi
+  // VŽDY dostal nové HTML (které nese cache-buster query pro app.js).
+  if (req.headers["if-none-match"] === INDEX_ETAG) {
+    return reply.status(304).send();
+  }
+  reply.header("etag", INDEX_ETAG);
+  reply.header("cache-control", "no-store, must-revalidate");
+  reply.header("content-type", "text/html; charset=utf-8");
+  return INDEX_HTML;
+};
+app.get("/", serveIndex);
+app.get("/index.html", serveIndex);
 
 // Per-request HS token: pokud klient pošle hlavičku X-Hlidac-Token,
 // uložíme ji do AsyncLocalStorage. hlidacstatu/client.getToken() pak ji
@@ -147,6 +193,26 @@ function sendError(reply: FastifyReply, err: unknown): void {
     });
     return;
   }
+  // Graceful degradation pro upstream blokace — vrátíme 200 + ok:false, ať se
+  // DD aggregator a frontend nezacyklí v retry. UI ukáže fallback hlášku.
+  if (err instanceof VrAccessBlockedError) {
+    reply.status(200).send({
+      ok: false,
+      reason: "vr_blocked",
+      message:
+        "Veřejný rejstřík momentálně blokuje IP našeho serveru. Data vyhledej přímo na verejnerejstriky.msp.gov.cz.",
+    });
+    return;
+  }
+  if (err instanceof HlidacStatuRateLimitedError) {
+    reply.status(200).send({
+      ok: false,
+      reason: "hs_rate_limited",
+      message:
+        "Vyčerpán denní limit požadavků na Hlídač státu. Zkus za chvíli, nebo si v Nastavení nastav vlastní token.",
+    });
+    return;
+  }
   if (err instanceof AresError) {
     const status = err.code === "NOT_FOUND" ? 404 : err.code === "INVALID_INPUT" ? 400 : 502;
     reply.status(status).send(toToolErrorPayload(err));
@@ -194,7 +260,7 @@ app.get("/api/audit-log", async (req: FastifyRequest, reply) => {
 
 app.get("/healthz", async () => ({
   ok: true,
-  version: "0.6.5",
+  version: PKG_VERSION,
   uptimeSeconds: Math.floor(process.uptime()),
   cache: cacheStats(),
   integrations: {
@@ -373,6 +439,23 @@ app.get("/api/trademarks/:ico", async (_req: FastifyRequest, reply) => {
 // Reference pro budoucí použití (jakmile bude API key):
 // const data = await cached(`tm:${ico}`, () => getTrademarksByCompany(client, ico));
 void getTrademarksByCompany;
+
+// ─── ÚPV ochranné známky — lokální index (ST.96 open data) ──────────────────
+// Backend pro DD kartu „Ochranné známky": fuzzy lookup podle obchodního
+// jména v lokálním SQLite (300k záznamů, ÚPV otevřená data 10-02-2026 +
+// denní DIFF). Není to per-IČO (ÚPV IČO neposkytuje), ale per-name match.
+import { searchUpvByName } from "./upv/service.js";
+app.get("/api/upv/by-name", async (req: FastifyRequest, reply) => {
+  try {
+    const { name, city } = req.query as { name?: string; city?: string };
+    if (!name || name.trim().length < 2) {
+      return reply.status(400).send({ error: "INVALID_INPUT", message: "Parametr 'name' je povinný (min 2 znaky)." });
+    }
+    reply.send(searchUpvByName(name.trim(), city?.trim()));
+  } catch (e) {
+    sendError(reply, e);
+  }
+});
 
 // ─── Search companies by name + optional PSČ ─────────────────────────────────
 const searchSchema = z.object({

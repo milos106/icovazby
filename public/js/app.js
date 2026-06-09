@@ -16,11 +16,7 @@ const SECTION_DEFS = [
   { key: "dd-timeline", label: "📜 Časová osa", group: "Profil firmy" },
   { key: "dd-katastr", label: "🏠 Nemovitosti (Katastr, brzy)", group: "Profil firmy" },
   { key: "dd-ds", label: "📬 Datová schránka", group: "Profil firmy" },
-  // dd-upv (Ochranné známky / TMView) — dočasně skrytý dokud nedorazí EUIPO
-  // Cobranding partnership nebo ÚPV bulk přístup. Code v src/tmview/ + UI
-  // karta jsou hotové, jen jsou neaktivní. Až přijde token / přístup,
-  // odkomentuj řádek níže a v index.html odstraň `x-show="false"` z dd-upv divu.
-  // { key: "dd-upv", label: "™ Ochranné známky (TMView)", group: "Profil firmy" },
+  { key: "dd-upv", label: "™ Ochranné známky (ÚPV)", group: "Profil firmy" },
   { key: "dd-vr", label: "⚖️ Veřejný rejstřík (OR)", group: "Profil firmy" },
   { key: "dd-ubo", label: "👥 Skuteční majitelé (UBO)", group: "Profil firmy" },
   { key: "dd-dotace", label: "💸 Dotace", group: "Profil firmy" },
@@ -188,6 +184,12 @@ async function jsonFetch(url, opts) {
   const data = await r.json().catch(() => ({}));
   if (!r.ok) {
     throw new Error(data.message || data.error || `HTTP ${r.status}`);
+  }
+  // Graceful degradation z backendu (např. VR blokované, HS rate limit) —
+  // server vrátí 200 + { ok:false, reason, message }. Throw aby komponenty
+  // s error stavem zobrazily zprávu místo crash při render valid data.
+  if (data && data.ok === false && data.reason) {
+    throw new Error(data.message || `Zdroj nedostupný (${data.reason})`);
   }
   return data;
 }
@@ -744,9 +746,10 @@ function graphSection() {
      *  IČO + spustit run(). Historický flag se čte z globálního Alpine store
      *  ($store.history.enabled) sdíleného s Profilem. */
     async seed(icos) {
-      if (!Array.isArray(icos) || icos.length < 2) return;
+      if (!Array.isArray(icos) || icos.length < 1) return;
       this.raw = icos.join("\n");
-      await this.run();
+      if (icos.length >= 2) await this.run();
+      else this.error = "Pro Mapu propojení potřebuješ alespoň 2 IČO.";
     },
     /**
      * Nový profil firmy v searchSection RESETuje Mapu propojení na jediné
@@ -1754,7 +1757,15 @@ function bulkSection() {
     results: [],
     progress: 0,
     total: 0,
-    init() {},
+    init() {
+      // Seed z jiné sekce (např. Uložená vyhledávání → Prověřit více firem).
+      window.addEventListener("ares-seed-bulk", (e) => {
+        const icos = e.detail?.icos || [];
+        if (!icos.length) return;
+        window.Alpine?.store("sections")?.setVisible("bulk", true);
+        this.raw = icos.join("\n");
+      });
+    },
     parseIcos() {
       return [...new Set(
         (this.raw || "")
@@ -1856,13 +1867,21 @@ function savedSection() {
         (q || "")
           .split(/[\s,;\n]+/g)
           .map((s) => s.trim().replace(/^CZ\s*/i, "").replace(/\s|-|\./g, "").padStart(8, "0"))
-          .filter((s) => ICO_RE.test(s)),
+          // ICO_RE pustí `00000000` (8 číslic) — explicitně odmítnout všenuly,
+          // jinak by se uložil placeholder text z textarey jako platné IČO.
+          .filter((s) => ICO_RE.test(s) && !/^0+$/.test(s)),
       )];
     },
     add() {
-      if (!this.newName.trim()) return;
+      if (!this.newName.trim()) {
+        alert("Zadej název seznamu.");
+        return;
+      }
       const icos = this.parseQuery(this.newQuery);
-      if (icos.length === 0) return;
+      if (icos.length === 0) {
+        alert("Zadej alespoň jedno platné IČO (8 číslic, ne samé nuly).");
+        return;
+      }
       this.searches.unshift({
         id: Date.now().toString(),
         name: this.newName.trim(),
@@ -1879,18 +1898,22 @@ function savedSection() {
       this.save();
     },
     load(s) {
-      const bulk = document.querySelector("#bulk textarea");
-      if (bulk) {
-        bulk.value = s.icos.join("\n");
-        bulk.dispatchEvent(new Event("input", { bubbles: true }));
-      }
-      document.querySelector("#bulk")?.scrollIntoView({ behavior: "smooth" });
+      window.Alpine?.store("sections")?.setVisible("bulk", true);
+      window.dispatchEvent(new CustomEvent("ares-seed-bulk", {
+        detail: { icos: s.icos },
+      }));
+      requestAnimationFrame(() => {
+        document.querySelector("#bulk")?.scrollIntoView({ behavior: "smooth" });
+      });
     },
     map(s) {
+      window.Alpine?.store("sections")?.setVisible("graph", true);
       window.dispatchEvent(new CustomEvent("ares-seed-graph", {
         detail: { icos: s.icos },
       }));
-      document.querySelector("#graph")?.scrollIntoView({ behavior: "smooth" });
+      requestAnimationFrame(() => {
+        document.querySelector("#graph")?.scrollIntoView({ behavior: "smooth" });
+      });
     },
     async subscribe(s) {
       const email = prompt(`Zadej email pro upozornění na změny v "${s.name}" (${s.icos.length} IČO):`);
@@ -1948,6 +1971,41 @@ function ddDatovaSchrankaCard() {
   };
 }
 window.ddDatovaSchrankaCard = ddDatovaSchrankaCard;
+
+/**
+ * ÚPV ochranné známky — lokální SQLite index (ST.96 open data).
+ * Fuzzy match na obchodní jméno (ÚPV neposkytuje IČO). Volá se z dd-upv
+ * karty s `report.obchodniJmeno` + sídlo city.
+ */
+function ddUpvCard() {
+  return {
+    data: null,
+    loading: false,
+    error: "",
+    showAll: false,
+    lastKey: "",
+    async load(name, city) {
+      if (!name || name.trim().length < 2) return;
+      const key = `${name}|${city ?? ""}`;
+      if (key === this.lastKey) return; // už načteno pro tenhle profil
+      this.lastKey = key;
+      this.loading = true;
+      this.error = "";
+      this.data = null;
+      this.showAll = false;
+      try {
+        const params = new URLSearchParams({ name });
+        if (city) params.set("city", city);
+        this.data = await jsonFetch(`/api/upv/by-name?${params.toString()}`);
+      } catch (e) {
+        this.error = "ÚPV nelze načíst: " + e.message;
+      } finally {
+        this.loading = false;
+      }
+    },
+  };
+}
+window.ddUpvCard = ddUpvCard;
 
 /** Ochranné známky přes TMView (EUIPN). */
 function ddTrademarksLoader() {

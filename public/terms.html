@@ -1,0 +1,214 @@
+<!doctype html>
+<html lang="cs" class="h-full">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Podmínky služby — icovazby</title>
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    // Dark mode — sync s hlavním webem (klíč "icovazby:theme") + system preference.
+    (function() {
+      var stored = null;
+      try { stored = localStorage.getItem("icovazby:theme"); } catch (e) {}
+      var prefersDark = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
+      var dark = stored === "dark" || (stored === null && prefersDark);
+      if (dark) document.documentElement.classList.add("dark");
+    })();
+    function toggleTheme() {
+      var html = document.documentElement;
+      var willBeDark = !html.classList.contains("dark");
+      html.classList.toggle("dark", willBeDark);
+      try { localStorage.setItem("icovazby:theme", willBeDark ? "dark" : "light"); } catch (e) {}
+      var btn = document.getElementById("theme-toggle-btn");
+      if (btn) btn.textContent = willBeDark ? "☀️ Světlý" : "🌙 Tmavý";
+    }
+  </script>
+  <style>
+    .prose h1 { font-size: 2rem; font-weight: 700; margin-top: 0; margin-bottom: 1rem; }
+    .prose h2 { font-size: 1.5rem; font-weight: 600; margin-top: 2rem; margin-bottom: 0.75rem; }
+    .prose h3 { font-size: 1.125rem; font-weight: 600; margin-top: 1.5rem; margin-bottom: 0.5rem; }
+    .prose p { margin: 0.75rem 0; line-height: 1.6; }
+    .prose ul, .prose ol { padding-left: 1.5rem; margin: 0.75rem 0; }
+    .prose li { margin: 0.25rem 0; }
+    .prose a { color: #059669; text-decoration: underline; }
+    .prose code { background: rgba(0,0,0,0.05); padding: 0.1rem 0.3rem; border-radius: 0.25rem; font-size: 0.9em; }
+    .dark .prose code { background: rgba(255,255,255,0.1); }
+    .prose table { border-collapse: collapse; margin: 1rem 0; width: 100%; font-size: 0.9rem; }
+    .prose th, .prose td { border: 1px solid rgba(0,0,0,0.15); padding: 0.4rem 0.6rem; text-align: left; }
+    .dark .prose th, .dark .prose td { border-color: rgba(255,255,255,0.15); }
+    .prose th { background: rgba(0,0,0,0.04); font-weight: 600; }
+    .dark .prose th { background: rgba(255,255,255,0.05); }
+    .prose hr { border: 0; border-top: 1px solid rgba(0,0,0,0.15); margin: 2rem 0; }
+    .dark .prose hr { border-top-color: rgba(255,255,255,0.15); }
+    .prose blockquote { border-left: 4px solid #d1d5db; padding-left: 1rem; color: #6b7280; font-style: italic; }
+  </style>
+</head>
+<body class="bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100 min-h-screen">
+  <header class="border-b dark:border-slate-700 bg-white dark:bg-slate-800">
+    <div class="max-w-3xl mx-auto px-4 py-3 flex items-center gap-3">
+      <a href="/" class="flex items-center gap-2 hover:opacity-80">
+        <svg viewBox="0 0 64 64" class="w-7 h-7" xmlns="http://www.w3.org/2000/svg">
+          <path d="M 32 18 L 14 46" stroke="#10b981" stroke-width="3.5" stroke-linecap="round" fill="none"/>
+          <path d="M 32 18 L 32 46" stroke="#10b981" stroke-width="3.5" stroke-linecap="round" fill="none"/>
+          <path d="M 32 18 L 50 46" stroke="#10b981" stroke-width="3.5" stroke-linecap="round" fill="none"/>
+          <rect x="6" y="42" width="16" height="16" rx="3" fill="#10b981"/>
+          <rect x="24" y="42" width="16" height="16" rx="3" fill="#10b981"/>
+          <rect x="42" y="42" width="16" height="16" rx="3" fill="#10b981"/>
+          <circle cx="32" cy="18" r="11" fill="#065f46"/>
+          <circle cx="32" cy="18" r="7" fill="#34d399"/>
+        </svg>
+        <span class="font-semibold tracking-tight">IČO vazby</span>
+      </a>
+      <span class="text-slate-300 dark:text-slate-600">/</span>
+      <span class="text-sm text-slate-600 dark:text-slate-400">Podmínky služby</span>
+      <span class="flex-1"></span>
+      <button type="button" id="theme-toggle-btn" onclick="toggleTheme()" class="text-sm px-2 py-1 border dark:border-slate-600 rounded hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors"
+              x-tmpl="theme-label">🌙 Tmavý</button>
+      <a href="/" class="text-sm underline text-emerald-700 dark:text-emerald-400">← zpět na hlavní</a>
+    </div>
+  </header>
+  <script>
+    // Inicializace textu tlačítka podle aktuálního stavu (provedeno po DOM ready, headerScript běží před body)
+    (function() {
+      var btn = document.getElementById("theme-toggle-btn");
+      if (btn) btn.textContent = document.documentElement.classList.contains("dark") ? "☀️ Světlý" : "🌙 Tmavý";
+    })();
+  </script>
+  <main class="max-w-3xl mx-auto px-4 py-8">
+    <article class="prose dark:prose-invert">
+      <h1>Podmínky služby (Terms of Service)</h1>
+<p><strong>Verze:</strong> 1.1
+<strong>Účinnost od:</strong> 2026-06-09
+<strong>Provozovatel:</strong> SimpleSolar s.r.o., IČO 07315520, sídlem Regnerova 1102, Mladá Boleslav III, 293 01 Mladá Boleslav, zapsaná v obchodním rejstříku vedeném Krajským soudem v Praze
+<strong>E-mail:</strong> <a href="mailto:info@simplesolar.cz">info@simplesolar.cz</a>
+<strong>Web:</strong> <a href="https://icovazby.cz">https://icovazby.cz</a></p>
+<p>Používáním webu icovazby.cz souhlasíš s těmito podmínkami. Pokud nesouhlasíš, službu nepoužívej.</p>
+<h2>1. Co služba dělá</h2>
+<p>icovazby.cz agreguje veřejně dostupná data o českých podnikatelských subjektech z 13+ veřejných zdrojů (ARES, Veřejný rejstřík, ADIS DPH, ISIR, ČNB JERRS, EU sankce, Hlídač státu, ÚPV ochranné známky a další). Slouží k <strong>informativní prověrce</strong> českých firem (due diligence, KYC podpora, ověření obchodního partnera).</p>
+<h2>2. Charakter dat</h2>
+<ul>
+<li><strong>Data jsou informativní.</strong> Zobrazované informace pocházejí z veřejných registrů a jsou zpracovány automaticky. Mohou obsahovat chyby, opoždění nebo neúplnosti.</li>
+<li>Služba <strong>nenahrazuje</strong> výpis z obchodního rejstříku, právní due diligence ani AML/KYC povinnosti podle zákona č. 253/2008 Sb.</li>
+<li>Pro úřední účely vždy ověř informace přímo u zdroje.</li>
+<li>Detail viz <a href="DISCLAIMER.md">DISCLAIMER.md</a>.</li>
+</ul>
+<h2>3. Tiers a omezení</h2>
+<h3>Free tier (anonymní použití)</h3>
+<ul>
+<li>10 prověrek za den z jedné IP adresy</li>
+<li>Žádný garantovaný uptime (best-effort)</li>
+<li>Žádná podpora</li>
+</ul>
+<h3>Pro tier (pokud bude spuštěn — viz aktuální nabídka na webu)</h3>
+<ul>
+<li>Specifický limit DD podle plánu</li>
+<li>Watchlist + e-mail alerty</li>
+<li>PDF prověrky</li>
+<li>API přístup s tokenem</li>
+<li>E-mailová podpora s reakcí do 2 pracovních dní</li>
+</ul>
+<h3>Enterprise (na míru)</h3>
+<ul>
+<li>Vlastní SLA, support, white-label, on-premise nasazení podle smlouvy</li>
+</ul>
+<h2>4. Tvoje povinnosti</h2>
+<p>Souhlasíš, že <strong>NEBUDEŠ</strong>:</p>
+<ul>
+<li><strong>Scrapovat</strong> službu automatizovanými nástroji nad rámec běžného použití (max 60 req/min z jedné IP, max 10 IČO za hodinu v Bulk DD pro Free)</li>
+<li>Sdílet svoje API tokeny s třetími stranami</li>
+<li>Používat data ke spamování, telemarketingu bez souhlasu nebo k diskriminaci</li>
+<li>Pokoušet se obejít omezení (rate limity, paywall, autentizaci)</li>
+<li>Reverse-engineerovat backend nad rámec práv daných AGPL-3.0 licencí</li>
+<li>Používat službu k nelegálním účelům podle českého a unijního práva</li>
+</ul>
+<p>Porušení znamená okamžité ukončení přístupu bez nároku na refund.</p>
+<h2>5. Tvoje data v naší databázi</h2>
+<p>Pokud používáš Pro tier (po registraci), ukládáme:</p>
+<ul>
+<li>E-mail (pro alerty + login)</li>
+<li>IČO seznam tvého watchlistu</li>
+<li>Historii dotazů (audit log dle čl. 8)</li>
+<li>Stripe payment ID (pokud platíš)</li>
+<li>API tokeny (hashované)</li>
+</ul>
+<p>Účel: provoz služby. Právní základ: smlouva (čl. 6 odst. 1 b) GDPR).</p>
+<p><strong>Můžeš kdykoli požádat o:</strong> export, opravu nebo smazání tvých dat. Napiš na <a href="mailto:milospospisil68@gmail.com">milospospisil68@gmail.com</a>. Lhůta: 30 dní.</p>
+<p>Detail v Privacy Policy (<code>/privacy.html</code>).</p>
+<h2>6. Údaje o třetích osobách</h2>
+<p>Služba zobrazuje údaje o <strong>fyzických osobách v rolích statutárů, společníků a skutečných majitelů</strong> (jméno, datum narození, adresa). Tato data pocházejí z veřejných rejstříků kde mají zákonný základ ke zveřejnění (z. č. 304/2013 Sb. — veřejný rejstřík, z. č. 37/2021 Sb. — UBO).</p>
+<p>Používáš-li tato data, <strong>jsi sám odpovědný</strong> za soulad s GDPR (zejména omezení účelu, právní základ tvého zpracování, retention). Provozovatel je <strong>správce</strong> vůči vlastní službě, <strong>zpracovatel</strong> v rolích kde tě obsluhuje.</p>
+<h2>7. Změny dat z veřejných zdrojů</h2>
+<ul>
+<li>Data zobrazujeme tak, jak je publikují primární zdroje</li>
+<li><strong>Nemáme oprávnění</strong> je měnit nebo opravovat</li>
+<li>Pokud najdeš chybu, <strong>kontaktuj primární zdroj</strong>:<ul>
+<li>ARES: ares.gov.cz</li>
+<li>Veřejný rejstřík: justice.cz</li>
+<li>ÚPV: upv.gov.cz</li>
+<li>atd.</li>
+</ul>
+</li>
+</ul>
+<h2>8. Audit log</h2>
+<p>Z důvodů AML compliance a bezpečnosti <strong>logujeme každý dotaz na konkrétní IČO</strong> (kdy, odkud IP, jaký IČO). Logy uchováváme <strong>3 roky</strong> podle § 16 AML zákona.</p>
+<p>Logy se nezveřejňují ani neprodávají třetím stranám. Slouží jen pro:</p>
+<ul>
+<li>Vyšetřování zneužití (rate limit abuse, scraping)</li>
+<li>Compliance s AML reporting povinnostmi (na vyžádání FAÚ)</li>
+<li>Soudní/policejní vyžádání podle zákona</li>
+</ul>
+<h2>9. Dostupnost</h2>
+<ul>
+<li>Free tier: <strong>best-effort</strong>, žádné SLA</li>
+<li>Pro tier: 99 % měsíčně (pokud bude spuštěn)</li>
+<li>Enterprise: smluvní SLA</li>
+</ul>
+<p>Plánované odstávky oznamujeme v patičce webu min. 24 h předem (pokud to umožní okolnosti).</p>
+<h2>10. Omezení odpovědnosti</h2>
+<ul>
+<li><strong>Nepřebíráme odpovědnost</strong> za škodu způsobenou rozhodnutím na základě dat ze služby</li>
+<li>Maximální výše náhrady škody je <strong>omezena na výši zaplaceného předplatného za posledních 12 měsíců</strong> (pro Free tier = 0 Kč)</li>
+<li>Vyloučení neplatí pro úmyslné nebo hrubě nedbalé jednání podle § 2898 občanského zákoníku</li>
+</ul>
+<h2>11. Ukončení</h2>
+<ul>
+<li>Můžeš kdykoli přestat službu používat</li>
+<li>Pro Pro tier: výpověď ke konci aktuálního zúčtovacího období</li>
+<li>Při hrubém porušení (čl. 4) ukončíme přístup okamžitě</li>
+</ul>
+<h2>12. Změny podmínek</h2>
+<ul>
+<li>Aktualizujeme tyto podmínky podle potřeby</li>
+<li>Změny oznamujeme <strong>30 dní předem</strong> na webu a e-mailem (pokud máš účet)</li>
+<li>Pokud nesouhlasíš, můžeš službu opustit. Pokračování v používání = souhlas s novou verzí.</li>
+</ul>
+<h2>13. Licence</h2>
+<ul>
+<li>Kód: <strong>AGPL-3.0-or-later</strong> (viz <a href="../LICENSE">LICENSE</a>)</li>
+<li>Brand „icovazby&quot; + logo: chráněno ochrannou známkou (registrace v procesu)</li>
+<li>Data: licence dle primárních zdrojů (viz <a href="../README.md#zdroje-dat">zdroje dat</a>)</li>
+</ul>
+<h2>14. Rozhodné právo + spory</h2>
+<ul>
+<li>Smlouva se řídí <strong>právem České republiky</strong></li>
+<li>Pro spory je věcně příslušný obecný soud ČR podle sídla provozovatele (Praha)</li>
+<li>Spotřebitel může využít <strong>ČOI</strong> (coi.cz) pro mimosoudní řešení sporu</li>
+</ul>
+<h2>15. Kontakt</h2>
+<p>SimpleSolar s.r.o.
+IČO: 07315520
+Sídlo: Regnerova 1102, Mladá Boleslav III, 293 01 Mladá Boleslav
+E-mail: <a href="mailto:info@simplesolar.cz">info@simplesolar.cz</a>
+Web: <a href="https://icovazby.cz">https://icovazby.cz</a></p>
+<hr>
+<p><strong>Aktuální verze:</strong> 1.1 (2026-06-09 — provozovatel SimpleSolar s.r.o. místo FO).
+Verzování: každá změna dostane nové číslo + datum, předchozí verze archivovány v Git historii.</p>
+
+    </article>
+    <footer class="mt-12 pt-6 border-t dark:border-slate-700 text-xs text-slate-500 dark:text-slate-400">
+      <p>icovazby — open-source pod <a href="https://www.gnu.org/licenses/agpl-3.0.html" class="underline">AGPL-3.0-or-later</a>. <a href="/" class="underline">Hlavní web</a> · <a href="/terms.html" class="underline">Podmínky</a> · <a href="/disclaimer.html" class="underline">Omezení odpovědnosti</a> · <a href="/privacy.html" class="underline">Soukromí</a></p>
+    </footer>
+  </main>
+</body>
+</html>
