@@ -130,7 +130,7 @@ function sendError(reply: FastifyReply, err: unknown): void {
 // ─── Health ───────────────────────────────────────────────────────────────────
 app.get("/healthz", async () => ({
   ok: true,
-  version: "0.5.4",
+  version: "0.5.5",
   uptimeSeconds: Math.floor(process.uptime()),
   cache: cacheStats(),
   integrations: {

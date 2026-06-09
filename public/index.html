@@ -424,7 +424,11 @@
           </form>
 
           <template x-if="error">
-            <div class="mt-4 p-3 bg-rose-50 dark:bg-rose-900/30 border border-rose-200 dark:border-rose-800 rounded text-sm text-rose-800 dark:text-rose-300" x-text="error"></div>
+            <div class="mt-4 text-center py-6 px-4 border border-dashed border-slate-300 dark:border-slate-700 rounded-lg">
+              <div class="text-3xl mb-2" x-text="window.classifyError(error) === 'network' ? '⚠️' : '🔍'"></div>
+              <p class="text-xs text-slate-600 dark:text-slate-400 mb-3" x-text="error"></p>
+              <button type="button" @click="run()" :disabled="loading" class="px-3 py-1.5 border dark:border-slate-600 rounded-lg text-xs hover:bg-slate-50 dark:hover:bg-slate-700 disabled:opacity-50">↻ Zkusit znovu</button>
+            </div>
           </template>
 
           <!-- Multi-result list (jen při name search s víc shodami) -->
@@ -479,7 +483,12 @@
         </template>
 
         <template x-if="error">
-          <div class="mt-4 p-3 bg-rose-50 dark:bg-rose-900/30 border border-rose-200 dark:border-rose-800 rounded text-sm text-rose-800 dark:text-rose-300" x-text="error"></div>
+          <div class="mt-4 text-center py-6 px-4 border border-dashed border-slate-300 dark:border-slate-700 rounded-lg">
+            <div class="text-3xl mb-2" x-text="window.classifyError(error) === 'network' ? '⚠️' : '🔍'"></div>
+            <h5 class="font-semibold mb-1 text-sm" x-text="window.classifyError(error) === 'network' ? 'ARES dočasně nedostupný' : 'Prověrka selhala'"></h5>
+            <p class="text-xs text-slate-600 dark:text-slate-400 mb-3" x-text="error"></p>
+            <button type="button" @click="ico && run(ico)" :disabled="loading || !ico" class="px-3 py-1.5 border dark:border-slate-600 rounded-lg text-xs hover:bg-slate-50 dark:hover:bg-slate-700 disabled:opacity-50">↻ Zkusit znovu</button>
+          </div>
         </template>
 
         <template x-if="report">
@@ -936,8 +945,31 @@
                     <div class="h-3 bg-slate-200 dark:bg-slate-700 rounded w-3/4"></div>
                   </div>
                 </template>
-                <template x-if="uboError">
-                  <p class="text-xs text-amber-700 dark:text-amber-400" x-text="uboError"></p>
+                <template x-if="uboError && window.classifyError(uboError) === 'missing-token'">
+                  <div class="text-center py-6 px-4 border border-dashed border-amber-300 dark:border-amber-700 rounded-lg bg-amber-50/30 dark:bg-amber-900/10">
+                    <div class="text-3xl mb-2">🔑</div>
+                    <h5 class="font-semibold mb-1 text-sm">Hlídač státu token chybí</h5>
+                    <p class="text-xs text-slate-600 dark:text-slate-400 mb-3">UBO data poskytuje Hlídač státu. Vlastní token získáš zdarma a žije jen v tvém prohlížeči.</p>
+                    <div class="flex gap-2 justify-center flex-wrap">
+                      <button type="button" @click="window.openSettings()" class="px-3 py-1.5 bg-emerald-600 text-white rounded-lg text-xs hover:bg-emerald-700">⚙️ Otevři nastavení</button>
+                      <a href="https://www.hlidacstatu.cz/api" target="_blank" rel="noopener" class="px-3 py-1.5 border dark:border-slate-600 rounded-lg text-xs hover:bg-slate-50 dark:hover:bg-slate-700">↗ Vygenerovat zdarma</a>
+                    </div>
+                  </div>
+                </template>
+                <template x-if="uboError && window.classifyError(uboError) === 'network'">
+                  <div class="text-center py-6 px-4 border border-dashed border-rose-300 dark:border-rose-700 rounded-lg bg-rose-50/30 dark:bg-rose-900/10">
+                    <div class="text-3xl mb-2">⚠️</div>
+                    <h5 class="font-semibold mb-1 text-sm">Hlídač státu dočasně nedostupný</h5>
+                    <p class="text-xs text-slate-600 dark:text-slate-400 mb-3">Network chyba při dotazu na hlidacstatu.cz. Zkus za chvíli.</p>
+                    <button type="button" @click="load(report.ico)" class="px-3 py-1.5 bg-emerald-600 text-white rounded-lg text-xs hover:bg-emerald-700">↻ Zkusit znovu</button>
+                  </div>
+                </template>
+                <template x-if="uboError && !['missing-token','network'].includes(window.classifyError(uboError))">
+                  <div class="text-center py-6 px-4 border border-dashed border-slate-300 dark:border-slate-700 rounded-lg">
+                    <div class="text-3xl mb-2">⚠️</div>
+                    <p class="text-xs text-slate-600 dark:text-slate-400 mb-3" x-text="uboError"></p>
+                    <button type="button" @click="load(report.ico)" class="px-3 py-1.5 border dark:border-slate-600 rounded-lg text-xs hover:bg-slate-50 dark:hover:bg-slate-700">↻ Zkusit znovu</button>
+                  </div>
                 </template>
                 <template x-if="ubo && !ubo.available">
                   <p class="text-xs text-slate-500 dark:text-slate-400" x-text="ubo.reason"></p>
@@ -1038,8 +1070,23 @@
                     <div class="h-3 bg-slate-200 dark:bg-slate-700 rounded w-3/4"></div>
                   </div>
                 </template>
-                <template x-if="dotaceError">
-                  <p class="text-xs text-amber-700 dark:text-amber-400" x-text="dotaceError"></p>
+                <template x-if="dotaceError && window.classifyError(dotaceError) === 'missing-token'">
+                  <div class="text-center py-6 px-4 border border-dashed border-amber-300 dark:border-amber-700 rounded-lg bg-amber-50/30 dark:bg-amber-900/10">
+                    <div class="text-3xl mb-2">🔑</div>
+                    <h5 class="font-semibold mb-1 text-sm">Hlídač státu token chybí</h5>
+                    <p class="text-xs text-slate-600 dark:text-slate-400 mb-3">Dotace + provozní dotace přicházejí od Hlídače státu. Token získáš zdarma za minutu.</p>
+                    <div class="flex gap-2 justify-center flex-wrap">
+                      <button type="button" @click="window.openSettings()" class="px-3 py-1.5 bg-emerald-600 text-white rounded-lg text-xs hover:bg-emerald-700">⚙️ Otevři nastavení</button>
+                      <a href="https://www.hlidacstatu.cz/api" target="_blank" rel="noopener" class="px-3 py-1.5 border dark:border-slate-600 rounded-lg text-xs hover:bg-slate-50 dark:hover:bg-slate-700">↗ Vygenerovat zdarma</a>
+                    </div>
+                  </div>
+                </template>
+                <template x-if="dotaceError && window.classifyError(dotaceError) !== 'missing-token'">
+                  <div class="text-center py-6 px-4 border border-dashed border-slate-300 dark:border-slate-700 rounded-lg">
+                    <div class="text-3xl mb-2">⚠️</div>
+                    <p class="text-xs text-slate-600 dark:text-slate-400 mb-3" x-text="dotaceError"></p>
+                    <button type="button" @click="load(report.ico)" class="px-3 py-1.5 border dark:border-slate-600 rounded-lg text-xs hover:bg-slate-50 dark:hover:bg-slate-700">↻ Zkusit znovu</button>
+                  </div>
                 </template>
                 <template x-if="dotace && !dotace.available">
                   <p class="text-xs text-slate-500 dark:text-slate-400" x-text="dotace.reason"></p>
@@ -1172,8 +1219,23 @@
                     <div class="h-3 bg-slate-200 dark:bg-slate-700 rounded w-3/4"></div>
                   </div>
                 </template>
-                <template x-if="smlouvyError">
-                  <p class="text-xs text-amber-700 dark:text-amber-400" x-text="smlouvyError"></p>
+                <template x-if="smlouvyError && window.classifyError(smlouvyError) === 'missing-token'">
+                  <div class="text-center py-6 px-4 border border-dashed border-amber-300 dark:border-amber-700 rounded-lg bg-amber-50/30 dark:bg-amber-900/10">
+                    <div class="text-3xl mb-2">🔑</div>
+                    <h5 class="font-semibold mb-1 text-sm">Hlídač státu token chybí</h5>
+                    <p class="text-xs text-slate-600 dark:text-slate-400 mb-3">Veřejné zakázky vidí Hlídač státu z Registru smluv. Token získáš zdarma.</p>
+                    <div class="flex gap-2 justify-center flex-wrap">
+                      <button type="button" @click="window.openSettings()" class="px-3 py-1.5 bg-emerald-600 text-white rounded-lg text-xs hover:bg-emerald-700">⚙️ Otevři nastavení</button>
+                      <a href="https://www.hlidacstatu.cz/api" target="_blank" rel="noopener" class="px-3 py-1.5 border dark:border-slate-600 rounded-lg text-xs hover:bg-slate-50 dark:hover:bg-slate-700">↗ Vygenerovat zdarma</a>
+                    </div>
+                  </div>
+                </template>
+                <template x-if="smlouvyError && window.classifyError(smlouvyError) !== 'missing-token'">
+                  <div class="text-center py-6 px-4 border border-dashed border-slate-300 dark:border-slate-700 rounded-lg">
+                    <div class="text-3xl mb-2">⚠️</div>
+                    <p class="text-xs text-slate-600 dark:text-slate-400 mb-3" x-text="smlouvyError"></p>
+                    <button type="button" @click="load(report.ico)" class="px-3 py-1.5 border dark:border-slate-600 rounded-lg text-xs hover:bg-slate-50 dark:hover:bg-slate-700">↻ Zkusit znovu</button>
+                  </div>
                 </template>
                 <template x-if="smlouvy && !smlouvy.available">
                   <p class="text-xs text-slate-500 dark:text-slate-400" x-text="smlouvy.reason"></p>
@@ -1848,6 +1910,16 @@
                 Hledá podle sdílených jednatelů (z lokálního indexu) + akcionářů z OR.
                 Pokrytí roste s tím, kolik firem jsi přes prověrku už projel.
               </p>
+              <template x-if="result && result.discovered.length === 0">
+                <div class="text-center py-6 px-4 border border-dashed border-slate-300 dark:border-slate-700 rounded-lg mt-2">
+                  <div class="text-3xl mb-2">🔍</div>
+                  <h5 class="font-semibold mb-1 text-sm">Žádné dceřinky nenalezeny</h5>
+                  <p class="text-xs text-slate-600 dark:text-slate-400 mb-3">
+                    Buď firma žádné nemá, nebo ještě nejsou v naší databázi. Drip harvest jich přidává ~480/den — zkus znovu za týden, nebo zaškrtni „Hledat i historické vazby" pro širší vyhledávání.
+                  </p>
+                  <button type="button" @click="run(report.ico)" :disabled="loading" class="px-3 py-1.5 border dark:border-slate-600 rounded-lg text-xs hover:bg-slate-50 dark:hover:bg-slate-700 disabled:opacity-50">↻ Zkusit znovu</button>
+                </div>
+              </template>
               <template x-if="result && result.discovered.length > 0">
                 <details class="mt-2 text-xs">
                   <summary class="cursor-pointer text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100">
@@ -2279,8 +2351,20 @@
           </div>
         </form>
 
-        <template x-if="error">
-          <div class="mt-4 p-3 bg-rose-50 dark:bg-rose-900/30 border border-rose-200 dark:border-rose-800 rounded text-sm text-rose-800 dark:text-rose-300" x-text="error"></div>
+        <template x-if="error && (error.includes('At least') || error.includes('alespoň'))">
+          <div class="mt-4 text-center py-6 px-4 border border-dashed border-amber-300 dark:border-amber-700 rounded-lg bg-amber-50/30 dark:bg-amber-900/10">
+            <div class="text-3xl mb-2">🌐</div>
+            <h5 class="font-semibold mb-1 text-sm">Potřebujeme aspoň 2 IČO pro graf</h5>
+            <p class="text-xs text-slate-600 dark:text-slate-400 mb-3">Mapa propojení hledá osoby napříč firmami — s jednou firmou nemá co porovnávat. Buď přidej IČO ručně, nebo zapni historické vazby (auto-expand zkusí najít sousedy).</p>
+            <button type="button" @click="$store.history.enabled = true; run()" class="px-3 py-1.5 bg-emerald-600 text-white rounded-lg text-xs hover:bg-emerald-700">Zapnout historické a zkusit znovu</button>
+          </div>
+        </template>
+        <template x-if="error && !error.includes('At least') && !error.includes('alespoň')">
+          <div class="mt-4 text-center py-6 px-4 border border-dashed border-slate-300 dark:border-slate-700 rounded-lg">
+            <div class="text-3xl mb-2">⚠️</div>
+            <p class="text-xs text-slate-600 dark:text-slate-400 mb-3" x-text="error"></p>
+            <button type="button" @click="run()" :disabled="loading" class="px-3 py-1.5 border dark:border-slate-600 rounded-lg text-xs hover:bg-slate-50 dark:hover:bg-slate-700 disabled:opacity-50">↻ Zkusit znovu</button>
+          </div>
         </template>
 
         <template x-if="result">
@@ -2555,7 +2639,7 @@
           <input
             type="text"
             x-model="adresa"
-            placeholder="např. Vratimovská 689/117, Ostrava"
+            placeholder="Vlož adresu firmy (např. Vratimovská 689/117, Ostrava)"
             class="flex-1 min-w-[200px] px-4 py-2 border dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none"
           />
           <button
@@ -2567,7 +2651,19 @@
         </form>
 
         <template x-if="error">
-          <div class="mt-4 p-3 bg-rose-50 dark:bg-rose-900/30 border border-rose-200 dark:border-rose-800 rounded text-sm text-rose-800 dark:text-rose-300" x-text="error"></div>
+          <div class="mt-4 text-center py-6 px-4 border border-dashed border-slate-300 dark:border-slate-700 rounded-lg">
+            <div class="text-3xl mb-2">⚠️</div>
+            <p class="text-xs text-slate-600 dark:text-slate-400 mb-3" x-text="error"></p>
+            <button type="button" @click="run()" :disabled="loading" class="px-3 py-1.5 border dark:border-slate-600 rounded-lg text-xs hover:bg-slate-50 dark:hover:bg-slate-700 disabled:opacity-50">↻ Zkusit znovu</button>
+          </div>
+        </template>
+        <template x-if="result && result.subjekty && result.subjekty.length === 0">
+          <div class="mt-4 text-center py-6 px-4 border border-dashed border-slate-300 dark:border-slate-700 rounded-lg">
+            <div class="text-3xl mb-2">🏢</div>
+            <h5 class="font-semibold mb-1 text-sm">Na této adrese žádné firmy</h5>
+            <p class="text-xs text-slate-600 dark:text-slate-400 mb-3">Možná je adresa nepřesná. Zkus zkrátit (jen ulice + město) nebo doplnit PSČ. Detekce virtuálních kanceláří vyžaduje plnou adresu s číslem popisným.</p>
+            <button type="button" @click="adresa = ''; $nextTick(() => document.querySelector('#address input').focus())" class="px-3 py-1.5 border dark:border-slate-600 rounded-lg text-xs hover:bg-slate-50 dark:hover:bg-slate-700">✎ Upravit adresu</button>
+          </div>
         </template>
 
         <template x-if="result">
@@ -2664,7 +2760,11 @@
           </div>
         </form>
         <template x-if="error">
-          <div class="p-3 bg-rose-50 dark:bg-rose-900/30 border border-rose-200 dark:border-rose-800 rounded text-sm text-rose-800 dark:text-rose-300" x-text="error"></div>
+          <div class="text-center py-6 px-4 border border-dashed border-slate-300 dark:border-slate-700 rounded-lg">
+            <div class="text-3xl mb-2">⚠️</div>
+            <p class="text-xs text-slate-600 dark:text-slate-400 mb-3" x-text="error"></p>
+            <button type="button" @click="run()" :disabled="loading" class="px-3 py-1.5 border dark:border-slate-600 rounded-lg text-xs hover:bg-slate-50 dark:hover:bg-slate-700 disabled:opacity-50">↻ Zkusit znovu</button>
+          </div>
         </template>
         <template x-if="loading">
           <div class="bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden mb-3">
@@ -2738,7 +2838,11 @@
           <button type="submit" :disabled="loading" class="px-6 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 disabled:opacity-50" x-text="loading ? 'Načítám…' : 'Porovnat'"></button>
         </form>
         <template x-if="error">
-          <div class="mt-4 p-3 bg-rose-50 dark:bg-rose-900/30 border border-rose-200 dark:border-rose-800 rounded text-sm text-rose-800 dark:text-rose-300" x-text="error"></div>
+          <div class="mt-4 text-center py-6 px-4 border border-dashed border-slate-300 dark:border-slate-700 rounded-lg">
+            <div class="text-3xl mb-2">⚠️</div>
+            <p class="text-xs text-slate-600 dark:text-slate-400 mb-3" x-text="error"></p>
+            <button type="button" @click="run()" :disabled="loading" class="px-3 py-1.5 border dark:border-slate-600 rounded-lg text-xs hover:bg-slate-50 dark:hover:bg-slate-700 disabled:opacity-50">↻ Zkusit znovu</button>
+          </div>
         </template>
         <template x-if="resultA && resultB">
           <div class="grid grid-cols-2 gap-4">
@@ -2814,7 +2918,7 @@
              je POVINNÝ pro každou síťově dostupnou instanci pod AGPL-3.0. -->
         <p class="pt-2 border-t dark:border-slate-700 mt-2">
           <strong>Software:</strong> <a class="underline" href="https://github.com/milos106/icovazby" target="_blank" rel="noopener">icovazby</a>
-          v0.5.4 — licencováno pod
+          v0.5.5 — licencováno pod
           <a class="underline" href="https://www.gnu.org/licenses/agpl-3.0.html" target="_blank" rel="noopener">GNU AGPL-3.0-or-later</a>.
           Provozuješ-li modifikovanou verzi jako webovou službu, máš povinnost
           zveřejnit svůj zdrojový kód (AGPL §13).
@@ -2824,6 +2928,6 @@
 
     <!-- Cache buster v query param: každý release změní verzi → browser
          dostane nový URL, CF cache pro starý URL ignorován. -->
-    <script src="/js/app.js?v=0.5.4"></script>
+    <script src="/js/app.js?v=0.5.5"></script>
   </body>
 </html>

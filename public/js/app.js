@@ -1338,6 +1338,10 @@ function hsTokenSettings() {
       } catch {
         /* ignore */
       }
+      // Listener pro openSettings() z empty-states napříč profilem
+      window.addEventListener("ares-open-settings", () => {
+        this.open = true;
+      });
     },
     save() {
       const t = (this.draft || "").trim();
@@ -1537,6 +1541,27 @@ window.ddDotaceLoader = ddDotaceLoader;
 window.ddIsirLoader = ddIsirLoader;
 window.ddJerrsLoader = ddJerrsLoader;
 window.ddTimelineLoader = ddTimelineLoader;
+
+/**
+ * Klasifikace chybové zprávy do typové variant pro empty-state UI.
+ * Vrací jeden z: 'missing-token' | 'network' | 'not-found' | 'rate-limit' | 'other'
+ */
+function classifyError(msg) {
+  if (!msg) return "other";
+  const m = String(msg).toLowerCase();
+  if (m.includes("missing_token") || m.includes("hlídač státu není nakonfigurován") || m.includes("token chybí")) return "missing-token";
+  if (m.includes("fetch failed") || m.includes("econn") || m.includes("network") || m.includes("getaddrinfo") || m.includes("upstream")) return "network";
+  if (m.includes("not_found") || m.includes("not found") || m.includes("nenalezeno")) return "not-found";
+  if (m.includes("rate_limit") || m.includes("rate_limited") || m.includes("429") || m.includes("příliš mnoho dotazů")) return "rate-limit";
+  return "other";
+}
+window.classifyError = classifyError;
+
+/** Otevři settings popover přes custom event — hsTokenSettings listener. */
+function openSettings() {
+  window.dispatchEvent(new CustomEvent("ares-open-settings"));
+}
+window.openSettings = openSettings;
 
 /** Diff mode — side-by-side porovnání 2 firem. */
 function compareSection() {
