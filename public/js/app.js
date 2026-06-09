@@ -34,7 +34,7 @@ const SECTION_DEFS = [
   { key: "address", label: "🏢 Hledat na adrese", group: "Sekce" },
   { key: "osoby", label: "🔗 Vazby osoby", group: "Sekce" },
   { key: "compare", label: "⚖️ Porovnat 2 firmy", group: "Sekce" },
-  { key: "bulk", label: "📋 Hromadná prověrka", group: "Sekce" },
+  { key: "bulk", label: "📋 Prověrka více firem", group: "Sekce" },
   { key: "saved", label: "📑 Uložená vyhledávání", group: "Sekce" },
 ];
 const RECENT_LIMIT = 10;

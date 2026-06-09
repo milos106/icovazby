@@ -194,7 +194,7 @@ app.get("/api/audit-log", async (req: FastifyRequest, reply) => {
 
 app.get("/healthz", async () => ({
   ok: true,
-  version: "0.6.4",
+  version: "0.6.5",
   uptimeSeconds: Math.floor(process.uptime()),
   cache: cacheStats(),
   integrations: {

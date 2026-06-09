@@ -217,7 +217,7 @@
           <a x-show="$store.sections.visible('graph')" href="#graph" class="hover:text-slate-900 dark:hover:text-white">Mapa propojení</a>
           <a x-show="$store.sections.visible('address')" href="#address" class="hover:text-slate-900 dark:hover:text-white">Podle adresy</a>
           <a x-show="$store.sections.visible('compare')" href="#compare" class="hover:text-slate-900 dark:hover:text-white">Porovnat</a>
-          <a x-show="$store.sections.visible('bulk')" href="#bulk" class="hover:text-slate-900 dark:hover:text-white">Bulk</a>
+          <a x-show="$store.sections.visible('bulk')" href="#bulk" class="hover:text-slate-900 dark:hover:text-white">Více firem</a>
           <a x-show="$store.sections.visible('saved')" href="#saved" class="hover:text-slate-900 dark:hover:text-white">Uložené</a>
         </nav>
         <div class="flex items-center gap-1.5 flex-wrap" x-show="!$store.mode.readonly">
@@ -2802,14 +2802,14 @@
           <button type="submit" class="px-4 py-2 bg-emerald-600 text-white rounded-lg text-sm hover:bg-emerald-700">Uložit</button>
         </form>
         <template x-if="searches.length === 0">
-          <p class="text-sm text-slate-500">Žádné uložené seznamy. Přidej výše nebo „💾 Uložit" v Bulk / Mapa propojení.</p>
+          <p class="text-sm text-slate-500">Žádné uložené seznamy. Přidej výše nebo „💾 Uložit" v sekci Více firem / Mapa propojení.</p>
         </template>
         <ul class="space-y-2">
           <template x-for="s in searches" :key="s.id">
             <li class="border dark:border-slate-700 rounded-lg p-3 flex flex-wrap items-center gap-3">
               <span class="font-semibold flex-1 min-w-[180px]" x-text="s.name"></span>
               <span class="text-xs text-slate-500 font-mono" x-text="`${s.icos.length} IČO`"></span>
-              <button type="button" @click="load(s)" class="px-3 py-1 border dark:border-slate-600 rounded text-xs hover:bg-slate-50 dark:hover:bg-slate-700">📋 Bulk DD</button>
+              <button type="button" @click="load(s)" class="px-3 py-1 border dark:border-slate-600 rounded text-xs hover:bg-slate-50 dark:hover:bg-slate-700">📋 Prověřit více firem</button>
               <button type="button" @click="map(s)" class="px-3 py-1 border dark:border-slate-600 rounded text-xs hover:bg-slate-50 dark:hover:bg-slate-700">🌐 Mapa</button>
               <button type="button" @click="subscribe(s)" :disabled="s.subscribed" class="px-3 py-1 border rounded text-xs disabled:opacity-50" :class="s.subscribed ? 'border-emerald-300 text-emerald-700' : 'border-amber-300 text-amber-700 hover:bg-amber-50 dark:hover:bg-amber-900/30'" x-text="s.subscribed ? '✓ sledováno' : '🔔 Sledovat'"></button>
               <button type="button" @click="remove(s.id)" class="px-3 py-1 border border-rose-300 text-rose-700 rounded text-xs hover:bg-rose-50 dark:hover:bg-rose-900/30">🗑</button>
@@ -2823,7 +2823,7 @@
 
       <!-- ─── Bulk DD ─────────────────────────────────────────────── -->
       <section id="bulk" x-show="$store.sections.visible('bulk')" x-data="bulkSection()" x-init="init()" class="bg-white dark:bg-slate-800 dark:border-slate-700 rounded-2xl shadow-sm border p-6">
-        <h2 class="text-lg font-semibold tracking-tight mb-1">📋 Hromadná prověrka (Bulk DD)</h2>
+        <h2 class="text-lg font-semibold tracking-tight mb-1">📋 Prověrka více firem</h2>
         <p class="text-sm text-slate-500 dark:text-slate-400 mb-4">
           Vlož seznam IČO (1 na řádku, max 50) → paralelní DD pro všechny → CSV export + PDF prověrky.
         </p>
@@ -3000,7 +3000,7 @@
              je POVINNÝ pro každou síťově dostupnou instanci pod AGPL-3.0. -->
         <p class="pt-2 border-t dark:border-slate-700 mt-2">
           <strong>Software:</strong> <a class="underline" href="https://github.com/milos106/icovazby" target="_blank" rel="noopener">icovazby</a>
-          v0.6.4 — licencováno pod
+          v0.6.5 — licencováno pod
           <a class="underline" href="https://www.gnu.org/licenses/agpl-3.0.html" target="_blank" rel="noopener">GNU AGPL-3.0-or-later</a>.
           Provozuješ-li modifikovanou verzi jako webovou službu, máš povinnost
           zveřejnit svůj zdrojový kód (AGPL §13).
@@ -3010,6 +3010,6 @@
 
     <!-- Cache buster v query param: každý release změní verzi → browser
          dostane nový URL, CF cache pro starý URL ignorován. -->
-    <script src="/js/app.js?v=0.6.4"></script>
+    <script src="/js/app.js?v=0.6.5"></script>
   </body>
 </html>
