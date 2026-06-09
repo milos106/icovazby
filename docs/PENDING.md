@@ -85,6 +85,74 @@ Obě cesty mohou koexistovat (lokální CZ data + EU/WIPO přes TMView API).
 
 ---
 
+## R9 — CEDR (MFČR Monitor SOAP)
+
+**Status:** ODLOŽENO — duplicita s Hlídač státu (derivát).
+
+CEDR primary API je SOAP `monitor.statnipokladna.gov.cz/api/monitorws` operation `ExtractData`. Vyžaduje complex XSD schema pro request, vrací bulk XML pro celé datasety (ne per-IČO query). 6-8h práce na full implementaci.
+
+**Marginální hodnota:** Hlídač státu už používáme pro dotace přes `/api/v2/dotace/hledat?dotaz=ico%3A{IČO}`. HS je derivátem CEDR, pokrývá ~95 % případů.
+
+CEDR by stálo za to integrovat jen pokud klienti budou požadovat audit-grade autoritativní zdroj (banky AML).
+
+## R10 — ISIR plný XML feed (SOAP)
+
+**Status:** ODLOŽENO — duplicita s Hlídač státu.
+
+ISIR SOAP service `isir.justice.cz:8443/isir_public_ws/IsirWsPublicService` má diff polling pattern (100 events/request, `idPodnetu` increment). 6-8h plné implementace.
+
+**Marginální hodnota:** Hlídač státu `/api/v2/insolvence/hledat?dotaz=icodluznik%3A{IČO}` pokrývá běžný DD use case s minutovou latencí proti přímému feedu.
+
+Direct ISIR feed by se vyplatil pro real-time monitor dashboard (např. "dnes podáno X nových insolvencí"), ne pro per-IČO lookup.
+
+## R12 — Bulk DD ZIP s PDF prověrkami
+
+**Status:** ODLOŽENO — vyžaduje Puppeteer (200+ MB native deps).
+
+Současný Bulk DD vrací CSV summary + linky na PDF per row. Plné ZIP s PDF reporty vyžaduje:
+- Puppeteer/Playwright nainstalovaný (200 MB Chromium)
+- Server-side HTML → PDF rendering paralelně
+- ZIP stream s 50 PDF binaries
+
+Pro production self-hosted single-instance Hetzner CX22 by Puppeteer eat 30-50 % RAM. Lepší cesta = klient-side bulk: user otevře 50 `/report/:ico` tabs a uloží jako PDF (browser auto-print). Současný workflow je dostačující pro většinu use case.
+
+## R14 — User accounts + multi-tenant
+
+**Status:** ČEKÁ na B2B validation (pre-validation viz cesta C diskuze).
+
+Big lift (~12h) bez validovaného komerčního zájmu. Implementace plán:
+- SQLite tabulka users (email, bcrypt password_hash, created_at)
+- Fastify session cookies
+- Per-user persons_index scoping (nebo team-shared rozhodnutí)
+- Signup/login/password reset flow
+
+Doporučeno: počkat na 3-5 podepsaných „bych platil za to" leadů z LinkedIn outreach před prací.
+
+## R15 — API pro 3rd party
+
+**Status:** DEPENDS ON R14.
+
+Bearer token auth, OpenAPI/Swagger spec, scoped endpoints. Závisí na user accounts.
+
+## R20 — EN translation (i18n)
+
+**Status:** ODLOŽENO — čeká na CZ market validation.
+
+i18n framework setup ~30 min, ale plný EN překlad UI ~10h. Otevírá mezinárodní use case ale CZ user base je primární.
+
+Doporučeno: nejdřív CZ market traction (paying users, positive feedback), pak EN expand.
+
+## R4 — Hlídač státu person enrichment
+
+**Status:** BLOCKED — HS API neumožňuje lookup bez DOB.
+
+Endpoint `/api/v2/osoby/hledat` vyžaduje jako povinný parametr `DatumNarozeni`. Bez něj vrátí 400. Žádný alternativní endpoint pro firm → persons reverse lookup neexistuje.
+
+Pro tentative osoby (bez DOB v ARES VR) nemáme cestu jak DOB doplnit z HS. Reálné možnosti:
+1. **EUIPO Cobranding partnership** (pendingr) — má v některých případech DOB pro PEP
+2. **Bulk export HS osob** — vyžaduje partnership (email `hlidacstatu@hlidacstatu.cz`)
+3. **Manuální curation** — admin UI pro doplnění DOB k VIP firmám
+
 ## R2 — Sentry + UptimeRobot + B2 backup
 
 **Status:** ČÁSTEČNĚ — GitHub Actions test workflow hotov.
