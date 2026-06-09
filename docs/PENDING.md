@@ -85,6 +85,17 @@ Obě cesty mohou koexistovat (lokální CZ data + EU/WIPO přes TMView API).
 
 ---
 
+## R2 — Sentry + UptimeRobot + B2 backup
+
+**Status:** ČÁSTEČNĚ — GitHub Actions test workflow hotov.
+
+Zbylé části vyžadují registraci u externích služeb:
+- **Sentry** (free tier 5k events) — registrace na sentry.io → DSN do `.env` jako `SENTRY_DSN`
+- **UptimeRobot** (free 50 monitorů) — registrace → ping `https://icovazby.cz/healthz` každých 5 min
+- **Backblaze B2** (10 GB free) — registrace → API key → daily cron rsync persons-index.sqlite
+
+Až budeš mít účty, pošli mi tokeny do `.env` na serveru a SDK integrace je 30 min každá.
+
 ## R8 — Aktivní občan / Lobby registr (RELOB)
 
 **Status:** BLOCKED — žádné public API.

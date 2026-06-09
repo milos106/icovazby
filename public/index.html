@@ -210,7 +210,7 @@
           <a x-show="$store.sections.visible('bulk')" href="#bulk" class="hover:text-slate-900 dark:hover:text-white">Bulk</a>
           <a x-show="$store.sections.visible('saved')" href="#saved" class="hover:text-slate-900 dark:hover:text-white">Uložené</a>
         </nav>
-        <div class="flex items-center gap-1.5 flex-wrap">
+        <div class="flex items-center gap-1.5 flex-wrap" x-show="!$store.mode.readonly">
           <!-- Settings menu: jeden ⚙️ button otevře popover s theme toggle +
                HS token. Šetří horizontální prostor v hlavičce. -->
           <div
@@ -1727,6 +1727,46 @@
               </div>
             </template>
 
+            <!-- ─── Anotace / poznámky per firma (localStorage) ─── -->
+            <div
+              id="dd-notes"
+              x-show="$store.sections.visible('dd-notes')"
+              :data-collapsed="!$store.ddCollapse.isExpanded('dd-notes')"
+              class="dd-card border border-slate-200/80 dark:border-slate-700 rounded-xl p-5 shadow-sm hover:shadow-md transition-shadow md:col-span-2 scroll-mt-32"
+              x-data="ddNotesCard()"
+              x-init="load(report.ico)"
+            >
+              <h4 class="dd-card-header text-base font-semibold mb-3 cursor-pointer select-none flex items-center gap-2" @click="$store.ddCollapse.toggle('dd-notes')">
+                <span class="dd-card-chevron text-slate-400" x-text="$store.ddCollapse.isExpanded('dd-notes') ? '▾' : '▸'"></span>
+                📝 Moje poznámky
+                <template x-if="hasContent">
+                  <span class="text-xs font-normal text-emerald-600">●</span>
+                </template>
+              </h4>
+              <div class="dd-card-body" x-show="$store.ddCollapse.isExpanded('dd-notes')">
+                <textarea
+                  x-model="note"
+                  @input.debounce.500ms="save(report.ico)"
+                  placeholder="Vlož poznámku pro tuto firmu (jen v tvém prohlížeči)"
+                  rows="3"
+                  class="w-full px-3 py-2 border dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500 outline-none"
+                ></textarea>
+                <div class="mt-3 flex items-center gap-2 flex-wrap">
+                  <span class="text-xs text-slate-500 dark:text-slate-400">Tagy:</span>
+                  <template x-for="t in availableTags" :key="t.key">
+                    <button
+                      type="button"
+                      @click="toggleTag(t.key, report.ico)"
+                      :class="tags.includes(t.key) ? t.activeClass : 'border-slate-300 dark:border-slate-600 text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-700'"
+                      class="px-2 py-1 border rounded-full text-xs transition-colors"
+                      x-text="t.label"
+                    ></button>
+                  </template>
+                </div>
+                <p class="text-xs text-slate-400 mt-2" x-show="lastSaved" x-text="'Uloženo ' + lastSaved + '.'"></p>
+              </div>
+            </div>
+
             <!-- ─── Časová osa firmy ─── -->
             <div
               id="dd-timeline"
@@ -1954,6 +1994,13 @@
                 class="px-3 py-1.5 bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900 border border-slate-900 rounded text-sm hover:bg-slate-700 dark:hover:bg-white"
                 title="Otevře printable verzi v novém tabu, browser auto-spustí Tisk → PDF"
               >📄 PDF prověrka</a>
+              <button
+                type="button"
+                @click="copyShareUrl(report.ico)"
+                class="px-3 py-1.5 bg-emerald-100 dark:bg-emerald-900/30 text-emerald-900 dark:text-emerald-200 border border-emerald-300 rounded text-sm hover:bg-emerald-200"
+                title="Zkopíruje read-only URL do schránky — pro sdílení s klientem"
+                x-text="shareCopied ? '✓ Zkopírováno' : '🔗 Sdílet read-only'"
+              ></button>
               <span class="text-xs text-slate-500 dark:text-slate-400 ml-2">Export pro fakturaci:</span>
               <button @click="exportTo(report.ico, 'fakturoid')" class="px-3 py-1.5 bg-amber-100 dark:bg-amber-900/30 text-amber-900 dark:text-amber-200 border border-amber-300 rounded text-sm hover:bg-amber-200">Fakturoid</button>
               <button @click="exportTo(report.ico, 'idoklad')" class="px-3 py-1.5 bg-sky-100 dark:bg-sky-900/30 text-sky-900 dark:text-sky-200 border border-sky-300 rounded text-sm hover:bg-sky-200">iDoklad</button>
@@ -2918,7 +2965,7 @@
              je POVINNÝ pro každou síťově dostupnou instanci pod AGPL-3.0. -->
         <p class="pt-2 border-t dark:border-slate-700 mt-2">
           <strong>Software:</strong> <a class="underline" href="https://github.com/milos106/icovazby" target="_blank" rel="noopener">icovazby</a>
-          v0.6.0 — licencováno pod
+          v0.6.1 — licencováno pod
           <a class="underline" href="https://www.gnu.org/licenses/agpl-3.0.html" target="_blank" rel="noopener">GNU AGPL-3.0-or-later</a>.
           Provozuješ-li modifikovanou verzi jako webovou službu, máš povinnost
           zveřejnit svůj zdrojový kód (AGPL §13).
@@ -2928,6 +2975,6 @@
 
     <!-- Cache buster v query param: každý release změní verzi → browser
          dostane nový URL, CF cache pro starý URL ignorován. -->
-    <script src="/js/app.js?v=0.6.0"></script>
+    <script src="/js/app.js?v=0.6.1"></script>
   </body>
 </html>

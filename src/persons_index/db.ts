@@ -110,7 +110,59 @@ function initSchema(d: DbType): void {
       UNIQUE(tentative_key, ico, funkce, source, datum_zapisu)
     );
     CREATE INDEX IF NOT EXISTS idx_memberships_tentative_key ON memberships_tentative(tentative_key);
+
+    -- R16 Audit log: záznam každého data-relevantního dotazu pro AML compliance
+    CREATE TABLE IF NOT EXISTS audit_log (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      ts INTEGER NOT NULL,
+      ip TEXT,
+      action TEXT NOT NULL,
+      target_ico TEXT,
+      user_agent TEXT
+    );
+    CREATE INDEX IF NOT EXISTS idx_audit_ts ON audit_log(ts DESC);
+    CREATE INDEX IF NOT EXISTS idx_audit_ico ON audit_log(target_ico);
   `);
+}
+
+// ─── Audit log ────────────────────────────────────────────────────────────────
+
+export function dbAudit(input: {
+  ip: string | null;
+  action: string;
+  targetIco: string | null;
+  userAgent: string | null;
+}): void {
+  getDb().prepare(`
+    INSERT INTO audit_log (ts, ip, action, target_ico, user_agent)
+    VALUES (?, ?, ?, ?, ?)
+  `).run(Date.now(), input.ip, input.action, input.targetIco, input.userAgent);
+}
+
+export function dbAuditQuery(opts: { since?: number; limit?: number } = {}): Array<{
+  id: number;
+  ts: number;
+  ip: string | null;
+  action: string;
+  target_ico: string | null;
+  user_agent: string | null;
+}> {
+  const since = opts.since ?? 0;
+  const limit = Math.min(opts.limit ?? 1000, 10000);
+  return getDb().prepare(`
+    SELECT id, ts, ip, action, target_ico, user_agent
+    FROM audit_log
+    WHERE ts >= ?
+    ORDER BY ts DESC
+    LIMIT ?
+  `).all(since, limit) as Array<{
+    id: number;
+    ts: number;
+    ip: string | null;
+    action: string;
+    target_ico: string | null;
+    user_agent: string | null;
+  }>;
 }
 
 // ─── Subjects ─────────────────────────────────────────────────────────────────

@@ -12,6 +12,7 @@ const STORAGE_SECTIONS = "icovazby:sections-hidden";
 // Sekce, které lze v Nastavení skrýt. Profil zůstává vždy viditelný.
 // Klíče slouží zároveň jako section id v DOM a key v localStorage.
 const SECTION_DEFS = [
+  { key: "dd-notes", label: "📝 Moje poznámky", group: "Profil firmy" },
   { key: "dd-timeline", label: "📜 Časová osa", group: "Profil firmy" },
   { key: "dd-katastr", label: "🏠 Nemovitosti (Katastr, brzy)", group: "Profil firmy" },
   { key: "dd-ds", label: "📬 Datová schránka", group: "Profil firmy" },
@@ -80,6 +81,19 @@ document.addEventListener("alpine:init", () => {
   // a v Mapě propojení. User myslí v binární kategorii „chci historické info"
   // — discovery i render vždy řídí stejný flag. Default off.
   window.Alpine.store("history", { enabled: false });
+
+  // Readonly share mode — detekováno z URL ?readonly=1. Skrývá interaktivní
+  // prvky (Settings, Subscribe alerty, Save searches) — slouží pro sdílení
+  // DD reportu s klientem.
+  window.Alpine.store("mode", {
+    readonly: (() => {
+      try {
+        return new URLSearchParams(location.search).get("readonly") === "1";
+      } catch {
+        return false;
+      }
+    })(),
+  });
 
   // Section visibility — uživatel může v Nastavení skrýt sekce/karty.
   // Persistujeme jen SKRYTÉ klíče (= defaultně všechno viditelné). Profil
@@ -382,6 +396,7 @@ function ddSection() {
     error: "",
     report: null,
     exportNotice: "",
+    shareCopied: false,
     init() {
       const url = readUrl();
       // Akceptujeme i staré bookmarky s action=dd kvůli backward compat;
@@ -433,6 +448,16 @@ function ddSection() {
         setTimeout(() => { this.exportNotice = ""; }, 6000);
       } catch (e) {
         this.exportNotice = `Export selhal: ${e.message}`;
+      }
+    },
+    async copyShareUrl(ico) {
+      try {
+        const url = `${location.origin}/?ico=${encodeURIComponent(ico)}&action=profil&readonly=1`;
+        await navigator.clipboard.writeText(url);
+        this.shareCopied = true;
+        setTimeout(() => { this.shareCopied = false; }, 3000);
+      } catch (e) {
+        alert("Kopírování selhalo: " + e.message);
       }
     },
     openPersonVazby(jmeno, datumNarozeni) {
@@ -1541,6 +1566,63 @@ window.ddDotaceLoader = ddDotaceLoader;
 window.ddIsirLoader = ddIsirLoader;
 window.ddJerrsLoader = ddJerrsLoader;
 window.ddTimelineLoader = ddTimelineLoader;
+
+const STORAGE_NOTES = "icovazby:notes";
+
+/** Anotace per firma — localStorage, žádný server. */
+function ddNotesCard() {
+  return {
+    note: "",
+    tags: [],
+    lastSaved: "",
+    availableTags: [
+      { key: "red-flag", label: "🚩 Red flag", activeClass: "bg-rose-100 dark:bg-rose-900/40 text-rose-700 border-rose-300" },
+      { key: "approved", label: "✅ Schváleno", activeClass: "bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 border-emerald-300" },
+      { key: "watching", label: "👀 Sleduji", activeClass: "bg-amber-100 dark:bg-amber-900/40 text-amber-700 border-amber-300" },
+      { key: "client", label: "🤝 Klient", activeClass: "bg-blue-100 dark:bg-blue-900/40 text-blue-700 border-blue-300" },
+      { key: "competitor", label: "⚔ Konkurence", activeClass: "bg-purple-100 dark:bg-purple-900/40 text-purple-700 border-purple-300" },
+    ],
+    load(ico) {
+      if (!ico) return;
+      try {
+        const all = JSON.parse(localStorage.getItem(STORAGE_NOTES) || "{}");
+        const entry = all[ico] || {};
+        this.note = entry.note || "";
+        this.tags = entry.tags || [];
+      } catch {
+        this.note = "";
+        this.tags = [];
+      }
+    },
+    save(ico) {
+      if (!ico) return;
+      try {
+        const all = JSON.parse(localStorage.getItem(STORAGE_NOTES) || "{}");
+        if (!this.note && this.tags.length === 0) {
+          delete all[ico];
+        } else {
+          all[ico] = { note: this.note, tags: this.tags, updatedAt: new Date().toISOString() };
+        }
+        localStorage.setItem(STORAGE_NOTES, JSON.stringify(all));
+        this.lastSaved = new Date().toLocaleTimeString("cs-CZ");
+      } catch {
+        /* private mode */
+      }
+    },
+    toggleTag(key, ico) {
+      if (this.tags.includes(key)) {
+        this.tags = this.tags.filter((t) => t !== key);
+      } else {
+        this.tags = [...this.tags, key];
+      }
+      this.save(ico);
+    },
+    get hasContent() {
+      return Boolean(this.note?.trim() || this.tags.length > 0);
+    },
+  };
+}
+window.ddNotesCard = ddNotesCard;
 
 /**
  * Klasifikace chybové zprávy do typové variant pro empty-state UI.

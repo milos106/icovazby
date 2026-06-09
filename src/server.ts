@@ -93,6 +93,35 @@ app.addHook("onRequest", async (req) => {
   if (token) hsTokenContext.enterWith(token);
 });
 
+// R16: audit log pro AML compliance. Logujeme DD lookupy + holding discovery
+// + cross-persons. Statické soubory a /healthz nelogujeme (low signal).
+import { dbAudit } from "./persons_index/db.js";
+app.addHook("onRequest", async (req) => {
+  const url = req.url;
+  if (!url.startsWith("/api/")) return;
+  if (url.startsWith("/api/features") || url.startsWith("/api/validate")) return;
+  const m = url.match(/^\/api\/(dd|holding\/discover|cross-persons|trademarks|timeline|vr|ubo|dotace|smlouvy|adis|isir|jerrs|sanctions|zivno|res-classification|search|address|person-vazby)(?:\/([^?]+))?/);
+  if (!m) return;
+  const action = m[1];
+  const targetIco = m[2] ?? null;
+  const ip =
+    (req.headers["cf-connecting-ip"] as string) ||
+    (req.headers["x-forwarded-for"] as string)?.split(",")[0]?.trim() ||
+    req.ip ||
+    null;
+  const userAgent = (req.headers["user-agent"] as string) ?? null;
+  try {
+    dbAudit({
+      ip: ip || null,
+      action,
+      targetIco: targetIco?.replace(/[^0-9]/g, "").slice(0, 8) || null,
+      userAgent,
+    });
+  } catch {
+    /* never fail request because of audit log */
+  }
+});
+
 // AGPL evidence: X-Powered-By na každý response. Pomáhá identifikovat
 // instance, které tento kód provozují — důkazní materiál pokud někdo
 // porušuje §13 (povinné publikování modifikovaného zdroje).
@@ -128,9 +157,44 @@ function sendError(reply: FastifyReply, err: unknown): void {
 }
 
 // ─── Health ───────────────────────────────────────────────────────────────────
+// R16: Audit log export (admin only — chráněno přes ADMIN_TOKEN env var).
+// CSV download s timestamp, IP, action, target IČO, user agent.
+app.get("/api/audit-log", async (req: FastifyRequest, reply) => {
+  const adminToken = process.env.ADMIN_TOKEN?.trim();
+  if (!adminToken) {
+    return reply.status(503).send({ error: "ADMIN_NOT_CONFIGURED", message: "ADMIN_TOKEN není nastaven v .env." });
+  }
+  const provided = (req.headers["x-admin-token"] as string)?.trim();
+  if (provided !== adminToken) {
+    return reply.status(401).send({ error: "UNAUTHORIZED" });
+  }
+  const sinceParam = (req.query as { since?: string }).since;
+  const since = sinceParam ? Number(sinceParam) : Date.now() - 30 * 24 * 60 * 60 * 1000; // 30 dní
+  const limit = Math.min(Number((req.query as { limit?: string }).limit ?? 10000), 50000);
+  const { dbAuditQuery } = await import("./persons_index/db.js");
+  const rows = dbAuditQuery({ since, limit });
+  const header = "id,timestamp_iso,ip,action,target_ico,user_agent";
+  const csv = [
+    header,
+    ...rows.map((r) =>
+      [
+        r.id,
+        new Date(r.ts).toISOString(),
+        r.ip ?? "",
+        r.action,
+        r.target_ico ?? "",
+        `"${(r.user_agent ?? "").replace(/"/g, '""')}"`,
+      ].join(","),
+    ),
+  ].join("\n");
+  reply.header("Content-Type", "text/csv; charset=utf-8");
+  reply.header("Content-Disposition", `attachment; filename="audit-log-${new Date().toISOString().slice(0, 10)}.csv"`);
+  reply.send("﻿" + csv);
+});
+
 app.get("/healthz", async () => ({
   ok: true,
-  version: "0.6.0",
+  version: "0.6.1",
   uptimeSeconds: Math.floor(process.uptime()),
   cache: cacheStats(),
   integrations: {

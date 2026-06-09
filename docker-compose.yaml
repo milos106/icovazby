@@ -1,0 +1,30 @@
+version: "3.8"
+
+# Self-host icovazby in 30 seconds:
+#   1. cp .env.example .env  (volitelně doplň HLIDAC_API_TOKEN, RESEND_API_KEY)
+#   2. docker-compose up -d
+#   3. open http://localhost:3000
+#
+# Data (persons-index.sqlite, subscriptions.json) zůstává v ./data svazku.
+
+services:
+  icovazby:
+    build: .
+    image: icovazby:latest
+    container_name: icovazby
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./data:/app/data
+      - ./.env:/app/.env:ro
+    restart: unless-stopped
+    environment:
+      - LOG_LEVEL=info
+      - RATE_LIMIT_PER_MIN=60
+      - ARES_RATE_PER_SECOND=5
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:3000/healthz"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
