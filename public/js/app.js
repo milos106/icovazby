@@ -13,6 +13,9 @@ const STORAGE_SECTIONS = "icovazby:sections-hidden";
 // Klíče slouží zároveň jako section id v DOM a key v localStorage.
 const SECTION_DEFS = [
   { key: "dd-timeline", label: "📜 Časová osa", group: "Profil firmy" },
+  { key: "dd-katastr", label: "🏠 Nemovitosti (Katastr, brzy)", group: "Profil firmy" },
+  { key: "dd-ds", label: "📬 Datová schránka", group: "Profil firmy" },
+  { key: "dd-upv", label: "™ Duševní vlastnictví (ÚPV, brzy)", group: "Profil firmy" },
   { key: "dd-vr", label: "⚖️ Veřejný rejstřík (OR)", group: "Profil firmy" },
   { key: "dd-ubo", label: "👥 Skuteční majitelé (UBO)", group: "Profil firmy" },
   { key: "dd-dotace", label: "💸 Dotace", group: "Profil firmy" },
@@ -25,6 +28,9 @@ const SECTION_DEFS = [
   { key: "graph", label: "🌐 Mapa propojení", group: "Sekce" },
   { key: "address", label: "🏢 Hledat na adrese", group: "Sekce" },
   { key: "osoby", label: "🔗 Vazby osoby", group: "Sekce" },
+  { key: "compare", label: "⚖️ Porovnat 2 firmy", group: "Sekce" },
+  { key: "bulk", label: "📋 Hromadná prověrka", group: "Sekce" },
+  { key: "saved", label: "📑 Uložená vyhledávání", group: "Sekce" },
 ];
 const RECENT_LIMIT = 10;
 
@@ -440,6 +446,10 @@ function graphSection() {
     error: "",
     result: null,
     mermaidSvg: "",
+    /** 'mermaid' | 'interactive' — toggle. Default Mermaid (zpětně kompatibilní). */
+    renderMode: "mermaid",
+    /** Cytoscape instance — odkaz pro relayout / destroy. */
+    cy: null,
     // Selection map pro „Možné jmenovce" (tentativeCandidates). Key = jmeno|prijmeni
     // (unikátní per name; pokud má více seed firem, vše bere). Hodnota = boolean.
     // Default ON — uživatel odškrtává ty, kteří nejsou ten samý člověk.
@@ -523,6 +533,141 @@ function graphSection() {
       } finally {
         this.loading = false;
       }
+    },
+    /** Cytoscape rendering — interaktivní force graph. */
+    renderCytoscape() {
+      if (!this.result || !window.cytoscape) return;
+      const container = document.getElementById("cytoscape-container");
+      if (!container) return;
+      if (this.cy) {
+        this.cy.destroy();
+        this.cy = null;
+      }
+      // Companies = uzly typu firma; activePersons = uzly typu osoba; edges =
+      // membership (osoba → firma).
+      const elements = [];
+      for (const c of this.result.companies || []) {
+        elements.push({
+          data: { id: "F-" + c.ico, label: c.obchodniJmeno || c.ico, ico: c.ico, type: "firma" },
+        });
+      }
+      const personNodes = new Map();
+      const addPerson = (p) => {
+        const key = "P-" + (p.jmeno || "") + "|" + (p.datumNarozeni || "");
+        if (!personNodes.has(key)) {
+          personNodes.set(key, {
+            data: {
+              id: key,
+              label: p.jmeno,
+              type: p.isLegalEntity ? "legalPerson" : "person",
+              shared: p.memberships && p.memberships.length > 1,
+            },
+          });
+        }
+        return key;
+      };
+      for (const p of this.result.activePersons || []) {
+        const pid = addPerson(p);
+        for (const m of p.memberships || []) {
+          elements.push({
+            data: { id: pid + "-" + m.ico, source: pid, target: "F-" + m.ico, label: m.funkce || "" },
+          });
+        }
+      }
+      for (const p of this.result.sharedPersons || []) {
+        const pid = addPerson(p);
+        for (const m of p.memberships || []) {
+          elements.push({
+            data: { id: pid + "-" + m.ico + "-s", source: pid, target: "F-" + m.ico, label: m.funkce || "", shared: true },
+          });
+        }
+      }
+      for (const node of personNodes.values()) elements.push(node);
+
+      const isDark = document.documentElement.classList.contains("dark");
+      this.cy = window.cytoscape({
+        container,
+        elements,
+        layout: { name: "cose", animate: false, nodeRepulsion: 8000, idealEdgeLength: 100, padding: 30 },
+        style: [
+          {
+            selector: "node[type='firma']",
+            style: {
+              "background-color": isDark ? "#10b981" : "#059669",
+              "color": "#ffffff",
+              "label": "data(label)",
+              "font-size": 11,
+              "font-weight": "bold",
+              "text-valign": "center",
+              "text-halign": "center",
+              "text-wrap": "wrap",
+              "text-max-width": "120px",
+              "width": "label",
+              "height": "label",
+              "padding": "8px",
+              "shape": "round-rectangle",
+            },
+          },
+          {
+            selector: "node[type='person']",
+            style: {
+              "background-color": isDark ? "#60a5fa" : "#3b82f6",
+              "color": "#ffffff",
+              "label": "data(label)",
+              "font-size": 10,
+              "text-valign": "center",
+              "text-halign": "center",
+              "width": "label",
+              "height": 22,
+              "padding": "4px",
+              "shape": "round-rectangle",
+            },
+          },
+          {
+            selector: "node[type='person'][?shared]",
+            style: {
+              "background-color": isDark ? "#f59e0b" : "#d97706",
+              "border-width": 2,
+              "border-color": isDark ? "#fbbf24" : "#b45309",
+            },
+          },
+          {
+            selector: "node[type='legalPerson']",
+            style: {
+              "background-color": isDark ? "#a78bfa" : "#8b5cf6",
+              "color": "#ffffff",
+              "label": "data(label)",
+              "font-size": 10,
+              "text-valign": "center",
+              "text-halign": "center",
+              "shape": "diamond",
+              "width": 60,
+              "height": 60,
+            },
+          },
+          {
+            selector: "edge",
+            style: {
+              "width": 1.5,
+              "line-color": isDark ? "#475569" : "#94a3b8",
+              "target-arrow-color": isDark ? "#475569" : "#94a3b8",
+              "target-arrow-shape": "triangle",
+              "curve-style": "bezier",
+              "font-size": 8,
+              "color": isDark ? "#cbd5e1" : "#64748b",
+            },
+          },
+          {
+            selector: "edge[?shared]",
+            style: { "line-color": isDark ? "#fbbf24" : "#d97706", "target-arrow-color": isDark ? "#fbbf24" : "#d97706", "width": 2 },
+          },
+        ],
+      });
+      // Click na firmu = otevři její profil v search
+      this.cy.on("tap", "node[type='firma']", (evt) => {
+        const ico = evt.target.data("ico");
+        if (ico) window.dispatchEvent(new CustomEvent("ares-open-profile", { detail: { ico } }));
+      });
     },
     /** Unique key pro tentative kandidáta — pro Alpine x-model binding. */
     candidateKey(c) {
@@ -1388,6 +1533,289 @@ window.ddDotaceLoader = ddDotaceLoader;
 window.ddIsirLoader = ddIsirLoader;
 window.ddJerrsLoader = ddJerrsLoader;
 window.ddTimelineLoader = ddTimelineLoader;
+
+/** Diff mode — side-by-side porovnání 2 firem. */
+function compareSection() {
+  return {
+    icoA: "",
+    icoB: "",
+    resultA: null,
+    resultB: null,
+    loading: false,
+    error: "",
+    init() {
+      const url = readUrl();
+      if (url.a && url.b) {
+        this.icoA = url.a;
+        this.icoB = url.b;
+        this.run();
+      }
+    },
+    async run() {
+      this.error = "";
+      this.resultA = null;
+      this.resultB = null;
+      const a = this.icoA.replace(/\D/g, "").padStart(8, "0");
+      const b = this.icoB.replace(/\D/g, "").padStart(8, "0");
+      if (!ICO_RE.test(a) || !ICO_RE.test(b)) {
+        this.error = "Obě IČO musí být 8místná čísla.";
+        return;
+      }
+      if (a === b) {
+        this.error = "Zadej 2 různé IČO.";
+        return;
+      }
+      this.loading = true;
+      try {
+        const [ra, rb] = await Promise.all([
+          jsonFetch(`/api/dd/${a}`),
+          jsonFetch(`/api/dd/${b}`),
+        ]);
+        this.resultA = ra;
+        this.resultB = rb;
+        updateUrl({ a, b });
+      } catch (e) {
+        this.error = e.message;
+      } finally {
+        this.loading = false;
+      }
+    },
+    compareRows() {
+      if (!this.resultA || !this.resultB) return [];
+      const get = (r, path) => path.split(".").reduce((o, k) => o?.[k], r);
+      const rows = [
+        { label: "Risk", path: "risk.level" },
+        { label: "Vznik", path: "identification.datumVzniku" },
+        { label: "Zánik", path: "identification.datumZaniku" },
+        { label: "Právní forma", path: "identification.pravniForma" },
+        { label: "Sídlo", path: "sidloText" },
+        { label: "DPH", path: "vat.platceDph" },
+        { label: "DIČ", path: "vat.dic" },
+        { label: "Aktivních statutářů", path: "statutary.aktivniCount" },
+        { label: "Insolvence", path: "insolvenci.isInsolvent" },
+        { label: "CZ-NACE [0]", path: "identification.czNace.0" },
+        { label: "Aktivní živnosti", path: "trade_licenses.aktivni" },
+      ];
+      return rows.map((r) => {
+        const va = get(this.resultA, r.path);
+        const vb = get(this.resultB, r.path);
+        const fmt = (v) => {
+          if (v === null || v === undefined || v === "") return null;
+          if (typeof v === "boolean") return v ? "Ano" : "Ne";
+          return String(v);
+        };
+        const valueA = fmt(va);
+        const valueB = fmt(vb);
+        return { label: r.label, valueA, valueB, diff: valueA !== valueB };
+      });
+    },
+  };
+}
+window.compareSection = compareSection;
+
+/** Bulk DD — paralelní /api/dd pro list IČO, CSV export. */
+function bulkSection() {
+  return {
+    raw: "",
+    loading: false,
+    error: "",
+    results: [],
+    progress: 0,
+    total: 0,
+    init() {},
+    parseIcos() {
+      return [...new Set(
+        (this.raw || "")
+          .split(/[\s,;\n]+/g)
+          .map((s) => s.trim().replace(/^CZ\s*/i, "").replace(/\s|-|\./g, "").padStart(8, "0"))
+          .filter((s) => ICO_RE.test(s)),
+      )];
+    },
+    async loadFile(file) {
+      if (!file) return;
+      const text = await file.text();
+      this.raw = text;
+    },
+    async run() {
+      this.error = "";
+      this.results = [];
+      const icos = this.parseIcos();
+      if (icos.length === 0) {
+        this.error = "Žádné platné IČO. Vlož 8místná čísla, 1 na řádku.";
+        return;
+      }
+      if (icos.length > 50) {
+        this.error = "Maximum 50 IČO na bulk request.";
+        return;
+      }
+      this.loading = true;
+      this.total = icos.length;
+      this.progress = 0;
+      const out = [];
+      const CONCURRENCY = 5;
+      let cursor = 0;
+      const worker = async () => {
+        while (cursor < icos.length) {
+          const i = cursor++;
+          const ico = icos[i];
+          try {
+            const dd = await jsonFetch(`/api/dd/${ico}`);
+            out[i] = {
+              ico,
+              obchodniJmeno: dd.obchodniJmeno,
+              risk: dd.risk?.level || "?",
+              dph: dd.vat?.platceDph ? "ano" : "ne",
+              statutary: dd.statutary?.aktivniCount ?? 0,
+              insolvence: dd.insolvenci?.isInsolvent ? "ANO" : "ne",
+              findings: (dd.risk?.findings || []).map((f) => f.message).join("; "),
+            };
+          } catch (e) {
+            out[i] = { ico, obchodniJmeno: "(chyba)", risk: "error", dph: "—", statutary: "—", insolvence: "—", findings: e.message };
+          }
+          this.progress++;
+          this.results = out.filter(Boolean);
+        }
+      };
+      await Promise.all(Array.from({ length: CONCURRENCY }, () => worker()));
+      this.loading = false;
+    },
+    exportCsv() {
+      const headers = ["IČO", "Jméno", "Risk", "DPH", "Statutáři", "Insolvence", "Findings"];
+      const rows = this.results.map((r) => [r.ico, r.obchodniJmeno, r.risk, r.dph, r.statutary, r.insolvence, r.findings]);
+      const csv = [headers, ...rows].map((row) => row.map((v) => `"${String(v ?? "").replace(/"/g, '""')}"`).join(",")).join("\n");
+      const blob = new Blob(["﻿" + csv], { type: "text/csv;charset=utf-8" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `icovazby-bulk-${new Date().toISOString().slice(0, 10)}.csv`;
+      a.click();
+      URL.revokeObjectURL(url);
+    },
+  };
+}
+window.bulkSection = bulkSection;
+
+const STORAGE_SAVED = "icovazby:saved-searches";
+
+/** Saved searches — lokální storage list IČO. */
+function savedSection() {
+  return {
+    searches: [],
+    newName: "",
+    newQuery: "",
+    subscribeMsg: "",
+    init() {
+      try {
+        const raw = localStorage.getItem(STORAGE_SAVED);
+        this.searches = raw ? JSON.parse(raw) : [];
+      } catch {
+        this.searches = [];
+      }
+    },
+    save() {
+      try {
+        localStorage.setItem(STORAGE_SAVED, JSON.stringify(this.searches));
+      } catch {
+        /* private mode */
+      }
+    },
+    parseQuery(q) {
+      return [...new Set(
+        (q || "")
+          .split(/[\s,;\n]+/g)
+          .map((s) => s.trim().replace(/^CZ\s*/i, "").replace(/\s|-|\./g, "").padStart(8, "0"))
+          .filter((s) => ICO_RE.test(s)),
+      )];
+    },
+    add() {
+      if (!this.newName.trim()) return;
+      const icos = this.parseQuery(this.newQuery);
+      if (icos.length === 0) return;
+      this.searches.unshift({
+        id: Date.now().toString(),
+        name: this.newName.trim(),
+        icos,
+        createdAt: new Date().toISOString(),
+        subscribed: false,
+      });
+      this.newName = "";
+      this.newQuery = "";
+      this.save();
+    },
+    remove(id) {
+      this.searches = this.searches.filter((s) => s.id !== id);
+      this.save();
+    },
+    load(s) {
+      const bulk = document.querySelector("#bulk textarea");
+      if (bulk) {
+        bulk.value = s.icos.join("\n");
+        bulk.dispatchEvent(new Event("input", { bubbles: true }));
+      }
+      document.querySelector("#bulk")?.scrollIntoView({ behavior: "smooth" });
+    },
+    map(s) {
+      window.dispatchEvent(new CustomEvent("ares-seed-graph", {
+        detail: { icos: s.icos },
+      }));
+      document.querySelector("#graph")?.scrollIntoView({ behavior: "smooth" });
+    },
+    async subscribe(s) {
+      const email = prompt(`Zadej email pro upozornění na změny v "${s.name}" (${s.icos.length} IČO):`);
+      if (!email || !email.includes("@")) return;
+      this.subscribeMsg = `Přihlašuji ${s.icos.length} IČO…`;
+      let ok = 0;
+      for (const ico of s.icos) {
+        try {
+          await jsonFetch("/api/alerts/subscribe", {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({ email, ico }),
+          });
+          ok++;
+        } catch {
+          /* skip */
+        }
+      }
+      s.subscribed = true;
+      this.save();
+      this.subscribeMsg = `Přihlášeno ${ok} / ${s.icos.length} IČO. Ověř e-mail pro každé.`;
+    },
+  };
+}
+window.savedSection = savedSection;
+
+/** Datová schránka — heuristika z pravniForma + datumZaniku. */
+function ddDatovaSchrankaCard() {
+  return {
+    status(report) {
+      const pf = String(report?.identification?.pravniForma ?? "");
+      const zanik = report?.identification?.datumZaniku;
+      if (zanik) {
+        return { label: "🚫 N/A — firma zanikla", explain: "Datová schránka byla zrušena s zánikem subjektu." };
+      }
+      const isFyzicka = pf === "107" || pf === "108";
+      const isPravnicka = !isFyzicka && pf !== "";
+      if (isPravnicka) {
+        return {
+          label: "✅ Pravděpodobně ANO (povinně ze zákona)",
+          explain: "Právnické osoby zapsané do veřejných rejstříků mají datovou schránku zřízenou automaticky od 2009 (zák. č. 300/2008 Sb.). Konkrétní ID viz ISDS lookup.",
+        };
+      }
+      if (isFyzicka) {
+        return {
+          label: "✅ Pravděpodobně ANO (od 2023)",
+          explain: "OSVČ/živnostníci mají datovou schránku povinně od 1. 1. 2023. Před tím dobrovolně.",
+        };
+      }
+      return {
+        label: "❔ Nelze rozhodnout (neznámá právní forma)",
+        explain: "Doporučujeme ověřit ručně.",
+      };
+    },
+  };
+}
+window.ddDatovaSchrankaCard = ddDatovaSchrankaCard;
 window.ddVrLoader = ddVrLoader;
 window.holdingDiscovery = holdingDiscovery;
 window.ddEuSanctionsLoader = ddEuSanctionsLoader;

@@ -107,6 +107,8 @@
       window.__mermaid = mermaid;
       window.__mermaidReinit = initMermaid;
     </script>
+    <!-- Cytoscape pro interaktivní network graf (Feature 8) -->
+    <script src="https://unpkg.com/cytoscape@3.30.2/dist/cytoscape.min.js"></script>
     <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E🔗%3C/text%3E%3C/svg%3E" />
     <style>
       /* Inter font-feature-settings pro lepší letter-spacing v nadpisech,
@@ -204,6 +206,9 @@
           <a href="#profil" class="hover:text-slate-900 dark:hover:text-white">Profil firmy</a>
           <a x-show="$store.sections.visible('graph')" href="#graph" class="hover:text-slate-900 dark:hover:text-white">Mapa propojení</a>
           <a x-show="$store.sections.visible('address')" href="#address" class="hover:text-slate-900 dark:hover:text-white">Podle adresy</a>
+          <a x-show="$store.sections.visible('compare')" href="#compare" class="hover:text-slate-900 dark:hover:text-white">Porovnat</a>
+          <a x-show="$store.sections.visible('bulk')" href="#bulk" class="hover:text-slate-900 dark:hover:text-white">Bulk</a>
+          <a x-show="$store.sections.visible('saved')" href="#saved" class="hover:text-slate-900 dark:hover:text-white">Uložené</a>
         </nav>
         <div class="flex items-center gap-1.5 flex-wrap">
           <!-- Settings menu: jeden ⚙️ button otevře popover s theme toggle +
@@ -1708,6 +1713,69 @@
               </div>
             </div>
 
+            <!-- ─── ÚPV ochranné známky + patenty (placeholder) ─── -->
+            <div
+              id="dd-upv"
+              x-show="$store.sections.visible('dd-upv')"
+              :data-collapsed="!$store.ddCollapse.isExpanded('dd-upv')"
+              class="dd-card border border-amber-200/80 dark:border-amber-700 rounded-xl p-5 shadow-sm hover:shadow-md transition-shadow scroll-mt-32 bg-amber-50/50 dark:bg-amber-900/10"
+            >
+              <h4 class="dd-card-header text-base font-semibold mb-3 cursor-pointer select-none flex items-center gap-2" @click="$store.ddCollapse.toggle('dd-upv')">
+                <span class="dd-card-chevron text-slate-400" x-text="$store.ddCollapse.isExpanded('dd-upv') ? '▾' : '▸'"></span>
+                ™ Duševní vlastnictví (ÚPV)
+                <span class="text-[10px] px-1.5 py-0.5 rounded-full bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300 border border-amber-200">brzy</span>
+              </h4>
+              <div class="dd-card-body text-sm space-y-2" x-show="$store.ddCollapse.isExpanded('dd-upv')">
+                <p>ÚPV nemá veřejné REST API — jen HTML vyhledávání. Integraci plánujeme přes EUIPO TMview WS API (pokrývá i české ochranné známky).</p>
+                <p class="text-xs">
+                  <a :href="'https://isdv.upv.cz/webapp/resdb.print_form?LIST_CODE=PXBOR&KOMU=' + encodeURIComponent(report.obchodniJmeno || '')" target="_blank" rel="noopener" class="underline text-emerald-700 dark:text-emerald-400">🔗 Vyhledat na isdv.upv.cz (HTML) →</a>
+                </p>
+                <p class="text-xs">
+                  <a :href="'https://euipo.europa.eu/eSearch/#advanced/trademarks/1/50/n1=OWNER_NAME&v1=' + encodeURIComponent(report.obchodniJmeno || '') + '&o1=AND'" target="_blank" rel="noopener" class="underline text-emerald-700 dark:text-emerald-400">🔗 EUIPO eSearch →</a>
+                </p>
+              </div>
+            </div>
+
+            <!-- ─── Datová schránka (heuristika z pravniForma) ─── -->
+            <div
+              id="dd-ds"
+              x-show="$store.sections.visible('dd-ds')"
+              :data-collapsed="!$store.ddCollapse.isExpanded('dd-ds')"
+              class="dd-card border border-slate-200/80 dark:border-slate-700 rounded-xl p-5 shadow-sm hover:shadow-md transition-shadow scroll-mt-32"
+              x-data="ddDatovaSchrankaCard()"
+            >
+              <h4 class="dd-card-header text-base font-semibold mb-3 cursor-pointer select-none flex items-center gap-2" @click="$store.ddCollapse.toggle('dd-ds')">
+                <span class="dd-card-chevron text-slate-400" x-text="$store.ddCollapse.isExpanded('dd-ds') ? '▾' : '▸'"></span>
+                📬 Datová schránka
+              </h4>
+              <div class="dd-card-body text-sm space-y-2" x-show="$store.ddCollapse.isExpanded('dd-ds')">
+                <p class="text-base" x-text="status(report).label"></p>
+                <p class="text-xs text-slate-500 dark:text-slate-400" x-text="status(report).explain"></p>
+                <p class="text-xs">
+                  <a :href="'https://www.mojedatovaschranka.cz/sds/SearchSubject?dbType=&search=' + report.ico" target="_blank" rel="noopener" class="underline text-emerald-700 dark:text-emerald-400">🔗 Vyhledat detail na mojedatovaschranka.cz →</a>
+                </p>
+              </div>
+            </div>
+
+            <!-- ─── Katastr nemovitostí (placeholder, vyžaduje VDP) ─── -->
+            <div
+              id="dd-katastr"
+              x-show="$store.sections.visible('dd-katastr')"
+              :data-collapsed="!$store.ddCollapse.isExpanded('dd-katastr')"
+              class="dd-card border border-amber-200/80 dark:border-amber-700 rounded-xl p-5 shadow-sm hover:shadow-md transition-shadow md:col-span-2 scroll-mt-32 bg-amber-50/50 dark:bg-amber-900/10"
+            >
+              <h4 class="dd-card-header text-base font-semibold mb-3 cursor-pointer select-none flex items-center gap-2" @click="$store.ddCollapse.toggle('dd-katastr')">
+                <span class="dd-card-chevron text-slate-400" x-text="$store.ddCollapse.isExpanded('dd-katastr') ? '▾' : '▸'"></span>
+                🏠 Nemovitosti (Katastr)
+                <span class="text-[10px] px-1.5 py-0.5 rounded-full bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300 border border-amber-200">brzy</span>
+              </h4>
+              <div class="dd-card-body text-sm space-y-2" x-show="$store.ddCollapse.isExpanded('dd-katastr')">
+                <p>ČÚZK nemá free veřejné API pro „co vlastní firma X". Veřejný dálkový přístup (<a href="https://www.cuzk.cz/Aktuality/2021/Cenik-VDP-2021.aspx" target="_blank" class="underline text-emerald-700">VDP</a>) je placený — ~3 Kč/dotaz + měsíční poplatek.</p>
+                <p class="text-slate-600 dark:text-slate-400">Plánujeme integrovat jakmile bude dávat ekonomický smysl (= cca 50+ aktivních uživatelů). Self-hostnuté instance si budou moci nakonfigurovat vlastní VDP credentials.</p>
+                <p class="text-xs text-slate-500">Mezitím: <a href="https://nahlizenidokn.cuzk.cz/" target="_blank" class="underline">nahlizenidokn.cuzk.cz</a> — ruční lookup po IČO (CAPTCHA).</p>
+              </div>
+            </div>
+
             <!-- Holding discovery: rozkrýt subsidiaries → seed do Mapy
                  propojení. Auto-trigger pro a.s. s ≥5 jednateli (ares-report-
                  loaded event). Depth selector skryt pod Pokročilé.
@@ -2451,8 +2519,22 @@
               </div>
             </template>
 
+            <!-- Mermaid / Cytoscape toggle -->
+            <div class="flex items-center gap-3 mb-2">
+              <span class="text-xs text-slate-500 dark:text-slate-400">Zobrazení:</span>
+              <button type="button" @click="renderMode = 'mermaid'" :class="renderMode === 'mermaid' ? 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 border-emerald-200' : 'border-slate-300 text-slate-600'" class="px-3 py-1 border rounded-lg text-xs">
+                📐 Mermaid (statické)
+              </button>
+              <button type="button" @click="renderMode = 'interactive'; $nextTick(() => renderCytoscape())" :class="renderMode === 'interactive' ? 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 border-emerald-200' : 'border-slate-300 text-slate-600'" class="px-3 py-1 border rounded-lg text-xs">
+                🎯 Interaktivní (Cytoscape)
+              </button>
+            </div>
             <div class="border dark:border-slate-700 rounded-xl p-4 bg-white dark:bg-slate-900">
-              <div class="mermaid" x-html="mermaidSvg"></div>
+              <div x-show="renderMode === 'mermaid'" class="mermaid" x-html="mermaidSvg"></div>
+              <div x-show="renderMode === 'interactive'" id="cytoscape-container" class="w-full" style="height: 600px;"></div>
+              <p x-show="renderMode === 'interactive'" class="text-xs text-slate-500 dark:text-slate-400 mt-2">
+                Drag = posun · scroll = zoom · klik na firmu = detail. Layout: cose force-directed.
+              </p>
             </div>
           </div>
         </template>
@@ -2524,6 +2606,153 @@
           </div>
         </template>
       </section>
+
+      <!-- ─── Saved searches + alerty ─────────────────────────────── -->
+      <section id="saved" x-show="$store.sections.visible('saved')" x-data="savedSection()" x-init="init()" class="bg-white dark:bg-slate-800 dark:border-slate-700 rounded-2xl shadow-sm border p-6">
+        <h2 class="text-lg font-semibold tracking-tight mb-1">📑 Uložená vyhledávání</h2>
+        <p class="text-sm text-slate-500 dark:text-slate-400 mb-4">
+          Sleduj vlastní seznamy firem. Klik = znovu načti, „🔔 Sledovat" = email alert pro každé IČO ze seznamu.
+        </p>
+        <form @submit.prevent="add()" class="flex gap-2 mb-4 flex-wrap">
+          <input type="text" x-model="newName" placeholder="Název seznamu" class="flex-1 min-w-[200px] px-3 py-2 border dark:border-slate-600 dark:bg-slate-900 rounded-lg text-sm" />
+          <input type="text" x-model="newQuery" placeholder="IČO oddělená čárkou / mezerou" class="flex-1 min-w-[280px] px-3 py-2 border dark:border-slate-600 dark:bg-slate-900 rounded-lg font-mono text-sm" />
+          <button type="submit" class="px-4 py-2 bg-emerald-600 text-white rounded-lg text-sm hover:bg-emerald-700">Uložit</button>
+        </form>
+        <template x-if="searches.length === 0">
+          <p class="text-sm text-slate-500">Žádné uložené seznamy. Přidej výše nebo „💾 Uložit" v Bulk / Mapa propojení.</p>
+        </template>
+        <ul class="space-y-2">
+          <template x-for="s in searches" :key="s.id">
+            <li class="border dark:border-slate-700 rounded-lg p-3 flex flex-wrap items-center gap-3">
+              <span class="font-semibold flex-1 min-w-[180px]" x-text="s.name"></span>
+              <span class="text-xs text-slate-500 font-mono" x-text="`${s.icos.length} IČO`"></span>
+              <button type="button" @click="load(s)" class="px-3 py-1 border dark:border-slate-600 rounded text-xs hover:bg-slate-50 dark:hover:bg-slate-700">📋 Bulk DD</button>
+              <button type="button" @click="map(s)" class="px-3 py-1 border dark:border-slate-600 rounded text-xs hover:bg-slate-50 dark:hover:bg-slate-700">🌐 Mapa</button>
+              <button type="button" @click="subscribe(s)" :disabled="s.subscribed" class="px-3 py-1 border rounded text-xs disabled:opacity-50" :class="s.subscribed ? 'border-emerald-300 text-emerald-700' : 'border-amber-300 text-amber-700 hover:bg-amber-50 dark:hover:bg-amber-900/30'" x-text="s.subscribed ? '✓ sledováno' : '🔔 Sledovat'"></button>
+              <button type="button" @click="remove(s.id)" class="px-3 py-1 border border-rose-300 text-rose-700 rounded text-xs hover:bg-rose-50 dark:hover:bg-rose-900/30">🗑</button>
+            </li>
+          </template>
+        </ul>
+        <template x-if="subscribeMsg">
+          <p class="mt-3 text-sm text-emerald-700 dark:text-emerald-400" x-text="subscribeMsg"></p>
+        </template>
+      </section>
+
+      <!-- ─── Bulk DD ─────────────────────────────────────────────── -->
+      <section id="bulk" x-show="$store.sections.visible('bulk')" x-data="bulkSection()" x-init="init()" class="bg-white dark:bg-slate-800 dark:border-slate-700 rounded-2xl shadow-sm border p-6">
+        <h2 class="text-lg font-semibold tracking-tight mb-1">📋 Hromadná prověrka (Bulk DD)</h2>
+        <p class="text-sm text-slate-500 dark:text-slate-400 mb-4">
+          Vlož seznam IČO (1 na řádku, max 50) → paralelní DD pro všechny → CSV export + PDF prověrky.
+        </p>
+        <form @submit.prevent="run()" class="space-y-3 mb-4">
+          <textarea
+            x-model="raw"
+            placeholder="26185610&#10;45274649&#10;…"
+            rows="6"
+            class="w-full px-3 py-2 border dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100 rounded-lg font-mono text-sm focus:ring-2 focus:ring-emerald-500 outline-none"
+          ></textarea>
+          <div class="flex gap-3 items-center flex-wrap">
+            <input type="file" accept=".csv,.txt" @change="loadFile($event.target.files[0])" class="text-sm" />
+            <button type="submit" :disabled="loading" class="px-6 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 disabled:opacity-50" x-text="loading ? `Načítám… (${progress}/${total})` : 'Spustit'"></button>
+            <button type="button" x-show="results.length > 0" @click="exportCsv()" class="px-4 py-2 border dark:border-slate-600 rounded-lg text-sm hover:bg-slate-50 dark:hover:bg-slate-700">📥 Export CSV</button>
+          </div>
+        </form>
+        <template x-if="error">
+          <div class="p-3 bg-rose-50 dark:bg-rose-900/30 border border-rose-200 dark:border-rose-800 rounded text-sm text-rose-800 dark:text-rose-300" x-text="error"></div>
+        </template>
+        <template x-if="loading">
+          <div class="bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden mb-3">
+            <div class="bg-emerald-500 h-2 transition-all" :style="`width: ${total > 0 ? (progress / total * 100) : 0}%`"></div>
+          </div>
+        </template>
+        <template x-if="results.length > 0">
+          <table class="w-full text-sm">
+            <thead class="text-left text-xs text-slate-500 dark:text-slate-400 border-b dark:border-slate-700">
+              <tr>
+                <th class="py-2">IČO</th>
+                <th>Jméno</th>
+                <th>Risk</th>
+                <th>DPH</th>
+                <th>Statutáři</th>
+                <th>Insolvence</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              <template x-for="r in results" :key="r.ico">
+                <tr class="border-b dark:border-slate-700">
+                  <td class="py-1.5 font-mono text-xs" x-text="r.ico"></td>
+                  <td x-text="r.obchodniJmeno || '—'"></td>
+                  <td>
+                    <span class="px-2 py-0.5 rounded-full text-xs font-semibold" :class="{
+                      'bg-emerald-100 text-emerald-700': r.risk === 'green',
+                      'bg-amber-100 text-amber-700': r.risk === 'yellow',
+                      'bg-rose-100 text-rose-700': r.risk === 'red',
+                      'bg-slate-100 text-slate-500': r.risk === 'error',
+                    }" x-text="r.risk"></span>
+                  </td>
+                  <td x-text="r.dph"></td>
+                  <td x-text="r.statutary"></td>
+                  <td x-text="r.insolvence"></td>
+                  <td>
+                    <a :href="'/report/' + r.ico" target="_blank" rel="noopener" class="text-emerald-700 dark:text-emerald-400 underline text-xs">PDF →</a>
+                  </td>
+                </tr>
+              </template>
+            </tbody>
+          </table>
+        </template>
+      </section>
+
+      <!-- ─── Compare 2 firmy (diff mode) ─────────────────────────── -->
+      <section id="compare" x-show="$store.sections.visible('compare')" x-data="compareSection()" x-init="init()" class="bg-white dark:bg-slate-800 dark:border-slate-700 rounded-2xl shadow-sm border p-6">
+        <h2 class="text-lg font-semibold tracking-tight mb-1">⚖️ Porovnat 2 firmy</h2>
+        <p class="text-sm text-slate-500 dark:text-slate-400 mb-4">
+          Side-by-side srovnání 2 IČO — risk, statutáři, sídlo, kapitál. Žluté zvýraznění označuje rozdíly.
+        </p>
+        <form @submit.prevent="run()" class="flex flex-wrap gap-2 items-end mb-4">
+          <div class="flex-1 min-w-[180px]">
+            <label class="text-xs text-slate-500 dark:text-slate-400">IČO A</label>
+            <input
+              type="text"
+              x-model="icoA"
+              placeholder="26185610"
+              class="w-full px-3 py-2 border dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100 rounded-lg font-mono text-sm focus:ring-2 focus:ring-emerald-500 outline-none"
+            />
+          </div>
+          <div class="flex-1 min-w-[180px]">
+            <label class="text-xs text-slate-500 dark:text-slate-400">IČO B</label>
+            <input
+              type="text"
+              x-model="icoB"
+              placeholder="45274649"
+              class="w-full px-3 py-2 border dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100 rounded-lg font-mono text-sm focus:ring-2 focus:ring-emerald-500 outline-none"
+            />
+          </div>
+          <button type="submit" :disabled="loading" class="px-6 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 disabled:opacity-50" x-text="loading ? 'Načítám…' : 'Porovnat'"></button>
+        </form>
+        <template x-if="error">
+          <div class="mt-4 p-3 bg-rose-50 dark:bg-rose-900/30 border border-rose-200 dark:border-rose-800 rounded text-sm text-rose-800 dark:text-rose-300" x-text="error"></div>
+        </template>
+        <template x-if="resultA && resultB">
+          <div class="grid grid-cols-2 gap-4">
+            <template x-for="(side, sideIdx) in ['A', 'B']" :key="side">
+              <div class="border dark:border-slate-700 rounded-xl p-4">
+                <h3 class="font-bold mb-2" x-text="(sideIdx === 0 ? resultA : resultB).obchodniJmeno"></h3>
+                <p class="text-xs font-mono text-slate-500 dark:text-slate-400 mb-3" x-text="(sideIdx === 0 ? resultA : resultB).ico"></p>
+                <dl class="space-y-2 text-sm">
+                  <template x-for="row in compareRows()" :key="row.label">
+                    <div class="grid grid-cols-3 gap-2" :class="row.diff ? 'bg-amber-50 dark:bg-amber-900/30 px-2 py-1 rounded' : ''">
+                      <dt class="text-slate-500 dark:text-slate-400 col-span-1" x-text="row.label"></dt>
+                      <dd class="col-span-2 font-medium" x-text="sideIdx === 0 ? (row.valueA ?? '—') : (row.valueB ?? '—')"></dd>
+                    </div>
+                  </template>
+                </dl>
+              </div>
+            </template>
+          </div>
+        </template>
+      </section>
     </main>
 
     <footer class="border-t dark:border-slate-700 bg-white dark:bg-slate-800" x-data="featuresStatus()" x-init="init()">
@@ -2579,7 +2808,7 @@
              je POVINNÝ pro každou síťově dostupnou instanci pod AGPL-3.0. -->
         <p class="pt-2 border-t dark:border-slate-700 mt-2">
           <strong>Software:</strong> <a class="underline" href="https://github.com/milos106/icovazby" target="_blank" rel="noopener">icovazby</a>
-          v0.5.0 — licencováno pod
+          v0.5.1 — licencováno pod
           <a class="underline" href="https://www.gnu.org/licenses/agpl-3.0.html" target="_blank" rel="noopener">GNU AGPL-3.0-or-later</a>.
           Provozuješ-li modifikovanou verzi jako webovou službu, máš povinnost
           zveřejnit svůj zdrojový kód (AGPL §13).
@@ -2589,6 +2818,6 @@
 
     <!-- Cache buster v query param: každý release změní verzi → browser
          dostane nový URL, CF cache pro starý URL ignorován. -->
-    <script src="/js/app.js?v=0.5.0"></script>
+    <script src="/js/app.js?v=0.5.1"></script>
   </body>
 </html>
