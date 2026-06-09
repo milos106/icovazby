@@ -15,7 +15,7 @@ const SECTION_DEFS = [
   { key: "dd-timeline", label: "📜 Časová osa", group: "Profil firmy" },
   { key: "dd-katastr", label: "🏠 Nemovitosti (Katastr, brzy)", group: "Profil firmy" },
   { key: "dd-ds", label: "📬 Datová schránka", group: "Profil firmy" },
-  { key: "dd-upv", label: "™ Duševní vlastnictví (ÚPV, brzy)", group: "Profil firmy" },
+  { key: "dd-upv", label: "™ Ochranné známky (TMView)", group: "Profil firmy" },
   { key: "dd-vr", label: "⚖️ Veřejný rejstřík (OR)", group: "Profil firmy" },
   { key: "dd-ubo", label: "👥 Skuteční majitelé (UBO)", group: "Profil firmy" },
   { key: "dd-dotace", label: "💸 Dotace", group: "Profil firmy" },
@@ -1816,6 +1816,29 @@ function ddDatovaSchrankaCard() {
   };
 }
 window.ddDatovaSchrankaCard = ddDatovaSchrankaCard;
+
+/** Ochranné známky přes TMView (EUIPN). */
+function ddTrademarksLoader() {
+  return {
+    result: null,
+    loading: false,
+    error: "",
+    async load(ico) {
+      if (!ico) return;
+      this.loading = true;
+      this.result = null;
+      this.error = "";
+      try {
+        this.result = await jsonFetch(`/api/trademarks/${encodeURIComponent(ico)}`);
+      } catch (e) {
+        this.error = "TMView dotaz selhal: " + e.message;
+      } finally {
+        this.loading = false;
+      }
+    },
+  };
+}
+window.ddTrademarksLoader = ddTrademarksLoader;
 window.ddVrLoader = ddVrLoader;
 window.holdingDiscovery = holdingDiscovery;
 window.ddEuSanctionsLoader = ddEuSanctionsLoader;

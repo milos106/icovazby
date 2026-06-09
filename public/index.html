@@ -1713,7 +1713,7 @@
               </div>
             </div>
 
-            <!-- ─── ÚPV ochranné známky + patenty (placeholder) ─── -->
+            <!-- ─── Ochranné známky (TMView — zatím zablokované) ─── -->
             <div
               id="dd-upv"
               x-show="$store.sections.visible('dd-upv')"
@@ -1722,16 +1722,15 @@
             >
               <h4 class="dd-card-header text-base font-semibold mb-3 cursor-pointer select-none flex items-center gap-2" @click="$store.ddCollapse.toggle('dd-upv')">
                 <span class="dd-card-chevron text-slate-400" x-text="$store.ddCollapse.isExpanded('dd-upv') ? '▾' : '▸'"></span>
-                ™ Duševní vlastnictví (ÚPV)
-                <span class="text-[10px] px-1.5 py-0.5 rounded-full bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300 border border-amber-200">brzy</span>
+                ™ Ochranné známky (TMView)
+                <span class="text-[10px] px-1.5 py-0.5 rounded-full bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300 border border-amber-200">vyžaduje partnership</span>
               </h4>
               <div class="dd-card-body text-sm space-y-2" x-show="$store.ddCollapse.isExpanded('dd-upv')">
-                <p>ÚPV nemá veřejné REST API — jen HTML vyhledávání. Integraci plánujeme přes EUIPO TMview WS API (pokrývá i české ochranné známky).</p>
-                <p class="text-xs">
-                  <a :href="'https://isdv.upv.cz/webapp/resdb.print_form?LIST_CODE=PXBOR&KOMU=' + encodeURIComponent(report.obchodniJmeno || '')" target="_blank" rel="noopener" class="underline text-emerald-700 dark:text-emerald-400">🔗 Vyhledat na isdv.upv.cz (HTML) →</a>
-                </p>
-                <p class="text-xs">
-                  <a :href="'https://euipo.europa.eu/eSearch/#advanced/trademarks/1/50/n1=OWNER_NAME&v1=' + encodeURIComponent(report.obchodniJmeno || '') + '&o1=AND'" target="_blank" rel="noopener" class="underline text-emerald-700 dark:text-emerald-400">🔗 EUIPO eSearch →</a>
+                <p>Code je implementovaný (cookie jar + search service), ale TMView má <strong>F5 bot detection</strong>, která blokuje požadavky z data-center IP (Hetzner). Server-side <code class="text-xs bg-slate-100 dark:bg-slate-700 px-1 rounded">fetch</code> = ECONNRESET. Browser-side direct call = CORS blok.</p>
+                <p>Pro funkční integraci je potřeba <a href="https://www.tmdn.org/network/working-areas/tmview-cobranding" target="_blank" rel="noopener" class="underline text-emerald-700 dark:text-emerald-400">EUIPO Cobranding partnership</a> (4–6 týdnů approval, zdarma) s oficiálním OAuth tokenem.</p>
+                <p class="text-xs text-slate-600 dark:text-slate-400">Code zachovaný v <code>src/tmview/</code> — jakmile bude k dispozici token, swap endpoint a UI začne fungovat.</p>
+                <p class="text-xs pt-2 border-t dark:border-slate-700">
+                  <a :href="'https://www.tmdn.org/tmview/#/tmview/results?page=1&pageSize=30&criteria=C&basicSearch=' + encodeURIComponent(report.obchodniJmeno || '')" target="_blank" rel="noopener" class="underline text-emerald-700 dark:text-emerald-400">🔗 Vyhledat ručně na TMView →</a>
                 </p>
               </div>
             </div>
@@ -2808,7 +2807,7 @@
              je POVINNÝ pro každou síťově dostupnou instanci pod AGPL-3.0. -->
         <p class="pt-2 border-t dark:border-slate-700 mt-2">
           <strong>Software:</strong> <a class="underline" href="https://github.com/milos106/icovazby" target="_blank" rel="noopener">icovazby</a>
-          v0.5.1 — licencováno pod
+          v0.5.2 — licencováno pod
           <a class="underline" href="https://www.gnu.org/licenses/agpl-3.0.html" target="_blank" rel="noopener">GNU AGPL-3.0-or-later</a>.
           Provozuješ-li modifikovanou verzi jako webovou službu, máš povinnost
           zveřejnit svůj zdrojový kód (AGPL §13).
@@ -2818,6 +2817,6 @@
 
     <!-- Cache buster v query param: každý release změní verzi → browser
          dostane nový URL, CF cache pro starý URL ignorován. -->
-    <script src="/js/app.js?v=0.5.1"></script>
+    <script src="/js/app.js?v=0.5.2"></script>
   </body>
 </html>

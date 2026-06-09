@@ -43,6 +43,7 @@ import {
   validateIcoService,
 } from "./services.js";
 import { buildTimeline } from "./timeline/service.js";
+import { getTrademarksByCompany } from "./tmview/service.js";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const PUBLIC_DIR = join(HERE, "..", "public");
@@ -129,7 +130,7 @@ function sendError(reply: FastifyReply, err: unknown): void {
 // ─── Health ───────────────────────────────────────────────────────────────────
 app.get("/healthz", async () => ({
   ok: true,
-  version: "0.5.1",
+  version: "0.5.2",
   uptimeSeconds: Math.floor(process.uptime()),
   cache: cacheStats(),
   integrations: {
@@ -288,6 +289,26 @@ app.get("/api/timeline/:ico", async (req: FastifyRequest, reply) => {
     sendError(reply, e);
   }
 });
+
+// ─── TMView trademarks — ochranné známky podle IČO ────────────────────────────
+// Aktuálně VYPNUTO. TMView (tmdn.org) má F5 bot detection, která blokuje
+// požadavky z datacenter IP rozsahů (jako Hetzner). Server-side fetch =
+// ECONNRESET. Cross-origin browser fetch = CORS blok. Funkční integrace
+// vyžaduje EUIPO Cobranding partnership s oficiálním OAuth tokenem.
+//
+// Kód v `src/tmview/` je zachován pro pozdější use jakmile bude k dispozici
+// partnership. Endpoint zatím vrací 503 s explicitním důvodem.
+app.get("/api/trademarks/:ico", async (_req: FastifyRequest, reply) => {
+  reply.status(503).send({
+    error: "UPSTREAM_BLOCKED",
+    message: "TMView endpoint blokuje data-center IP (F5 bot detection). Vyžaduje EUIPO Cobranding partnership.",
+    primarySource: "https://www.tmdn.org/tmview/",
+    partnershipInfo: "https://www.tmdn.org/network/working-areas/tmview-cobranding",
+  });
+});
+// Reference pro budoucí použití (jakmile bude API key):
+// const data = await cached(`tm:${ico}`, () => getTrademarksByCompany(client, ico));
+void getTrademarksByCompany;
 
 // ─── Search companies by name + optional PSČ ─────────────────────────────────
 const searchSchema = z.object({
