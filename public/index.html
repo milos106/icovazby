@@ -232,7 +232,7 @@
               x-show="open"
               x-cloak
               x-transition
-              class="absolute right-0 mt-2 w-80 bg-white dark:bg-slate-800 border dark:border-slate-700 rounded-xl shadow-xl ring-1 ring-black/5 z-40 p-4 text-left"
+              class="absolute right-0 mt-2 w-[calc(100vw-2rem)] max-w-sm sm:w-80 bg-white dark:bg-slate-800 border dark:border-slate-700 rounded-xl shadow-xl ring-1 ring-black/5 z-40 p-4 text-left"
             >
               <h3 class="text-sm font-semibold mb-3 flex items-center gap-2">
                 <span>⚙️</span> Nastavení
@@ -337,7 +337,7 @@
             x-show="open"
             x-cloak
             x-transition
-            class="absolute right-0 mt-2 w-80 bg-white border rounded-lg shadow-lg max-h-[70vh] overflow-y-auto z-40"
+            class="absolute right-0 mt-2 w-[calc(100vw-2rem)] max-w-sm sm:w-80 bg-white border rounded-lg shadow-lg max-h-[70vh] overflow-y-auto z-40"
           >
             <template x-if="bookmarks.length > 0">
               <div class="p-3 border-b">
@@ -2620,7 +2620,7 @@
             </div>
             <div class="border dark:border-slate-700 rounded-xl p-4 bg-white dark:bg-slate-900">
               <div x-show="renderMode === 'mermaid'" class="mermaid" x-html="mermaidSvg"></div>
-              <div x-show="renderMode === 'interactive'" id="cytoscape-container" class="w-full" style="height: 600px;"></div>
+              <div x-show="renderMode === 'interactive'" id="cytoscape-container" class="w-full h-[60vh] min-h-[400px] max-h-[600px]"></div>
               <p x-show="renderMode === 'interactive'" class="text-xs text-slate-500 dark:text-slate-400 mt-2">
                 Drag = posun · scroll = zoom · klik na firmu = detail. Layout: cose force-directed.
               </p>
@@ -2845,7 +2845,7 @@
           </div>
         </template>
         <template x-if="resultA && resultB">
-          <div class="grid grid-cols-2 gap-4">
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <template x-for="(side, sideIdx) in ['A', 'B']" :key="side">
               <div class="border dark:border-slate-700 rounded-xl p-4">
                 <h3 class="font-bold mb-2" x-text="(sideIdx === 0 ? resultA : resultB).obchodniJmeno"></h3>
@@ -2918,7 +2918,7 @@
              je POVINNÝ pro každou síťově dostupnou instanci pod AGPL-3.0. -->
         <p class="pt-2 border-t dark:border-slate-700 mt-2">
           <strong>Software:</strong> <a class="underline" href="https://github.com/milos106/icovazby" target="_blank" rel="noopener">icovazby</a>
-          v0.5.5 — licencováno pod
+          v0.6.0 — licencováno pod
           <a class="underline" href="https://www.gnu.org/licenses/agpl-3.0.html" target="_blank" rel="noopener">GNU AGPL-3.0-or-later</a>.
           Provozuješ-li modifikovanou verzi jako webovou službu, máš povinnost
           zveřejnit svůj zdrojový kód (AGPL §13).
@@ -2928,6 +2928,6 @@
 
     <!-- Cache buster v query param: každý release změní verzi → browser
          dostane nový URL, CF cache pro starý URL ignorován. -->
-    <script src="/js/app.js?v=0.5.5"></script>
+    <script src="/js/app.js?v=0.6.0"></script>
   </body>
 </html>

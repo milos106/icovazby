@@ -85,6 +85,21 @@ Obě cesty mohou koexistovat (lokální CZ data + EU/WIPO přes TMView API).
 
 ---
 
+## R8 — Aktivní občan / Lobby registr (RELOB)
+
+**Status:** BLOCKED — žádné public API.
+
+Zjištění z research 2026-06-09:
+- relob.gov.cz je Nuxt SPA, žádné REST endpointy
+- data.gov.cz nemá dataset „lobbování"
+- Web UI vyhledávání po IČO funguje, programatický přístup ne
+
+**Cesta vpřed:** email `relob@msp.gov.cz` s žádostí o data export. Nebo počkat na NKOD publikaci.
+
+## R18 — Demo video
+
+**Status:** SKIP — vyžaduje user manual akce (screencast s mikrofonem). Plánováno jakmile bude EUIPO partnership.
+
 ## Možné další features čekající
 
 Žádné aktuálně. F4 (Katastr) a F1–F8 dokončené nebo dokumentované.
