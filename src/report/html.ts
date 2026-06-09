@@ -133,12 +133,8 @@ export function renderDdReportHtml(report: DdReport): string {
     text-transform: uppercase;
     margin-bottom: 8px;
   }
-  .brand-mark {
-    width: 18px;
-    height: 18px;
-    border-radius: 4px;
-    background: linear-gradient(135deg, #10b981, #059669);
-  }
+  .brand-mark { width: 20px; height: 20px; flex-shrink: 0; }
+  .brand-mark svg { display: block; width: 100%; height: 100%; }
   h1 {
     font-size: 26px;
     margin: 0 0 6px;
@@ -320,7 +316,21 @@ export function renderDdReportHtml(report: DdReport): string {
 
 <div class="head">
   <div>
-    <div class="brand"><span class="brand-mark"></span> IČO vazby — Due diligence report</div>
+    <div class="brand">
+      <span class="brand-mark">
+        <svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">
+          <path d="M 32 18 L 14 46" stroke="#10b981" stroke-width="3.5" stroke-linecap="round" fill="none"/>
+          <path d="M 32 18 L 32 46" stroke="#10b981" stroke-width="3.5" stroke-linecap="round" fill="none"/>
+          <path d="M 32 18 L 50 46" stroke="#10b981" stroke-width="3.5" stroke-linecap="round" fill="none"/>
+          <rect x="6"  y="42" width="16" height="16" rx="3" fill="#10b981"/>
+          <rect x="24" y="42" width="16" height="16" rx="3" fill="#10b981"/>
+          <rect x="42" y="42" width="16" height="16" rx="3" fill="#10b981"/>
+          <circle cx="32" cy="18" r="11" fill="#065f46"/>
+          <circle cx="32" cy="18" r="7"  fill="#34d399"/>
+        </svg>
+      </span>
+      IČO vazby — Due diligence report
+    </div>
     <h1>${escapeHtml(report.obchodniJmeno ?? "(neznámý subjekt)")}</h1>
     <div class="ico">IČO ${escapeHtml(report.ico)}${id?.datumVzniku ? " · vznik " + escapeHtml(id.datumVzniku) : ""}${id?.datumZaniku ? " · zánik " + escapeHtml(id.datumZaniku) : ""}</div>
   </div>

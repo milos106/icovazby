@@ -109,7 +109,8 @@
     </script>
     <!-- Cytoscape pro interaktivní network graf (Feature 8) -->
     <script src="https://unpkg.com/cytoscape@3.30.2/dist/cytoscape.min.js"></script>
-    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E🔗%3C/text%3E%3C/svg%3E" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="apple-touch-icon" href="/favicon.svg" />
     <style>
       /* Inter font-feature-settings pro lepší letter-spacing v nadpisech,
          lining numerals v IČO/datum atd. — Linear-style polish. */
@@ -195,7 +196,16 @@
     <header class="bg-white dark:bg-slate-800 border-b dark:border-slate-700 sticky top-0 z-30" x-data="historyBar()" x-init="init()">
       <div class="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between gap-3 flex-wrap">
         <div class="flex items-center gap-3">
-          <span class="text-2xl sm:text-3xl">🔗</span>
+          <svg width="32" height="32" sm:width="40" sm:height="40" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg" class="shrink-0">
+            <path d="M 32 18 L 14 46" stroke="#10b981" stroke-width="3.5" stroke-linecap="round" fill="none"/>
+            <path d="M 32 18 L 32 46" stroke="#10b981" stroke-width="3.5" stroke-linecap="round" fill="none"/>
+            <path d="M 32 18 L 50 46" stroke="#10b981" stroke-width="3.5" stroke-linecap="round" fill="none"/>
+            <rect x="6"  y="42" width="16" height="16" rx="3" fill="#10b981"/>
+            <rect x="24" y="42" width="16" height="16" rx="3" fill="#10b981"/>
+            <rect x="42" y="42" width="16" height="16" rx="3" fill="#10b981"/>
+            <circle cx="32" cy="18" r="11" fill="#065f46"/>
+            <circle cx="32" cy="18" r="7"  fill="#34d399"/>
+          </svg>
           <div>
             <h1 class="text-lg sm:text-xl font-bold tracking-tightest bg-gradient-to-r from-emerald-600 via-emerald-700 to-slate-700 dark:from-emerald-400 dark:via-emerald-300 dark:to-slate-100 bg-clip-text text-transparent">IČO vazby</h1>
             <!-- Podtitul jen na sm+ — na úzkém mobilu šetří vertikální výšku hlavičky. -->
@@ -2990,7 +3000,7 @@
              je POVINNÝ pro každou síťově dostupnou instanci pod AGPL-3.0. -->
         <p class="pt-2 border-t dark:border-slate-700 mt-2">
           <strong>Software:</strong> <a class="underline" href="https://github.com/milos106/icovazby" target="_blank" rel="noopener">icovazby</a>
-          v0.6.3 — licencováno pod
+          v0.6.4 — licencováno pod
           <a class="underline" href="https://www.gnu.org/licenses/agpl-3.0.html" target="_blank" rel="noopener">GNU AGPL-3.0-or-later</a>.
           Provozuješ-li modifikovanou verzi jako webovou službu, máš povinnost
           zveřejnit svůj zdrojový kód (AGPL §13).
@@ -3000,6 +3010,6 @@
 
     <!-- Cache buster v query param: každý release změní verzi → browser
          dostane nový URL, CF cache pro starý URL ignorován. -->
-    <script src="/js/app.js?v=0.6.3"></script>
+    <script src="/js/app.js?v=0.6.4"></script>
   </body>
 </html>
