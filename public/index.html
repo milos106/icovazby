@@ -403,7 +403,7 @@
               <input
                 type="text"
                 x-model="query"
-                placeholder="např. 26185610  nebo  AGROFERT"
+                placeholder="Vlož IČO nebo název firmy (např. 26185610 nebo AGROFERT)"
                 class="w-full px-4 py-2 pr-20 border dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none"
                 autofocus
               />
@@ -1962,7 +1962,7 @@
                 x-model="form.jmeno"
                 required
                 class="w-full px-2 py-1.5 border dark:border-slate-600 dark:bg-slate-900 rounded text-sm"
-                placeholder="Ing. ANDREJ BABIŠ"
+                placeholder="Vlož celé jméno (např. Andrej Babiš)"
               />
             </div>
             <div>
@@ -2255,9 +2255,10 @@
           <textarea
             x-model="raw"
             rows="3"
-            placeholder="26185610&#10;46967851&#10;46900411&#10;27435148"
+            placeholder="Vlož IČO (1 na řádku, min 2, max 50)"
             class="w-full px-3 py-2 border dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100 rounded-lg font-mono text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none"
           ></textarea>
+          <p class="text-xs text-slate-500 dark:text-slate-400">Příklad: 26185610, 46967851, 46900411, 27435148</p>
           <div class="flex gap-3 items-center flex-wrap">
             <!-- includeHistorical checkbox přesunut do Profil → Rozkrýt holding.
                  Mapa propojení dědí flag z holding discovery přes seed event;
@@ -2651,10 +2652,11 @@
         <form @submit.prevent="run()" class="space-y-3 mb-4">
           <textarea
             x-model="raw"
-            placeholder="26185610&#10;45274649&#10;…"
+            placeholder="Vlož IČO (1 na řádku, max 50)"
             rows="6"
             class="w-full px-3 py-2 border dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100 rounded-lg font-mono text-sm focus:ring-2 focus:ring-emerald-500 outline-none"
           ></textarea>
+          <p class="text-xs text-slate-500 dark:text-slate-400">Příklad: 26185610, 45274649, 26185610 — 1 IČO na řádek nebo oddělené čárkami.</p>
           <div class="flex gap-3 items-center flex-wrap">
             <input type="file" accept=".csv,.txt" @change="loadFile($event.target.files[0])" class="text-sm" />
             <button type="submit" :disabled="loading" class="px-6 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 disabled:opacity-50" x-text="loading ? `Načítám… (${progress}/${total})` : 'Spustit'"></button>
@@ -2716,20 +2718,20 @@
         </p>
         <form @submit.prevent="run()" class="flex flex-wrap gap-2 items-end mb-4">
           <div class="flex-1 min-w-[180px]">
-            <label class="text-xs text-slate-500 dark:text-slate-400">IČO A</label>
+            <label class="text-xs text-slate-500 dark:text-slate-400">IČO A (např. 26185610)</label>
             <input
               type="text"
               x-model="icoA"
-              placeholder="26185610"
+              placeholder="Vlož IČO první firmy"
               class="w-full px-3 py-2 border dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100 rounded-lg font-mono text-sm focus:ring-2 focus:ring-emerald-500 outline-none"
             />
           </div>
           <div class="flex-1 min-w-[180px]">
-            <label class="text-xs text-slate-500 dark:text-slate-400">IČO B</label>
+            <label class="text-xs text-slate-500 dark:text-slate-400">IČO B (např. 45274649)</label>
             <input
               type="text"
               x-model="icoB"
-              placeholder="45274649"
+              placeholder="Vlož IČO druhé firmy"
               class="w-full px-3 py-2 border dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100 rounded-lg font-mono text-sm focus:ring-2 focus:ring-emerald-500 outline-none"
             />
           </div>
@@ -2812,7 +2814,7 @@
              je POVINNÝ pro každou síťově dostupnou instanci pod AGPL-3.0. -->
         <p class="pt-2 border-t dark:border-slate-700 mt-2">
           <strong>Software:</strong> <a class="underline" href="https://github.com/milos106/icovazby" target="_blank" rel="noopener">icovazby</a>
-          v0.5.3 — licencováno pod
+          v0.5.4 — licencováno pod
           <a class="underline" href="https://www.gnu.org/licenses/agpl-3.0.html" target="_blank" rel="noopener">GNU AGPL-3.0-or-later</a>.
           Provozuješ-li modifikovanou verzi jako webovou službu, máš povinnost
           zveřejnit svůj zdrojový kód (AGPL §13).
@@ -2822,6 +2824,6 @@
 
     <!-- Cache buster v query param: každý release změní verzi → browser
          dostane nový URL, CF cache pro starý URL ignorován. -->
-    <script src="/js/app.js?v=0.5.3"></script>
+    <script src="/js/app.js?v=0.5.4"></script>
   </body>
 </html>
