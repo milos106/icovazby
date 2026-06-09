@@ -537,6 +537,7 @@
             >
               <div class="flex gap-1 overflow-x-auto whitespace-nowrap items-center">
                 <a href="#dd-profil" class="px-2 py-1 rounded hover:bg-slate-100 dark:hover:bg-slate-700">👤 Profil</a>
+                <a x-show="$store.sections.visible('dd-timeline')" href="#dd-timeline" class="px-2 py-1 rounded hover:bg-slate-100 dark:hover:bg-slate-700">📜 Osa</a>
                 <a x-show="$store.sections.visible('dd-vr')" href="#dd-vr" class="px-2 py-1 rounded hover:bg-slate-100 dark:hover:bg-slate-700">⚖️ OR</a>
                 <a x-show="$store.sections.visible('dd-ubo')" href="#dd-ubo" class="px-2 py-1 rounded hover:bg-slate-100 dark:hover:bg-slate-700">👥 UBO</a>
                 <a x-show="$store.sections.visible('dd-dotace')" href="#dd-dotace" class="px-2 py-1 rounded hover:bg-slate-100 dark:hover:bg-slate-700">💸 Dotace</a>
@@ -560,6 +561,7 @@
                   aria-label="Sekce profilu"
                 >
                   <a href="#dd-profil" :class="active === 'dd-profil' ? 'bg-slate-100 dark:bg-slate-700/60 text-slate-900 dark:text-slate-100 font-medium' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700/40 hover:text-slate-900 dark:hover:text-slate-100'" class="block px-3 py-1.5 rounded-lg transition-colors">👤 Profil</a>
+                  <a x-show="$store.sections.visible('dd-timeline')" href="#dd-timeline" :class="active === 'dd-timeline' ? 'bg-slate-100 dark:bg-slate-700/60 text-slate-900 dark:text-slate-100 font-medium' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700/40 hover:text-slate-900 dark:hover:text-slate-100'" class="block px-3 py-1.5 rounded-lg transition-colors">📜 Časová osa</a>
                   <a x-show="$store.sections.visible('dd-vr')" href="#dd-vr" :class="active === 'dd-vr' ? 'bg-slate-100 dark:bg-slate-700/60 text-slate-900 dark:text-slate-100 font-medium' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700/40 hover:text-slate-900 dark:hover:text-slate-100'" class="block px-3 py-1.5 rounded-lg transition-colors">⚖️ OR</a>
                   <a x-show="$store.sections.visible('dd-ubo')" href="#dd-ubo" :class="active === 'dd-ubo' ? 'bg-slate-100 dark:bg-slate-700/60 text-slate-900 dark:text-slate-100 font-medium' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700/40 hover:text-slate-900 dark:hover:text-slate-100'" class="block px-3 py-1.5 rounded-lg transition-colors">👥 UBO</a>
                   <a x-show="$store.sections.visible('dd-dotace')" href="#dd-dotace" :class="active === 'dd-dotace' ? 'bg-slate-100 dark:bg-slate-700/60 text-slate-900 dark:text-slate-100 font-medium' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700/40 hover:text-slate-900 dark:hover:text-slate-100'" class="block px-3 py-1.5 rounded-lg transition-colors">💸 Dotace</a>
@@ -1658,6 +1660,54 @@
               </div>
             </template>
 
+            <!-- ─── Časová osa firmy ─── -->
+            <div
+              id="dd-timeline"
+              x-show="$store.sections.visible('dd-timeline')"
+              :data-collapsed="!$store.ddCollapse.isExpanded('dd-timeline')"
+              class="dd-card border border-slate-200/80 dark:border-slate-700 rounded-xl p-5 shadow-sm hover:shadow-md transition-shadow md:col-span-2 scroll-mt-32"
+              x-data="ddTimelineLoader()"
+              x-init="load(report.ico)"
+            >
+              <h4 class="dd-card-header text-base font-semibold mb-3 cursor-pointer select-none flex items-center gap-2 justify-between" @click="$store.ddCollapse.toggle('dd-timeline')">
+                <span class="flex items-center gap-2">
+                  <span class="dd-card-chevron text-slate-400" x-text="$store.ddCollapse.isExpanded('dd-timeline') ? '▾' : '▸'"></span>
+                  📜 Časová osa
+                  <template x-if="result && result.eventCount > 0">
+                    <span class="text-xs font-normal text-slate-500" x-text="result.eventCount + ' událostí'"></span>
+                  </template>
+                </span>
+              </h4>
+              <div class="dd-card-body" x-show="$store.ddCollapse.isExpanded('dd-timeline')">
+                <p x-show="loading" class="text-sm text-slate-500">Načítám…</p>
+                <p x-show="error" class="text-sm text-rose-600" x-text="error"></p>
+                <template x-if="result && result.events.length === 0">
+                  <p class="text-sm text-slate-500">Žádné události k zobrazení.</p>
+                </template>
+                <template x-if="result && result.events.length > 0">
+                  <div class="space-y-4 max-h-96 overflow-y-auto pr-2">
+                    <template x-for="year in result.years" :key="year">
+                      <div class="relative pl-6 border-l-2 border-slate-200 dark:border-slate-700">
+                        <h5 class="font-semibold text-sm text-slate-700 dark:text-slate-300 mb-2 -ml-6 pl-6 sticky top-0 bg-white dark:bg-slate-800 z-10" x-text="year"></h5>
+                        <ul class="space-y-1.5">
+                          <template x-for="ev in result.events.filter(e => Number(e.date.slice(0,4)) === year)" :key="ev.date + '|' + ev.type + '|' + ev.title">
+                            <li class="relative">
+                              <span class="absolute -left-[1.85rem] top-1.5 w-2 h-2 rounded-full" :class="timelineColor(ev.type)"></span>
+                              <div class="text-xs text-slate-500 dark:text-slate-400" x-text="ev.date"></div>
+                              <div class="text-sm" x-text="(timelineIcon(ev.type) + ' ' + ev.title)"></div>
+                              <template x-if="ev.detail">
+                                <div class="text-xs text-slate-500 dark:text-slate-400 italic" x-text="ev.detail"></div>
+                              </template>
+                            </li>
+                          </template>
+                        </ul>
+                      </div>
+                    </template>
+                  </div>
+                </template>
+              </div>
+            </div>
+
             <!-- Holding discovery: rozkrýt subsidiaries → seed do Mapy
                  propojení. Auto-trigger pro a.s. s ≥5 jednateli (ares-report-
                  loaded event). Depth selector skryt pod Pokročilé.
@@ -2529,7 +2579,7 @@
              je POVINNÝ pro každou síťově dostupnou instanci pod AGPL-3.0. -->
         <p class="pt-2 border-t dark:border-slate-700 mt-2">
           <strong>Software:</strong> <a class="underline" href="https://github.com/milos106/icovazby" target="_blank" rel="noopener">icovazby</a>
-          v0.4.3 — licencováno pod
+          v0.5.0 — licencováno pod
           <a class="underline" href="https://www.gnu.org/licenses/agpl-3.0.html" target="_blank" rel="noopener">GNU AGPL-3.0-or-later</a>.
           Provozuješ-li modifikovanou verzi jako webovou službu, máš povinnost
           zveřejnit svůj zdrojový kód (AGPL §13).
@@ -2539,6 +2589,6 @@
 
     <!-- Cache buster v query param: každý release změní verzi → browser
          dostane nový URL, CF cache pro starý URL ignorován. -->
-    <script src="/js/app.js?v=0.4.3"></script>
+    <script src="/js/app.js?v=0.5.0"></script>
   </body>
 </html>

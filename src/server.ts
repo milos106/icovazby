@@ -42,6 +42,7 @@ import {
   searchCompaniesService,
   validateIcoService,
 } from "./services.js";
+import { buildTimeline } from "./timeline/service.js";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const PUBLIC_DIR = join(HERE, "..", "public");
@@ -128,7 +129,7 @@ function sendError(reply: FastifyReply, err: unknown): void {
 // ─── Health ───────────────────────────────────────────────────────────────────
 app.get("/healthz", async () => ({
   ok: true,
-  version: "0.4.3",
+  version: "0.5.0",
   uptimeSeconds: Math.floor(process.uptime()),
   cache: cacheStats(),
   integrations: {
@@ -271,6 +272,17 @@ app.get("/api/dd/:ico", async (req: FastifyRequest, reply) => {
   try {
     const ico = (req.params as { ico: string }).ico;
     const data = await cached(`dd:${ico}`, () => fullDueDiligenceService(client, ico));
+    reply.send(data);
+  } catch (e) {
+    sendError(reply, e);
+  }
+});
+
+// ─── Timeline — chronologická historie firmy ─────────────────────────────────
+app.get("/api/timeline/:ico", async (req: FastifyRequest, reply) => {
+  try {
+    const ico = (req.params as { ico: string }).ico;
+    const data = await cached(`timeline:${ico}`, () => buildTimeline(client, ico));
     reply.send(data);
   } catch (e) {
     sendError(reply, e);

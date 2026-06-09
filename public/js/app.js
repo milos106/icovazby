@@ -12,6 +12,7 @@ const STORAGE_SECTIONS = "icovazby:sections-hidden";
 // Sekce, které lze v Nastavení skrýt. Profil zůstává vždy viditelný.
 // Klíče slouží zároveň jako section id v DOM a key v localStorage.
 const SECTION_DEFS = [
+  { key: "dd-timeline", label: "📜 Časová osa", group: "Profil firmy" },
   { key: "dd-vr", label: "⚖️ Veřejný rejstřík (OR)", group: "Profil firmy" },
   { key: "dd-ubo", label: "👥 Skuteční majitelé (UBO)", group: "Profil firmy" },
   { key: "dd-dotace", label: "💸 Dotace", group: "Profil firmy" },
@@ -931,6 +932,48 @@ function holdingDiscovery() {
   };
 }
 
+/** Časová osa firmy — vertical timeline events from ARES VR. */
+function ddTimelineLoader() {
+  return {
+    result: null,
+    loading: false,
+    error: "",
+    async load(ico) {
+      if (!ico) return;
+      this.loading = true;
+      this.result = null;
+      this.error = "";
+      try {
+        this.result = await jsonFetch(`/api/timeline/${encodeURIComponent(ico)}`);
+      } catch (e) {
+        this.error = "Časovou osu nelze načíst: " + e.message;
+      } finally {
+        this.loading = false;
+      }
+    },
+    timelineIcon(type) {
+      return {
+        "vznik": "🟢",
+        "zanik": "🔴",
+        "jmeno": "✏️",
+        "jmeno-konec": "✂️",
+        "statutar-vznik": "👤",
+        "statutar-zanik": "👋",
+        "akcionar-vznik": "🤝",
+        "akcionar-zanik": "🚪",
+        "kapital": "💰",
+        "kapital-konec": "📉",
+      }[type] || "•";
+    },
+    timelineColor(type) {
+      if (type === "vznik") return "bg-emerald-500";
+      if (type === "zanik") return "bg-rose-500";
+      if (type.endsWith("-zanik") || type === "jmeno-konec" || type === "kapital-konec") return "bg-amber-400";
+      return "bg-blue-500";
+    },
+  };
+}
+
 function ddVrLoader() {
   return {
     vr: null,
@@ -1344,6 +1387,7 @@ window.ddSmlouvyLoader = ddSmlouvyLoader;
 window.ddDotaceLoader = ddDotaceLoader;
 window.ddIsirLoader = ddIsirLoader;
 window.ddJerrsLoader = ddJerrsLoader;
+window.ddTimelineLoader = ddTimelineLoader;
 window.ddVrLoader = ddVrLoader;
 window.holdingDiscovery = holdingDiscovery;
 window.ddEuSanctionsLoader = ddEuSanctionsLoader;
