@@ -15,7 +15,11 @@ const SECTION_DEFS = [
   { key: "dd-timeline", label: "📜 Časová osa", group: "Profil firmy" },
   { key: "dd-katastr", label: "🏠 Nemovitosti (Katastr, brzy)", group: "Profil firmy" },
   { key: "dd-ds", label: "📬 Datová schránka", group: "Profil firmy" },
-  { key: "dd-upv", label: "™ Ochranné známky (TMView)", group: "Profil firmy" },
+  // dd-upv (Ochranné známky / TMView) — dočasně skrytý dokud nedorazí EUIPO
+  // Cobranding partnership nebo ÚPV bulk přístup. Code v src/tmview/ + UI
+  // karta jsou hotové, jen jsou neaktivní. Až přijde token / přístup,
+  // odkomentuj řádek níže a v index.html odstraň `x-show="false"` z dd-upv divu.
+  // { key: "dd-upv", label: "™ Ochranné známky (TMView)", group: "Profil firmy" },
   { key: "dd-vr", label: "⚖️ Veřejný rejstřík (OR)", group: "Profil firmy" },
   { key: "dd-ubo", label: "👥 Skuteční majitelé (UBO)", group: "Profil firmy" },
   { key: "dd-dotace", label: "💸 Dotace", group: "Profil firmy" },
