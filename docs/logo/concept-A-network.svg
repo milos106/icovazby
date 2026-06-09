@@ -1,0 +1,24 @@
+<svg width="240" height="240" viewBox="0 0 240 240" xmlns="http://www.w3.org/2000/svg">
+  <!-- Concept A: Network nodes — přímá metafora pro „vazby". 5 uzlů
+       propojených hranami, jeden centrální (parent) a 4 dceřinky kolem. -->
+  <defs>
+    <linearGradient id="ga" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#10b981"/>
+      <stop offset="100%" stop-color="#059669"/>
+    </linearGradient>
+  </defs>
+  <rect width="240" height="240" fill="white"/>
+  <!-- Edges -->
+  <line x1="120" y1="120" x2="60"  y2="60"  stroke="#10b981" stroke-width="4" stroke-linecap="round"/>
+  <line x1="120" y1="120" x2="180" y2="60"  stroke="#10b981" stroke-width="4" stroke-linecap="round"/>
+  <line x1="120" y1="120" x2="60"  y2="180" stroke="#10b981" stroke-width="4" stroke-linecap="round"/>
+  <line x1="120" y1="120" x2="180" y2="180" stroke="#10b981" stroke-width="4" stroke-linecap="round"/>
+  <!-- Outer nodes -->
+  <circle cx="60"  cy="60"  r="14" fill="url(#ga)"/>
+  <circle cx="180" cy="60"  r="14" fill="url(#ga)"/>
+  <circle cx="60"  cy="180" r="14" fill="url(#ga)"/>
+  <circle cx="180" cy="180" r="14" fill="url(#ga)"/>
+  <!-- Center node — parent -->
+  <circle cx="120" cy="120" r="24" fill="#065f46"/>
+  <circle cx="120" cy="120" r="18" fill="#10b981"/>
+</svg>

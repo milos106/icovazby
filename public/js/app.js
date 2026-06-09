@@ -260,6 +260,8 @@ function recordVisit(entry) {
   window.dispatchEvent(new CustomEvent("ares-history-changed"));
 }
 
+const STORAGE_LAST_QUERY = "icovazby:last-query";
+
 function searchSection() {
   return {
     query: "",
@@ -273,16 +275,35 @@ function searchSection() {
     licensesData: null,
     exportNotice: "",
     _initialized: false,
+    persistQuery() {
+      try {
+        if (this.query?.trim()) {
+          localStorage.setItem(STORAGE_LAST_QUERY, this.query);
+        } else {
+          localStorage.removeItem(STORAGE_LAST_QUERY);
+        }
+      } catch {
+        /* private mode */
+      }
+    },
     init() {
       // history bar can ask us to load a specific IČO
       window.addEventListener("open-search", (e) => {
         if (e.detail?.ico) {
           this.query = e.detail.ico;
+          this.persistQuery();
           this.run().then(() => {
             /* scroll removed per user request */
           });
         }
       });
+      // Restore last query z localStorage (po refreshi / re-open tabu)
+      try {
+        const saved = localStorage.getItem(STORAGE_LAST_QUERY);
+        if (saved && !this.query) this.query = saved;
+      } catch {
+        /* ignore */
+      }
       // restore from URL on first load if no other section will claim it
       const url = readUrl();
       if (url.ico && (!url.action || url.action === "profile")) {

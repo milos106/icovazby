@@ -1,0 +1,16 @@
+<svg width="240" height="240" viewBox="0 0 240 240" xmlns="http://www.w3.org/2000/svg">
+  <!-- Concept C: Holding tree — hierarchická struktura. Mateřská firma
+       nahoře, dceřinky pod ní. Přímá metafora pro „rozkrýt holding". -->
+  <rect width="240" height="240" fill="white"/>
+  <!-- Branches: parent → 3 children -->
+  <path d="M 120 60 L 60 160"  stroke="#10b981" stroke-width="5" stroke-linecap="round" fill="none"/>
+  <path d="M 120 60 L 120 160" stroke="#10b981" stroke-width="5" stroke-linecap="round" fill="none"/>
+  <path d="M 120 60 L 180 160" stroke="#10b981" stroke-width="5" stroke-linecap="round" fill="none"/>
+  <!-- Children — square nodes (= firmy) -->
+  <rect x="44"  y="148" width="32" height="32" rx="6" fill="#10b981"/>
+  <rect x="104" y="148" width="32" height="32" rx="6" fill="#10b981"/>
+  <rect x="164" y="148" width="32" height="32" rx="6" fill="#10b981"/>
+  <!-- Parent — větší kroužek -->
+  <circle cx="120" cy="60" r="26" fill="#065f46"/>
+  <circle cx="120" cy="60" r="18" fill="#34d399"/>
+</svg>

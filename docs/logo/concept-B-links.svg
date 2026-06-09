@@ -1,0 +1,11 @@
+<svg width="240" height="240" viewBox="0 0 240 240" xmlns="http://www.w3.org/2000/svg">
+  <!-- Concept B: Linked rings — dva propojené prsteny, klasická symbolika
+       pro „propojení / vazby". Inspirováno olympijskými kruhy ale jen 2. -->
+  <rect width="240" height="240" fill="white"/>
+  <!-- Ring 1 (left, behind) -->
+  <circle cx="90"  cy="120" r="48" fill="none" stroke="#059669" stroke-width="14"/>
+  <!-- Ring 2 (right, in front) — overlap je vidět nahoře/dole -->
+  <circle cx="150" cy="120" r="48" fill="none" stroke="#10b981" stroke-width="14"/>
+  <!-- Highlight propojení — odkroj části kde se prsteny "prolínají" -->
+  <path d="M 132 90 A 48 48 0 0 0 132 150" fill="none" stroke="#065f46" stroke-width="14" stroke-linecap="round"/>
+</svg>
