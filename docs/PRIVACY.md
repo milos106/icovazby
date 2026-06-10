@@ -62,6 +62,9 @@ Stejná databáze obsahuje i lokální index ochranných známek z ÚPV otevřen
 - **Hetzner Online GmbH** (Německo) — hosting serveru
 - **Cloudflare, Inc.** (USA, EU-US Data Privacy Framework) — CDN, DDoS protection, TLS terminace
 - **Hukot.net** (ČR) — DNS hosting a e-mailové schránky domény
+- **AI provider podle volby uživatele** — AI souhrny firem volá pouze vybraný LLM provider podle nastavení v Settings, posílají se strukturovaná veřejná data z registrů (obchodní jméno, IČO, jména statutárů/UBO, datum narození z VR, agregované statistiky dotací/smluv). Volá se výhradně on-demand z uživatelského kliknutí. Lze odmítnout = nepoužívat tlačítko „AI souhrn".
+  - **Anthropic PBC** (USA, EU-US Data Privacy Framework) — modely Claude Haiku 4.5, Sonnet 4.6, Opus 4.7. Anthropic dle [podmínek](https://www.anthropic.com/legal/commercial-terms) data neukládá pro trénink modelů.
+  - **Google LLC** (USA, EU-US Data Privacy Framework) — modely Gemini 2.0 Flash / Pro. Google v Gemini API for Developers tier dle [podmínek](https://ai.google.dev/gemini-api/terms) data **NEPOUŽÍVÁ** pro trénink modelů pokud uživatel platí (paid tier), free tier použít MŮŽE — uživatel si volí který má účet.
 
 Při dotazu na veřejné registry (ARES, Hlídač státu, EU sanctions, ČNB JERRS, verejnerejstriky.msp.gov.cz, ÚPV) odesíláme dotaz ze IP našeho serveru — tito poskytovatelé v rámci své činnosti zaznamenávají naše IP, nikoli vaši.
 

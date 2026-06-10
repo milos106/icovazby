@@ -19,6 +19,8 @@ import { cached, cacheStats } from "./cache.js";
 import { AresError, toToolErrorPayload } from "./errors.js";
 import { HlidacStatuMissingTokenError, HlidacStatuRateLimitedError } from "./hlidacstatu/client.js";
 import { VrAccessBlockedError } from "./justice_vr/client.js";
+import { LlmNotConfiguredError, generateAiSummary } from "./llm/service.js";
+import { LlmApiError } from "./llm/providers.js";
 import { hsTokenContext } from "./hlidacstatu/token_context.js";
 import { indexStats } from "./persons_index/store.js";
 import {
@@ -190,6 +192,24 @@ function sendError(reply: FastifyReply, err: unknown): void {
       error: "MISSING_TOKEN",
       message:
         "Hlídač státu není nakonfigurován (HLIDAC_API_TOKEN chybí v .env nebo serveru). Tato funkce vyžaduje token.",
+    });
+    return;
+  }
+  if (err instanceof LlmNotConfiguredError) {
+    reply.status(503).send({
+      error: "LLM_NOT_CONFIGURED",
+      message:
+        "AI souhrn není nakonfigurován. Vlož svůj API klíč v Settings (Anthropic Claude nebo Google Gemini).",
+    });
+    return;
+  }
+  if (err instanceof LlmApiError) {
+    // Propaguj LLM provider chybu (401, 400, 429, ...) jako klientskou chybu
+    // s konkrétní zprávou. User obvykle uvidí "API key not valid" → ví že
+    // má vrátit klíč nebo zkusit jiný.
+    reply.status(err.statusCode === 401 || err.statusCode === 403 ? 401 : 400).send({
+      error: "LLM_API_ERROR",
+      message: err.message,
     });
     return;
   }
@@ -452,6 +472,30 @@ app.get("/api/upv/by-name", async (req: FastifyRequest, reply) => {
       return reply.status(400).send({ error: "INVALID_INPUT", message: "Parametr 'name' je povinný (min 2 znaky)." });
     }
     reply.send(searchUpvByName(name.trim(), city?.trim()));
+  } catch (e) {
+    sendError(reply, e);
+  }
+});
+
+// ─── LLM auto-summary (Claude Haiku 4.5) ──────────────────────────────────
+// AI-generated executive souhrn firmy. Volá se on-demand z UI tlačítkem.
+// Cache 7 dní per IČO, výsledek strukturovaný JSON (risks, strengths, recommendation).
+// Rate limit 5 req/min/IP přes globální handler nastavený u serveru.
+app.post("/api/llm/summary/:ico", async (req: FastifyRequest, reply) => {
+  try {
+    const { ico } = req.params as { ico: string };
+    const force = (req.query as { force?: string }).force === "1";
+    // BYO klíč + provider/model selection z headerů. Backward compat:
+    // stará hlavička X-Anthropic-Key zachována, ale X-LLM-Key má přednost.
+    const headerStr = (name: string): string => {
+      const v = req.headers[name.toLowerCase()];
+      return typeof v === "string" ? v.trim() : Array.isArray(v) ? v[0]?.trim() ?? "" : "";
+    };
+    const userApiKey = headerStr("x-llm-key") || headerStr("x-anthropic-key");
+    const provider = (headerStr("x-llm-provider") || "anthropic") as "anthropic" | "google";
+    const model = headerStr("x-llm-model") || undefined;
+    const result = await generateAiSummary(client, ico, { force, userApiKey, provider, model });
+    reply.send(result);
   } catch (e) {
     sendError(reply, e);
   }

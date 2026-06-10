@@ -146,6 +146,17 @@ function initSchema(d: DbType): void {
     CREATE INDEX IF NOT EXISTS idx_upv_applicant_norm ON upv_trademarks(applicant_name_normalized);
     CREATE INDEX IF NOT EXISTS idx_upv_status ON upv_trademarks(status_code);
     CREATE INDEX IF NOT EXISTS idx_upv_city ON upv_trademarks(applicant_city);
+
+    -- AI auto-summary cache (Claude Haiku 4.5).
+    -- TTL 7 dní per IČO — firma se v jednotkách dní rapidly nemění.
+    -- Sloupec payload obsahuje JSON s celým AiSummary (incl. risks, strengths).
+    CREATE TABLE IF NOT EXISTS ai_summaries (
+      ico TEXT PRIMARY KEY,
+      payload TEXT NOT NULL,
+      generated_at INTEGER NOT NULL,
+      model TEXT NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS idx_ai_summaries_generated ON ai_summaries(generated_at DESC);
   `);
 }
 

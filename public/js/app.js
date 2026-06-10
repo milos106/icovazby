@@ -12,6 +12,7 @@ const STORAGE_SECTIONS = "icovazby:sections-hidden";
 // Sekce, které lze v Nastavení skrýt. Profil zůstává vždy viditelný.
 // Klíče slouží zároveň jako section id v DOM a key v localStorage.
 const SECTION_DEFS = [
+  { key: "dd-ai-summary", label: "🤖 AI souhrn (Claude)", group: "Profil firmy" },
   { key: "dd-notes", label: "📝 Moje poznámky", group: "Profil firmy" },
   { key: "dd-timeline", label: "📜 Časová osa", group: "Profil firmy" },
   { key: "dd-katastr", label: "🏠 Nemovitosti (Katastr, brzy)", group: "Profil firmy" },
@@ -77,6 +78,45 @@ document.addEventListener("alpine:init", () => {
   // a v Mapě propojení. User myslí v binární kategorii „chci historické info"
   // — discovery i render vždy řídí stejný flag. Default off.
   window.Alpine.store("history", { enabled: false });
+
+  // AI access store — BYO klíč + provider/model výběr.
+  // Fáze 1 monetizace: AI souhrn defaultně skryt. Když user uloží klíč
+  // v Settings (Anthropic Claude / Google Gemini), karta se odemkne,
+  // request jde s X-LLM-Provider/Model/Key hlavičkami.
+  // Backward compat: starý klíč icovazby:anthropic-key → migrace do icovazby:llm-key.
+  window.Alpine.store("aiAccess", {
+    provider: (() => {
+      try { return localStorage.getItem("icovazby:llm-provider") || "anthropic"; } catch { return "anthropic"; }
+    })(),
+    model: (() => {
+      try { return localStorage.getItem("icovazby:llm-model") || "claude-haiku-4-5-20251001"; } catch { return "claude-haiku-4-5-20251001"; }
+    })(),
+    apiKey: (() => {
+      try {
+        return localStorage.getItem("icovazby:llm-key") ||
+               localStorage.getItem("icovazby:anthropic-key") || "";
+      } catch { return ""; }
+    })(),
+    set(field, value) {
+      const trimmed = (value ?? "").trim();
+      this[field] = trimmed;
+      const storageKey = field === "apiKey" ? "icovazby:llm-key" : `icovazby:llm-${field}`;
+      try {
+        if (trimmed) localStorage.setItem(storageKey, trimmed);
+        else localStorage.removeItem(storageKey);
+      } catch { /* private mode */ }
+    },
+    enabled() { return this.apiKey.length > 0; },
+    // Když user vybere provider, nastav default model.
+    onProviderChange(newProvider) {
+      this.set("provider", newProvider);
+      if (newProvider === "anthropic" && !this.model.startsWith("claude-")) {
+        this.set("model", "claude-haiku-4-5-20251001");
+      } else if (newProvider === "google" && !this.model.startsWith("gemini-")) {
+        this.set("model", "gemini-2.0-flash");
+      }
+    },
+  });
 
   // Readonly share mode — detekováno z URL ?readonly=1. Skrývá interaktivní
   // prvky (Settings, Subscribe alerty, Save searches) — slouží pro sdílení
@@ -179,6 +219,22 @@ async function jsonFetch(url, opts) {
     if (tok) headers.set("X-Hlidac-Token", tok);
   } catch {
     /* private mode, ignore */
+  }
+  // BYO LLM klíč pro AI souhrn (Fáze 1 monetizace).
+  // Posílá provider + model + klíč. Klíč žije jen v browseru, posílá se
+  // přes HTTPS přímo backendu který ho přepošle providerovi.
+  if (typeof url === "string" && url.includes("/api/llm/")) {
+    try {
+      const key = (localStorage.getItem("icovazby:llm-key") ||
+                   localStorage.getItem("icovazby:anthropic-key") || "").trim();
+      if (key) {
+        const provider = localStorage.getItem("icovazby:llm-provider") || "anthropic";
+        const model = localStorage.getItem("icovazby:llm-model") || "claude-haiku-4-5-20251001";
+        headers.set("X-LLM-Key", key);
+        headers.set("X-LLM-Provider", provider);
+        headers.set("X-LLM-Model", model);
+      }
+    } catch { /* ignore */ }
   }
   const r = await fetch(url, { ...(opts || {}), headers });
   const data = await r.json().catch(() => ({}));
@@ -2006,6 +2062,60 @@ function ddUpvCard() {
   };
 }
 window.ddUpvCard = ddUpvCard;
+
+/**
+ * AI auto-summary firmy — Claude Haiku 4.5 cez /api/llm/summary/:ico.
+ * Lazy load — neudělá nic dokud user explicit neklikne „Generovat".
+ * Cache 7 dní backend-side (SQLite).
+ */
+function ddAiSummaryCard() {
+  return {
+    data: null,
+    loading: false,
+    error: "",
+    generated: false,
+    async generate(ico, force = false) {
+      if (!ico) return;
+      this.loading = true;
+      this.error = "";
+      try {
+        const params = force ? "?force=1" : "";
+        this.data = await jsonFetch(`/api/llm/summary/${encodeURIComponent(ico)}${params}`, { method: "POST" });
+        this.generated = true;
+      } catch (e) {
+        this.error = "AI souhrn se nezdařil: " + e.message;
+      } finally {
+        this.loading = false;
+      }
+    },
+    statusBadge(code) {
+      if (!code) return { label: "Neznámý", color: "slate" };
+      if (code >= 0.8) return { label: "Vysoká důvěra", color: "emerald" };
+      if (code >= 0.6) return { label: "Střední důvěra", color: "amber" };
+      return { label: "Nízká důvěra", color: "rose" };
+    },
+  };
+}
+window.ddAiSummaryCard = ddAiSummaryCard;
+
+/**
+ * AI promo banner — viditelný visitor-ům bez Anthropic klíče.
+ * Dismiss perzistovaný v localStorage, aby se neukazoval znovu po zavření.
+ * Fáze 1 monetizace: nenápadná upozornění bez paywall friction.
+ */
+function aiPromoBanner() {
+  return {
+    visible: true,
+    init() {
+      try { this.visible = localStorage.getItem("icovazby:ai-promo-dismissed") !== "1"; } catch {}
+    },
+    dismiss() {
+      this.visible = false;
+      try { localStorage.setItem("icovazby:ai-promo-dismissed", "1"); } catch {}
+    },
+  };
+}
+window.aiPromoBanner = aiPromoBanner;
 
 /** Ochranné známky přes TMView (EUIPN). */
 function ddTrademarksLoader() {

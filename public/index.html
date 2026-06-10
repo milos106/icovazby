@@ -238,11 +238,13 @@
             <button
               type="button"
               @click="open = !open"
-              class="px-3 py-1.5 bg-emerald-100 dark:bg-emerald-900/30 text-emerald-900 dark:text-emerald-200 border border-emerald-300 dark:border-emerald-700 rounded text-sm hover:bg-emerald-200 dark:hover:bg-emerald-900/50 inline-flex items-center gap-1.5 transition-colors"
-              :class="hasOwnToken ? '' : '!border-amber-300 dark:!border-amber-700'"
-              :title="hasOwnToken ? 'Nastavení (token nastaven)' : 'Nastavení (token chybí)'"
+              class="relative px-3 py-1.5 bg-emerald-100 dark:bg-emerald-900/30 text-emerald-900 dark:text-emerald-200 border border-emerald-300 dark:border-emerald-700 rounded text-sm hover:bg-emerald-200 dark:hover:bg-emerald-900/50 inline-flex items-center gap-1.5 transition-colors"
+              :title="hasOwnToken ? 'Nastavení (token nastaven)' : 'Nastavení (token chybí — sdílený limit)'"
             >
               <span>⚙️</span>
+              <!-- Diskrétní amber tečka pravém horním rohu = HS token chybí.
+                   Méně agresivní než celý border, ale stále viditelné. -->
+              <span x-show="!hasOwnToken" x-cloak class="absolute -top-1 -right-1 w-2.5 h-2.5 bg-amber-400 dark:bg-amber-500 rounded-full border border-white dark:border-slate-800" :title="'Vlastní HS token nenastaven'"></span>
             </button>
             <div
               x-show="open"
@@ -308,6 +310,78 @@
                 <span class="text-amber-700 dark:text-amber-400">● Bez vlastního tokenu</span>
                 — sdílený s ostatními.
               </p>
+
+              <!-- AI souhrn — multi-provider (Anthropic Claude + Google Gemini).
+                   User vybere provider, model, vloží klíč. Klíč žije jen
+                   v localStorage browseru, posílá se v X-LLM-Key headeru
+                   přímo backendu → providerovi. Tvoje cena: 0 Kč. -->
+              <div class="mt-4 pt-4 border-t dark:border-slate-700">
+                <p class="text-xs text-slate-500 dark:text-slate-400 mb-2">🤖 AI souhrn — provider a model</p>
+
+                <!-- Provider dropdown -->
+                <label class="text-[10px] uppercase tracking-wide text-slate-400 dark:text-slate-500 block mb-1">Provider</label>
+                <select
+                  :value="$store.aiAccess.provider"
+                  @change="$store.aiAccess.onProviderChange($event.target.value)"
+                  class="w-full px-3 py-2 border dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100 rounded-lg text-sm mb-3"
+                >
+                  <option value="anthropic">Anthropic Claude</option>
+                  <option value="google">Google Gemini</option>
+                </select>
+
+                <!-- Model dropdown — měněno dynamicky podle providera -->
+                <label class="text-[10px] uppercase tracking-wide text-slate-400 dark:text-slate-500 block mb-1">Model</label>
+                <select
+                  :value="$store.aiAccess.model"
+                  @change="$store.aiAccess.set('model', $event.target.value)"
+                  class="w-full px-3 py-2 border dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100 rounded-lg text-sm mb-3"
+                >
+                  <template x-if="$store.aiAccess.provider === 'anthropic'">
+                    <optgroup label="Anthropic Claude">
+                      <option value="claude-haiku-4-5-20251001">Haiku 4.5 — levné (~18 hal), cutoff 01/2025</option>
+                      <option value="claude-sonnet-4-6">Sonnet 4.6 — kvalita (~70 hal), cutoff 08/2025</option>
+                      <option value="claude-opus-4-7">Opus 4.7 — aktuální (~400 hal), cutoff 01/2026 ✓</option>
+                    </optgroup>
+                  </template>
+                  <template x-if="$store.aiAccess.provider === 'google'">
+                    <optgroup label="Google Gemini">
+                      <option value="gemini-2.0-flash">Flash 2.0 — velmi levné (~2 hal)</option>
+                      <option value="gemini-2.0-pro">Pro 2.0 — kvalita (~100 hal)</option>
+                    </optgroup>
+                  </template>
+                </select>
+
+                <!-- API klíč -->
+                <label class="text-[10px] uppercase tracking-wide text-slate-400 dark:text-slate-500 block mb-1">API klíč</label>
+                <input
+                  type="password"
+                  :value="$store.aiAccess.apiKey"
+                  @input="$store.aiAccess.set('apiKey', $event.target.value)"
+                  :placeholder="$store.aiAccess.provider === 'anthropic' ? 'sk-ant-api03-...' : 'AIza...'"
+                  class="w-full px-3 py-2 border dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100 rounded-lg text-sm font-mono"
+                />
+
+                <!-- Provider-specific help text -->
+                <p class="text-xs text-slate-600 dark:text-slate-400 mt-2 leading-relaxed" x-show="$store.aiAccess.provider === 'anthropic'">
+                  <a class="underline text-emerald-700 dark:text-emerald-400" href="https://console.anthropic.com/settings/keys" target="_blank" rel="noopener">Vygenerovat Anthropic klíč →</a>
+                  ($5 trial). Klíč začíná <code>sk-ant-api03-...</code>.
+                </p>
+                <p class="text-xs text-slate-600 dark:text-slate-400 mt-2 leading-relaxed" x-show="$store.aiAccess.provider === 'google'">
+                  <a class="underline text-emerald-700 dark:text-emerald-400" href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener">Vygenerovat Gemini klíč →</a>
+                  (zdarma 15 req/min). Klíč začíná <code>AIza...</code>.
+                </p>
+
+                <!-- Status -->
+                <p class="text-xs mt-2" x-show="$store.aiAccess.enabled()">
+                  <span class="text-emerald-700 dark:text-emerald-400">● AI souhrn aktivní</span>
+                </p>
+                <p class="text-xs mt-2" x-show="!$store.aiAccess.enabled()">
+                  <span class="text-slate-500">● AI souhrn skrytý</span> — vlož klíč k odemčení.
+                </p>
+                <p class="text-xs text-slate-400 mt-2 leading-relaxed">
+                  Klíč žije jen v tvém prohlížeči. Posílá se přes HTTPS přímo zvolenému provideru, neukládáme ho.
+                </p>
+              </div>
 
               <!-- Section visibility — uživatel skrývá karty mimo Profil -->
               <div class="mt-4 pt-4 border-t dark:border-slate-700">
@@ -481,6 +555,32 @@
               </template>
             </div>
           </template>
+        </div>
+
+        <!-- AI promo banner — pro visitory bez Anthropic klíče. Dismissable
+             přes localStorage flag. Cíl: nenápadně upozornit na novou funkci
+             aniž by user musel chodit do Settings popoveru. -->
+        <div
+          x-data="aiPromoBanner()"
+          x-show="visible && !$store.aiAccess.enabled()"
+          x-cloak
+          class="my-4 p-4 rounded-xl border border-emerald-200 dark:border-emerald-800 bg-gradient-to-br from-emerald-50 to-white dark:from-emerald-900/20 dark:to-slate-800/50 flex flex-wrap items-start gap-3"
+        >
+          <div class="text-2xl">🤖</div>
+          <div class="flex-1 min-w-[260px]">
+            <p class="font-semibold text-emerald-900 dark:text-emerald-200 mb-1">Nová funkce: AI souhrn firmy</p>
+            <p class="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
+              Claude Haiku 4.5 přečte všechna DD data a vygeneruje exec souhrn pro klienta — risk flags, PEP detection (přes Hlídač státu), doporučení pro KYC.
+              Vyžaduje vlastní <a href="https://console.anthropic.com/settings/keys" target="_blank" rel="noopener" class="underline">Anthropic API klíč</a> (zdarma $5 trial ≈ 600 souhrnů).
+              Klíč vložíš v ⚙️ Settings.
+            </p>
+          </div>
+          <button
+            type="button"
+            @click="dismiss()"
+            class="text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 text-xl leading-none"
+            title="Skrýt tuto zprávu"
+          >×</button>
         </div>
 
         <!-- Report — full data, lazy loaded přes open-dd event z searchSection. -->
@@ -1743,6 +1843,100 @@
                 </template>
               </div>
             </template>
+
+            <!-- ─── AI souhrn (Claude Haiku 4.5) — BYO API klíč ─── -->
+            <!-- Skryto pro public visitora bez vlastního Anthropic klíče.
+                 User si klíč nastaví v Settings popoveru → karta se odemkne.
+                 Fáze 1 monetizace: 0 Kč náklad pro tebe (user platí). -->
+            <div
+              id="dd-ai-summary"
+              x-show="$store.sections.visible('dd-ai-summary') && $store.aiAccess.enabled()"
+              :data-collapsed="!$store.ddCollapse.isExpanded('dd-ai-summary')"
+              class="dd-card border border-emerald-200/80 dark:border-emerald-700 rounded-xl p-5 shadow-sm hover:shadow-md transition-shadow md:col-span-2 scroll-mt-32 bg-emerald-50/50 dark:bg-emerald-900/10"
+              x-data="ddAiSummaryCard()"
+            >
+              <h4 class="dd-card-header text-base font-semibold mb-3 cursor-pointer select-none flex items-center gap-2" @click="$store.ddCollapse.toggle('dd-ai-summary')">
+                <span class="dd-card-chevron text-slate-400" x-text="$store.ddCollapse.isExpanded('dd-ai-summary') ? '▾' : '▸'"></span>
+                🤖 AI souhrn pro klienta
+                <template x-if="data">
+                  <span class="text-[10px] px-1.5 py-0.5 rounded-full border border-emerald-300 text-emerald-700 dark:text-emerald-300">
+                    důvěra <span x-text="(data.confidence * 100).toFixed(0)"></span>%
+                  </span>
+                </template>
+              </h4>
+              <div class="dd-card-body text-sm space-y-3" x-show="$store.ddCollapse.isExpanded('dd-ai-summary')">
+                <template x-if="!data && !loading && !error">
+                  <div>
+                    <p class="text-slate-600 dark:text-slate-400 mb-3">Claude Haiku 4.5 přečte všechna DD data o firmě a vygeneruje stručný analytický souhrn pro klienta — exec summary, red flags, doporučení.</p>
+                    <button @click="generate(report.ico)" class="px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 inline-flex items-center gap-2 transition-colors">
+                      <span>🤖</span> Generovat AI souhrn
+                    </button>
+                    <p class="text-xs text-slate-500 mt-2">Výsledek se cachuje 7 dní. Cena ~18 hal za prověrku (interní).</p>
+                  </div>
+                </template>
+                <template x-if="loading">
+                  <p class="text-slate-500"><span class="animate-pulse">🤖</span> Claude analyzuje firmu… (typicky 5–10 s)</p>
+                </template>
+                <template x-if="error">
+                  <p class="text-rose-600 dark:text-rose-400" x-text="error"></p>
+                </template>
+                <template x-if="data">
+                  <div class="space-y-4">
+                    <div class="bg-white dark:bg-slate-800 rounded-lg p-3 border dark:border-slate-700">
+                      <p class="text-xs font-semibold text-slate-500 mb-1">SOUHRN</p>
+                      <p class="leading-relaxed" x-text="data.summary"></p>
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      <div class="bg-rose-50 dark:bg-rose-900/20 rounded-lg p-3 border border-rose-200 dark:border-rose-800">
+                        <p class="text-xs font-semibold text-rose-700 dark:text-rose-300 mb-2">🔴 RIZIKA</p>
+                        <template x-if="data.risks.length === 0">
+                          <p class="text-xs text-slate-500">Žádná identifikovaná rizika.</p>
+                        </template>
+                        <ul class="space-y-1 text-xs">
+                          <template x-for="r in data.risks">
+                            <li class="flex gap-1.5"><span class="text-rose-500">•</span><span x-text="r"></span></li>
+                          </template>
+                        </ul>
+                      </div>
+                      <div class="bg-emerald-50 dark:bg-emerald-900/20 rounded-lg p-3 border border-emerald-200 dark:border-emerald-800">
+                        <p class="text-xs font-semibold text-emerald-700 dark:text-emerald-300 mb-2">🟢 POZITIVA</p>
+                        <template x-if="data.strengths.length === 0">
+                          <p class="text-xs text-slate-500">Žádné identifikované pozitivní signály.</p>
+                        </template>
+                        <ul class="space-y-1 text-xs">
+                          <template x-for="s in data.strengths">
+                            <li class="flex gap-1.5"><span class="text-emerald-500">•</span><span x-text="s"></span></li>
+                          </template>
+                        </ul>
+                      </div>
+                    </div>
+                    <div class="bg-slate-100 dark:bg-slate-800 rounded-lg p-3 border dark:border-slate-700">
+                      <p class="text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">DOPORUČENÍ</p>
+                      <p class="text-sm" x-text="data.recommendation"></p>
+                    </div>
+                    <div class="flex items-center gap-2 text-xs text-slate-500 pt-2 border-t dark:border-slate-700">
+                      <button @click="generate(report.ico, true)" class="underline hover:text-emerald-700">↻ Regenerovat</button>
+                      <span>·</span>
+                      <span x-text="'Model: ' + data.model"></span>
+                      <span>·</span>
+                      <span title="AI souhrn je informativní — nikdy nenahrazuje právní DD ani AML/KYC povinnosti.">⚠️ Informativní jen</span>
+                    </div>
+                    <!-- Disclaimer pro LLM knowledge cutoff problém: AGROFERT příklad
+                         Babiš byl premiér do 12/2017, návrat 11/2025 — Haiku 4.5 cutoff
+                         ~začátek 2025 neví o návratu. PEP info z HS osoby ground truth,
+                         ale ostatní fakta (soudní kauzy, ekonomika 2025) mohou být stale. -->
+                    <div class="mt-2 p-3 bg-amber-50 dark:bg-amber-900/20 rounded-lg border border-amber-200 dark:border-amber-800 text-xs text-amber-900 dark:text-amber-200">
+                      <p class="font-semibold mb-1">⚠️ Pozor na zastaralé informace</p>
+                      <p class="leading-relaxed">
+                        AI souhrn může obsahovat zastaralé fakty z trénovacích dat (knowledge cutoff modelu typicky leden 2025).
+                        Pro <strong>aktuální politické funkce / PEP status</strong> používáme realtime data z Hlídače státu (sekce hsOsoby v kontextu).
+                        Pro ostatní fakta (kauzy, ekonomika, sankce po cutoffu) <strong>ověř u primárního zdroje</strong> — ARES, OR, ISIR, EU CFSP.
+                      </p>
+                    </div>
+                  </div>
+                </template>
+              </div>
+            </div>
 
             <!-- ─── Anotace / poznámky per firma (localStorage) ─── -->
             <div
@@ -3046,10 +3240,12 @@
           <a class="underline" href="https://or.justice.cz" target="_blank" rel="noopener">Veřejného rejstříku</a>.
         </p>
         <p>
-          GDPR: výpisy z citovaných rejstříků obsahují osobní údaje (jména, data narození jednatelů a skutečných majitelů). Použití těchto dat pro další zpracování
-          je tvoje odpovědnost jako správce ve smyslu nařízení (EU) 2016/679.
-          Detailní zásady ochrany osobních údajů a popis cache vrstev viz
-          <a class="underline" href="/privacy.html" target="_blank" rel="noopener">/privacy.html</a>.
+          GDPR: prezentujeme veřejně publikovaná data z registrů včetně osobních údajů (jména, data narození statutárů a skutečných majitelů). Pro pouhé prohlížení v prohlížeči nemáš vlastní povinnosti — správcem dat jsme my (SimpleSolar s.r.o.).
+          <strong>Pokud data dále zpracováváš</strong> (ukládáš do svého CRM, archivuješ pro compliance, používáš v KYC dokumentaci), stáváš se sám správcem ve smyslu nař. (EU) 2016/679 a vznikají ti vlastní povinnosti.
+          Detaily v <a class="underline" href="/privacy.html" target="_blank" rel="noopener">Zásadách ochrany osobních údajů</a>.
+        </p>
+        <p>
+          <strong>AI souhrn</strong> (volitelná funkce): používá Claude Haiku 4.5 (Anthropic, USA — EU-US Data Privacy Framework). Knowledge cutoff modelu cca leden 2025, pro novější fakty (politické funkce po cutoff, soudní kauzy 2025+) může obsahovat zastaralé informace. <strong>Vždy ověř u primárního zdroje</strong> (ARES, OR, ISIR). Aktivuje se až po vložení vlastního API klíče v Nastavení.
         </p>
         <!-- AGPL §13: prominent offer of source for network users. Tento odkaz
              je POVINNÝ pro každou síťově dostupnou instanci pod AGPL-3.0. -->
