@@ -2102,23 +2102,73 @@
               </div>
             </div>
 
-            <!-- ─── Datová schránka (heuristika z pravniForma) ─── -->
+            <!-- ─── Datová schránka — auto-fetch ID schránky z mojedatovaschranka.cz ─── -->
             <div
               id="dd-ds"
               x-show="$store.sections.visible('dd-ds')"
               :data-collapsed="!$store.ddCollapse.isExpanded('dd-ds')"
               class="dd-card border border-slate-200/80 dark:border-slate-700 rounded-xl p-5 shadow-sm hover:shadow-md transition-shadow scroll-mt-32"
               x-data="ddDatovaSchrankaCard()"
+              x-init="$watch('report', () => fetchDs(report?.ico)); if (report?.ico) fetchDs(report.ico)"
             >
               <h4 class="dd-card-header text-base font-semibold mb-3 cursor-pointer select-none flex items-center gap-2" @click="$store.ddCollapse.toggle('dd-ds')">
                 <span class="dd-card-chevron text-slate-400" x-text="$store.ddCollapse.isExpanded('dd-ds') ? '▾' : '▸'"></span>
                 📬 Datová schránka
+                <template x-if="ds && ds.found">
+                  <span class="text-[10px] px-1.5 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300 border border-emerald-200">ID: <span x-text="ds.dsId" class="font-mono"></span></span>
+                </template>
               </h4>
-              <div class="dd-card-body text-sm space-y-2" x-show="$store.ddCollapse.isExpanded('dd-ds')">
-                <p class="text-base" x-text="status(report).label"></p>
-                <p class="text-xs text-slate-500 dark:text-slate-400" x-text="status(report).explain"></p>
-                <p class="text-xs">
-                  <a :href="'https://www.mojedatovaschranka.cz/sds/SearchSubject?dbType=&search=' + report.ico" target="_blank" rel="noopener" class="underline text-emerald-700 dark:text-emerald-400">🔗 Vyhledat detail na mojedatovaschranka.cz →</a>
+              <div class="dd-card-body text-sm space-y-3" x-show="$store.ddCollapse.isExpanded('dd-ds')">
+                <template x-if="loading">
+                  <p class="text-slate-500">Hledám v seznamu datových schránek…</p>
+                </template>
+
+                <!-- Úspěšný lookup -->
+                <template x-if="ds && ds.found">
+                  <div class="bg-emerald-50 dark:bg-emerald-900/20 rounded-lg p-4 border border-emerald-200 dark:border-emerald-800">
+                    <p class="text-xs uppercase tracking-wide text-emerald-700 dark:text-emerald-300 mb-2">ID datové schránky</p>
+                    <div class="flex items-center gap-3 flex-wrap">
+                      <code class="text-2xl font-mono font-bold text-emerald-900 dark:text-emerald-200" x-text="ds.dsId"></code>
+                      <button
+                        type="button"
+                        @click="navigator.clipboard.writeText(ds.dsId); $event.target.textContent = '✓ Zkopírováno'; setTimeout(()=>$event.target.textContent='📋 Kopírovat', 1500)"
+                        class="px-3 py-1.5 text-sm border border-emerald-300 dark:border-emerald-700 rounded hover:bg-emerald-100 dark:hover:bg-emerald-900/50 text-emerald-700 dark:text-emerald-300"
+                      >📋 Kopírovat</button>
+                    </div>
+                    <p class="text-sm text-slate-700 dark:text-slate-300 mt-3" x-text="ds.jmeno"></p>
+                    <p class="text-xs text-slate-500 dark:text-slate-400" x-show="ds.typ" x-text="ds.typ"></p>
+                    <p class="text-xs text-slate-500 dark:text-slate-400" x-show="ds.adresa" x-text="ds.adresa"></p>
+                  </div>
+                </template>
+
+                <!-- Nenalezeno (FO/OSVČ vymazané po 1.2.2024 nebo vůbec nemá DS) -->
+                <template x-if="ds && !ds.found && !loading">
+                  <div>
+                    <p class="text-base" x-text="status(report).label"></p>
+                    <p class="text-xs text-slate-500 dark:text-slate-400 mt-1" x-text="status(report).explain"></p>
+                    <div class="mt-3 p-3 bg-amber-50 dark:bg-amber-900/20 rounded-lg border border-amber-200 dark:border-amber-800 text-xs">
+                      <p class="text-amber-900 dark:text-amber-200 mb-2"><strong>ID v seznamu nenalezeno.</strong> Možné důvody:</p>
+                      <ul class="space-y-1 text-amber-800 dark:text-amber-300 ml-4">
+                        <li>• OSVČ/FO byly od 1.2.2024 hromadně vymazány ze seznamu (zák. č. 300/2008 Sb.)</li>
+                        <li>• Subjekt vůbec nemá zřízenou datovou schránku</li>
+                        <li>• Schránka existuje, ale držitel zvolil neveřejné zobrazení</li>
+                      </ul>
+                      <a :href="'https://www.mojedatovaschranka.cz/sds/search?searchValue=' + encodeURIComponent(report.ico)"
+                         target="_blank" rel="noopener"
+                         class="inline-block mt-3 underline text-emerald-700 dark:text-emerald-400">
+                        🔎 Ověř ručně na mojedatovaschranka.cz →
+                      </a>
+                    </div>
+                  </div>
+                </template>
+
+                <template x-if="error">
+                  <p class="text-rose-600 dark:text-rose-400" x-text="error"></p>
+                </template>
+
+                <!-- Disclaimer: experimentální feature, šedá zóna -->
+                <p class="text-xs text-slate-400 leading-relaxed pt-2 border-t dark:border-slate-700">
+                  ⚠️ <strong>Experimentální:</strong> ID schránky čteme ze veřejného seznamu na <a href="https://www.mojedatovaschranka.cz/sds/" target="_blank" rel="noopener" class="underline">mojedatovaschranka.cz</a> (§ 14a zák. č. 300/2008 Sb.). Cache 30 dní. Při změně formátu webu může lookup selhat — pak použij ručně.
                 </p>
               </div>
             </div>
@@ -2285,6 +2335,40 @@
                   </span>
                 </template>
               </button>
+              <!-- Sledování firmy (Watchlist) — prominent button vedle PDF + Sdílet.
+                   Backend endpoint /api/alerts/subscribe + double opt-in
+                   už existuje, jen byl skrytý pod underline link. -->
+              <div x-data="alertSubscribe()" class="inline-flex items-center gap-2">
+                <button
+                  type="button"
+                  @click="open = !open"
+                  class="px-3 py-1.5 bg-emerald-100 dark:bg-emerald-900/30 text-emerald-900 dark:text-emerald-200 border border-emerald-300 dark:border-emerald-700 rounded text-sm hover:bg-emerald-200 inline-flex items-center gap-1.5"
+                  title="Pošleme ti e-mail při změně jednatele / insolvence / DPH"
+                >
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+                  <span x-text="open ? '✕ Skrýt' : 'Sledovat změny'"></span>
+                </button>
+                <template x-if="open">
+                  <span class="inline-flex items-center gap-2 flex-wrap">
+                    <input
+                      type="email"
+                      x-model="email"
+                      placeholder="tvuj@email.cz"
+                      class="px-2 py-1 border dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100 rounded text-sm min-w-[200px]"
+                      @keydown.enter="submit(report.ico)"
+                    />
+                    <button
+                      type="button"
+                      @click="submit(report.ico)"
+                      :disabled="submitting"
+                      class="px-3 py-1 bg-emerald-600 text-white rounded text-sm hover:bg-emerald-700 disabled:opacity-50"
+                      x-text="submitting ? 'Odesílám…' : 'Přihlásit'"
+                    ></button>
+                    <span class="text-xs text-rose-700 dark:text-rose-400" x-show="error" x-text="error"></span>
+                    <span class="text-xs text-emerald-700 dark:text-emerald-400" x-show="notice" x-text="notice"></span>
+                  </span>
+                </template>
+              </div>
               <span class="text-xs text-slate-500 dark:text-slate-400 ml-2">Export pro fakturaci:</span>
               <button @click="exportTo(report.ico, 'fakturoid')" class="px-3 py-1.5 bg-amber-100 dark:bg-amber-900/30 text-amber-900 dark:text-amber-200 border border-amber-300 rounded text-sm hover:bg-amber-200">Fakturoid</button>
               <button @click="exportTo(report.ico, 'idoklad')" class="px-3 py-1.5 bg-sky-100 dark:bg-sky-900/30 text-sky-900 dark:text-sky-200 border border-sky-300 rounded text-sm hover:bg-sky-200">iDoklad</button>
@@ -2293,37 +2377,6 @@
             <template x-if="exportNotice">
               <div class="p-2 bg-emerald-50 dark:bg-emerald-900/30 border border-emerald-200 dark:border-emerald-700 rounded text-xs text-emerald-800 dark:text-emerald-300" x-text="exportNotice"></div>
             </template>
-
-            <!-- E-mail alerts: subscribe na změny statutáře / insolvence.
-                 Detail se otevře jen po kliku — nepřekáží defaultně. -->
-            <div x-data="alertSubscribe()" class="border-t dark:border-slate-700 pt-3">
-              <button
-                type="button"
-                @click="open = !open"
-                class="text-xs text-slate-600 dark:text-slate-400 underline hover:text-slate-900 dark:hover:text-slate-100"
-                x-text="open ? '✕ Skrýt e-mail alerty' : '🔔 E-mail alerty při změně'"
-              ></button>
-              <div x-show="open" x-cloak class="mt-2 flex gap-2 items-center flex-wrap">
-                <input
-                  type="email"
-                  x-model="email"
-                  placeholder="tvuj@email.cz"
-                  class="px-2 py-1 border dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100 rounded text-sm flex-1 min-w-[200px]"
-                />
-                <button
-                  type="button"
-                  @click="submit(report.ico)"
-                  :disabled="submitting"
-                  class="px-3 py-1 bg-emerald-600 text-white rounded text-sm hover:bg-emerald-700 disabled:opacity-50"
-                  x-text="submitting ? 'Odesílám…' : 'Přihlásit alerty'"
-                ></button>
-                <span class="text-xs text-rose-700 dark:text-rose-400" x-show="error" x-text="error"></span>
-                <span class="text-xs text-emerald-700 dark:text-emerald-400" x-show="notice" x-text="notice"></span>
-              </div>
-              <p x-show="open" x-cloak class="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                Periodicky kontrolujeme změny statutárního orgánu, insolvence a zánik. Při změně dostaneš e-mail.
-              </p>
-            </div>
 
             <p class="text-xs text-slate-500 dark:text-slate-400">
               Zdroj dat: <a class="underline" href="https://ares.gov.cz" target="_blank" rel="noopener">ARES</a>

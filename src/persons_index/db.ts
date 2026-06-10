@@ -157,6 +157,20 @@ function initSchema(d: DbType): void {
       model TEXT NOT NULL
     );
     CREATE INDEX IF NOT EXISTS idx_ai_summaries_generated ON ai_summaries(generated_at DESC);
+
+    -- Datová schránka — cache lookup ID z mojedatovaschranka.cz
+    -- TTL 30 dní (DS ID se mění zřídka).
+    -- Pro IČO bez DS (FO/OSVČ vymazané, neexistující) ukládáme NULL s
+    -- "not_found_at" abychom nehledali znovu příliš často.
+    CREATE TABLE IF NOT EXISTS ds_cache (
+      ico TEXT PRIMARY KEY,
+      ds_id TEXT,
+      jmeno TEXT,
+      typ TEXT,
+      adresa TEXT,
+      found INTEGER NOT NULL,  -- 1 = nalezeno, 0 = not found
+      checked_at INTEGER NOT NULL
+    );
   `);
 }
 

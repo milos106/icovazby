@@ -1999,6 +1999,24 @@ window.savedSection = savedSection;
 /** Datová schránka — heuristika z pravniForma + datumZaniku. */
 function ddDatovaSchrankaCard() {
   return {
+    ds: null,
+    loading: false,
+    error: "",
+    lastIco: "",
+    async fetchDs(ico) {
+      if (!ico || ico === this.lastIco) return;
+      this.lastIco = ico;
+      this.loading = true;
+      this.error = "";
+      this.ds = null;
+      try {
+        this.ds = await jsonFetch(`/api/ds/${encodeURIComponent(ico)}`);
+      } catch (e) {
+        this.error = "Lookup selhal: " + e.message;
+      } finally {
+        this.loading = false;
+      }
+    },
     status(report) {
       const pf = String(report?.identification?.pravniForma ?? "");
       const zanik = report?.identification?.datumZaniku;

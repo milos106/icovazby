@@ -481,6 +481,19 @@ app.get("/api/upv/by-name", async (req: FastifyRequest, reply) => {
 // AI-generated executive souhrn firmy. Volá se on-demand z UI tlačítkem.
 // Cache 7 dní per IČO, výsledek strukturovaný JSON (risks, strengths, recommendation).
 // Rate limit 5 req/min/IP přes globální handler nastavený u serveru.
+// ─── Datová schránka — lookup ID podle IČO ────────────────────────────────
+// Experimental scraping seznamu na mojedatovaschranka.cz (§ 14a z. 300/2008).
+// Pro PO funguje, pro OSVČ/FO od 1.2.2024 vymazané = NULL.
+import { getDsByIco } from "./datova_schranka/service.js";
+app.get("/api/ds/:ico", async (req: FastifyRequest, reply) => {
+  try {
+    const { ico } = req.params as { ico: string };
+    reply.send(await getDsByIco(ico));
+  } catch (e) {
+    sendError(reply, e);
+  }
+});
+
 app.post("/api/llm/summary/:ico", async (req: FastifyRequest, reply) => {
   try {
     const { ico } = req.params as { ico: string };
