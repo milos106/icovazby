@@ -1,0 +1,1042 @@
+<!doctype html>
+<html lang="cs">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>IČO vazby — pro právníky, makléře a účetní</title>
+    <meta name="description" content="Hloubková prověrka českých firem za 30 sekund. 11 datových zdrojů, risk skóre, mapa propojení, AI souhrn — vše na jedné stránce." />
+    <script>
+      (function () {
+        try {
+          var saved = localStorage.getItem("icovazby:theme");
+          var prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+          if (saved === "dark" || (saved !== "light" && prefersDark)) {
+            document.documentElement.classList.add("dark");
+          }
+        } catch (e) {}
+      })();
+    </script>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            fontFamily: {
+              sans: ['Inter', 'ui-sans-serif', 'system-ui', '-apple-system', 'BlinkMacSystemFont', 'sans-serif'],
+              mono: ['JetBrains Mono', 'ui-monospace', 'monospace'],
+            },
+            letterSpacing: { tightest: '-0.04em' },
+          },
+        },
+      };
+    </script>
+    <script type="module">
+      import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs";
+      var isDark = document.documentElement.classList.contains("dark");
+      mermaid.initialize({
+        startOnLoad: true,
+        theme: "base",
+        themeVariables: isDark
+          ? { primaryColor: "#1e293b", primaryTextColor: "#f1f5f9", primaryBorderColor: "#34d399", lineColor: "#94a3b8", secondaryColor: "#0f172a", tertiaryColor: "#334155", edgeLabelBackground: "#0f172a", textColor: "#f1f5f9", fontSize: "14px" }
+          : { primaryColor: "#f1f5f9", primaryTextColor: "#0f172a", primaryBorderColor: "#047857", lineColor: "#475569", secondaryColor: "#fef3c7", tertiaryColor: "#dbeafe", edgeLabelBackground: "#ffffff", textColor: "#0f172a", fontSize: "14px" },
+        securityLevel: "loose",
+        flowchart: { htmlLabels: true, useMaxWidth: true, curve: "basis" },
+      });
+    </script>
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <style>
+      html, body {
+        font-feature-settings: "cv11", "ss01", "cv02";
+        text-rendering: optimizeLegibility;
+        -webkit-font-smoothing: antialiased;
+      }
+      .mermaid svg { max-width: 100%; height: auto; background: transparent !important; }
+      .dark .mermaid svg > rect:first-of-type { fill: transparent !important; }
+      .gradient-text {
+        background: linear-gradient(135deg, #059669 0%, #047857 40%, #0f766e 100%);
+        -webkit-background-clip: text;
+        background-clip: text;
+        color: transparent;
+      }
+      .dark .gradient-text {
+        background: linear-gradient(135deg, #34d399 0%, #6ee7b7 40%, #5eead4 100%);
+        -webkit-background-clip: text;
+        background-clip: text;
+      }
+      .hero-bg {
+        background:
+          radial-gradient(ellipse at 20% 0%, rgba(16,185,129,0.10), transparent 50%),
+          radial-gradient(ellipse at 80% 30%, rgba(20,184,166,0.08), transparent 50%);
+      }
+      .dark .hero-bg {
+        background:
+          radial-gradient(ellipse at 20% 0%, rgba(16,185,129,0.18), transparent 50%),
+          radial-gradient(ellipse at 80% 30%, rgba(20,184,166,0.12), transparent 50%);
+      }
+      .card-shadow { box-shadow: 0 1px 3px rgba(0,0,0,0.04), 0 8px 24px -8px rgba(15,23,42,0.06); }
+      .dark .card-shadow { box-shadow: 0 1px 3px rgba(0,0,0,0.3), 0 8px 24px -8px rgba(0,0,0,0.4); }
+      .src-tile {
+        transition: all 200ms ease;
+      }
+      .src-tile:hover {
+        transform: translateY(-2px);
+        border-color: #10b981;
+      }
+      .persona-card {
+        position: relative;
+        overflow: hidden;
+      }
+      .persona-card::before {
+        content: "";
+        position: absolute;
+        inset: 0;
+        background: linear-gradient(180deg, transparent 0%, rgba(16,185,129,0.04) 100%);
+        pointer-events: none;
+      }
+      .dark .persona-card::before {
+        background: linear-gradient(180deg, transparent 0%, rgba(16,185,129,0.08) 100%);
+      }
+      .num-big {
+        font-variant-numeric: tabular-nums;
+        font-feature-settings: "tnum";
+      }
+      .toc a { transition: color 150ms ease, padding-left 150ms ease; }
+      .toc a:hover { padding-left: 4px; color: #047857; }
+      .dark .toc a:hover { color: #34d399; }
+      .ribbon {
+        background: linear-gradient(90deg, #10b981 0%, #14b8a6 100%);
+        clip-path: polygon(0 0, 100% 0, calc(100% - 8px) 50%, 100% 100%, 0 100%);
+      }
+      .signal-pill { transition: transform 150ms ease; }
+      .signal-pill:hover { transform: scale(1.05); }
+      .feature-icon {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 44px; height: 44px;
+        border-radius: 12px;
+        background: linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%);
+        color: #065f46;
+      }
+      .dark .feature-icon {
+        background: linear-gradient(135deg, rgba(6,95,70,0.4) 0%, rgba(4,120,87,0.3) 100%);
+        color: #6ee7b7;
+      }
+      @media print {
+        .no-print { display: none !important; }
+        body { background: white !important; color: black !important; }
+        section { break-inside: avoid; page-break-inside: avoid; }
+        .card-shadow { box-shadow: none !important; border: 1px solid #ddd !important; }
+        h2, h3 { break-after: avoid; page-break-after: avoid; }
+      }
+    </style>
+  </head>
+  <body class="bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 font-sans">
+
+    <!-- ── Header ───────────────────────────────────────────────────── -->
+    <header class="sticky top-0 z-30 bg-white/85 dark:bg-slate-900/85 backdrop-blur border-b border-slate-200 dark:border-slate-800 no-print">
+      <div class="max-w-6xl mx-auto px-5 py-3 flex items-center justify-between gap-3">
+        <a href="/" class="flex items-center gap-3 hover:opacity-80 transition-opacity">
+          <svg width="36" height="36" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg" class="shrink-0">
+            <path d="M 32 18 L 14 46" stroke="#10b981" stroke-width="3.5" stroke-linecap="round" fill="none"/>
+            <path d="M 32 18 L 32 46" stroke="#10b981" stroke-width="3.5" stroke-linecap="round" fill="none"/>
+            <path d="M 32 18 L 50 46" stroke="#10b981" stroke-width="3.5" stroke-linecap="round" fill="none"/>
+            <rect x="6"  y="42" width="16" height="16" rx="3" fill="#10b981"/>
+            <rect x="24" y="42" width="16" height="16" rx="3" fill="#10b981"/>
+            <rect x="42" y="42" width="16" height="16" rx="3" fill="#10b981"/>
+            <circle cx="32" cy="18" r="11" fill="#065f46"/>
+            <circle cx="32" cy="18" r="7"  fill="#34d399"/>
+          </svg>
+          <div>
+            <div class="font-bold text-lg leading-tight gradient-text">IČO vazby</div>
+            <div class="text-xs text-slate-500 dark:text-slate-400">Pro každého, kdo prověřuje firmy</div>
+          </div>
+        </a>
+        <a href="/" class="px-4 py-2 bg-emerald-600 text-white rounded-lg text-sm font-semibold hover:bg-emerald-700 transition-colors">
+          Vyzkoušet zdarma →
+        </a>
+      </div>
+    </header>
+
+    <!-- ── Hero ─────────────────────────────────────────────────────── -->
+    <section class="hero-bg">
+      <div class="max-w-6xl mx-auto px-5 pt-16 pb-20 text-center">
+        <div class="inline-flex items-center gap-2 px-3 py-1 mb-6 rounded-full bg-emerald-50 dark:bg-emerald-900/30 border border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-300 text-xs font-semibold">
+          <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+          Aktivní · 11 datových zdrojů · 307 000+ ochranných známek
+        </div>
+        <h1 class="text-4xl sm:text-5xl lg:text-6xl font-extrabold tracking-tightest leading-tight">
+          Hloubková prověrka<br />
+          <span class="gradient-text">českých firem za 30 sekund</span>
+        </h1>
+        <p class="mt-6 text-lg sm:text-xl text-slate-600 dark:text-slate-300 max-w-3xl mx-auto">
+          Místo 11 záložek v prohlížeči a 30 minut ručního hledání &mdash; jedno IČO,
+          jedna stránka, jeden risk skóre. <strong class="text-slate-900 dark:text-slate-100">Pro každého, kdo prověřuje firmy</strong> a potřebuje vědět, s kým podepisuje.
+        </p>
+        <p class="mt-3 text-sm text-slate-500 dark:text-slate-400 max-w-3xl mx-auto">
+          Advokáti &middot; makléři &middot; účetní &middot; auditoři &middot; bankéři &middot; compliance &middot; investoři
+        </p>
+        <div class="mt-10 flex items-center justify-center gap-3 flex-wrap">
+          <a href="/" class="px-6 py-3 bg-emerald-600 text-white rounded-xl font-semibold hover:bg-emerald-700 transition-colors card-shadow">
+            Otevřít aplikaci →
+          </a>
+          <a href="#funkce" class="px-6 py-3 border border-slate-300 dark:border-slate-700 rounded-xl font-semibold hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
+            Co všechno umí
+          </a>
+        </div>
+
+        <!-- Stat strip -->
+        <div class="mt-16 grid grid-cols-2 md:grid-cols-4 gap-4 max-w-4xl mx-auto">
+          <div class="rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 p-5 card-shadow">
+            <div class="text-3xl font-extrabold gradient-text num-big">~30 s</div>
+            <div class="text-xs text-slate-500 dark:text-slate-400 mt-1">prověrka jedné firmy</div>
+          </div>
+          <div class="rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 p-5 card-shadow">
+            <div class="text-3xl font-extrabold gradient-text num-big">11</div>
+            <div class="text-xs text-slate-500 dark:text-slate-400 mt-1">veřejných datových zdrojů</div>
+          </div>
+          <div class="rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 p-5 card-shadow">
+            <div class="text-3xl font-extrabold gradient-text num-big">0–100</div>
+            <div class="text-xs text-slate-500 dark:text-slate-400 mt-1">risk skóre podle dat</div>
+          </div>
+          <div class="rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 p-5 card-shadow">
+            <div class="text-3xl font-extrabold gradient-text num-big">0 Kč</div>
+            <div class="text-xs text-slate-500 dark:text-slate-400 mt-1">základní použití</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── TOC ──────────────────────────────────────────────────────── -->
+    <nav class="max-w-6xl mx-auto px-5 py-6 border-y border-slate-200 dark:border-slate-800 toc no-print">
+      <div class="text-xs uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-3 font-semibold">Obsah dokumentu</div>
+      <ol class="grid grid-cols-2 md:grid-cols-4 gap-2 text-sm">
+        <li><a href="#pro-koho" class="block py-1 text-slate-700 dark:text-slate-300"><span class="text-emerald-600 dark:text-emerald-400 font-mono mr-2">01</span>Pro koho je aplikace</a></li>
+        <li><a href="#zdroje" class="block py-1 text-slate-700 dark:text-slate-300"><span class="text-emerald-600 dark:text-emerald-400 font-mono mr-2">02</span>Co se prověřuje</a></li>
+        <li><a href="#schema" class="block py-1 text-slate-700 dark:text-slate-300"><span class="text-emerald-600 dark:text-emerald-400 font-mono mr-2">03</span>Jak to funguje</a></li>
+        <li><a href="#funkce" class="block py-1 text-slate-700 dark:text-slate-300"><span class="text-emerald-600 dark:text-emerald-400 font-mono mr-2">04</span>Klíčové funkce</a></li>
+        <li><a href="#scenare" class="block py-1 text-slate-700 dark:text-slate-300"><span class="text-emerald-600 dark:text-emerald-400 font-mono mr-2">05</span>Scénáře použití</a></li>
+        <li><a href="#exporty" class="block py-1 text-slate-700 dark:text-slate-300"><span class="text-emerald-600 dark:text-emerald-400 font-mono mr-2">06</span>Exporty a integrace</a></li>
+        <li><a href="#roadmap" class="block py-1 text-slate-700 dark:text-slate-300"><span class="text-emerald-600 dark:text-emerald-400 font-mono mr-2">07</span>Co se chystá</a></li>
+        <li><a href="#kontakt" class="block py-1 text-slate-700 dark:text-slate-300"><span class="text-emerald-600 dark:text-emerald-400 font-mono mr-2">08</span>Zkusit / kontakt</a></li>
+      </ol>
+    </nav>
+
+    <!-- ── 01: Pro koho ─────────────────────────────────────────────── -->
+    <section id="pro-koho" class="max-w-6xl mx-auto px-5 py-20">
+      <div class="flex items-baseline gap-3 mb-2">
+        <span class="font-mono text-sm text-emerald-600 dark:text-emerald-400">01</span>
+        <span class="text-xs uppercase tracking-wider text-slate-500 font-semibold">Cílová skupina</span>
+      </div>
+      <h2 class="text-3xl sm:text-4xl font-bold tracking-tightest mb-3">Komu nejvíce ušetří čas a riziko</h2>
+      <p class="text-slate-600 dark:text-slate-300 mb-3 text-lg max-w-3xl">
+        Aplikace agreguje na jedno místo to, co dnes ručně klikáte na ARESu,
+        ADISu, Hlídači státu, ISIRu a Veřejném rejstříku. Tady jsou tři nejtypičtější workflowy &mdash;
+        ale hodí se každému, kdo pracuje s firmami: auditorům, bankéřům, compliance, M&A investorům, daňovým poradcům, insolvenčním správcům.
+      </p>
+      <p class="text-sm text-slate-500 dark:text-slate-400 mb-12 max-w-3xl">
+        Tři medailony níže jsou jen výchozí body. Pokud se nevidíš v advokátovi/makléři/účetním, nevadí &mdash;
+        konkrétní use case se ti zformuje sám podle toho, co prověřuješ.
+      </p>
+
+      <div class="grid md:grid-cols-3 gap-6">
+        <!-- Advokát -->
+        <div class="persona-card rounded-2xl border border-slate-200 dark:border-slate-700 p-7 bg-white dark:bg-slate-800 card-shadow relative">
+          <div class="absolute top-0 right-0 ribbon text-white text-[10px] font-bold px-3 py-1 uppercase tracking-wider">Nejčastější</div>
+          <div class="text-5xl mb-4">⚖️</div>
+          <h3 class="text-xl font-bold mb-2">Advokát / právník</h3>
+          <p class="text-sm text-slate-600 dark:text-slate-400 mb-5">Due diligence před sepsáním smlouvy, due diligence pro klienta při M&A, ověření statutářů a beneficiálního vlastníka.</p>
+          <div class="text-xs uppercase tracking-wider text-slate-500 mb-2 font-semibold">Co řeší aplikace</div>
+          <ul class="space-y-2 text-sm">
+            <li class="flex gap-2"><span class="text-emerald-600 dark:text-emerald-400 flex-shrink-0">✓</span><span>Statutáři + historie změn za posledních 30 let (VR)</span></li>
+            <li class="flex gap-2"><span class="text-emerald-600 dark:text-emerald-400 flex-shrink-0">✓</span><span>Skuteční majitelé (UBO) z Hlídače státu</span></li>
+            <li class="flex gap-2"><span class="text-emerald-600 dark:text-emerald-400 flex-shrink-0">✓</span><span>EU sankce, ISIR insolvence, ADIS nespolehlivý plátce</span></li>
+            <li class="flex gap-2"><span class="text-emerald-600 dark:text-emerald-400 flex-shrink-0">✓</span><span>PDF prověrka jako příloha do klientského spisu</span></li>
+            <li class="flex gap-2"><span class="text-emerald-600 dark:text-emerald-400 flex-shrink-0">✓</span><span>Mapa propojení &mdash; rozkrytí celého holdingu</span></li>
+          </ul>
+        </div>
+
+        <!-- Makléř -->
+        <div class="persona-card rounded-2xl border border-slate-200 dark:border-slate-700 p-7 bg-white dark:bg-slate-800 card-shadow">
+          <div class="text-5xl mb-4">🏠</div>
+          <h3 class="text-xl font-bold mb-2">Realitní makléř</h3>
+          <p class="text-sm text-slate-600 dark:text-slate-400 mb-5">KYC kupujícího/prodávajícího, ověření firemních protistran, kontrola katastru, dohledání skutečného majitele.</p>
+          <div class="text-xs uppercase tracking-wider text-slate-500 mb-2 font-semibold">Co řeší aplikace</div>
+          <ul class="space-y-2 text-sm">
+            <li class="flex gap-2"><span class="text-emerald-600 dark:text-emerald-400 flex-shrink-0">✓</span><span>Kdo skutečně vlastní firmu kupujícího (UBO + holding)</span></li>
+            <li class="flex gap-2"><span class="text-emerald-600 dark:text-emerald-400 flex-shrink-0">✓</span><span>Katastr nemovitostí (ČÚZK) přímo z prověrky</span></li>
+            <li class="flex gap-2"><span class="text-emerald-600 dark:text-emerald-400 flex-shrink-0">✓</span><span>Detekce virtuálních sídel &mdash; varování v risk skóre</span></li>
+            <li class="flex gap-2"><span class="text-emerald-600 dark:text-emerald-400 flex-shrink-0">✓</span><span>Insolvence, exekuce, sankce &mdash; v jednom přehledu</span></li>
+            <li class="flex gap-2"><span class="text-emerald-600 dark:text-emerald-400 flex-shrink-0">✓</span><span>Watchlist &mdash; email alert při změně statutářů u sledované firmy</span></li>
+          </ul>
+        </div>
+
+        <!-- Účetní -->
+        <div class="persona-card rounded-2xl border border-slate-200 dark:border-slate-700 p-7 bg-white dark:bg-slate-800 card-shadow">
+          <div class="text-5xl mb-4">📊</div>
+          <h3 class="text-xl font-bold mb-2">Účetní / fakturant</h3>
+          <p class="text-sm text-slate-600 dark:text-slate-400 mb-5">Ověření nového dodavatele před vystavením faktury, kontrola DPH, sledování změn bankovního účtu.</p>
+          <div class="text-xs uppercase tracking-wider text-slate-500 mb-2 font-semibold">Co řeší aplikace</div>
+          <ul class="space-y-2 text-sm">
+            <li class="flex gap-2"><span class="text-emerald-600 dark:text-emerald-400 flex-shrink-0">✓</span><span>ADIS DPH &mdash; status plátce, nespolehlivý plátce, oficiální bankovní účty</span></li>
+            <li class="flex gap-2"><span class="text-emerald-600 dark:text-emerald-400 flex-shrink-0">✓</span><span>Export do Fakturoidu, iDokladu, Pohody &mdash; jeden klik</span></li>
+            <li class="flex gap-2"><span class="text-emerald-600 dark:text-emerald-400 flex-shrink-0">✓</span><span>Bulk DD &mdash; CSV s 50 IČy → 50 PDF prověrek najednou</span></li>
+            <li class="flex gap-2"><span class="text-emerald-600 dark:text-emerald-400 flex-shrink-0">✓</span><span>Datová schránka &mdash; ID schránky pro elektronickou komunikaci</span></li>
+            <li class="flex gap-2"><span class="text-emerald-600 dark:text-emerald-400 flex-shrink-0">✓</span><span>Historie DIČ a sídla &mdash; časová osa firmy</span></li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── 02: Co se prověřuje ──────────────────────────────────────── -->
+    <section id="zdroje" class="bg-slate-50 dark:bg-slate-800/50 py-20 border-y border-slate-200 dark:border-slate-700">
+      <div class="max-w-6xl mx-auto px-5">
+        <div class="flex items-baseline gap-3 mb-2">
+          <span class="font-mono text-sm text-emerald-600 dark:text-emerald-400">02</span>
+          <span class="text-xs uppercase tracking-wider text-slate-500 font-semibold">Datové zdroje</span>
+        </div>
+        <h2 class="text-3xl sm:text-4xl font-bold tracking-tightest mb-3">11 veřejných registrů, jedna stránka</h2>
+        <p class="text-slate-600 dark:text-slate-300 mb-12 text-lg max-w-3xl">
+          Všechno jsou oficiální veřejné zdroje &mdash; agregujeme je, neukrýváme. Každý údaj má v UI uvedený svůj zdroj
+          a datum, abyste věděli, odkud informace pochází a kdy byla aktualizována.
+        </p>
+
+        <div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+
+          <div class="src-tile rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 p-5">
+            <div class="flex items-center gap-3 mb-2">
+              <div class="feature-icon text-xl">🏛️</div>
+              <div>
+                <h3 class="font-bold">ARES</h3>
+                <div class="text-[11px] text-slate-500">Ministerstvo financí</div>
+              </div>
+            </div>
+            <p class="text-sm text-slate-600 dark:text-slate-400">Identifikace firmy: IČO, DIČ, sídlo, právní forma, předmět podnikání, datum vzniku/zániku.</p>
+          </div>
+
+          <div class="src-tile rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 p-5">
+            <div class="flex items-center gap-3 mb-2">
+              <div class="feature-icon text-xl">📜</div>
+              <div>
+                <h3 class="font-bold">Veřejný rejstřík (OR)</h3>
+                <div class="text-[11px] text-slate-500">Ministerstvo spravedlnosti</div>
+              </div>
+            </div>
+            <p class="text-sm text-slate-600 dark:text-slate-400">Statutáři, jednatelé, prokuristé, akcionáři, podíly, historie změn (i 30 let zpět), spisová značka.</p>
+          </div>
+
+          <div class="src-tile rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 p-5">
+            <div class="flex items-center gap-3 mb-2">
+              <div class="feature-icon text-xl">📋</div>
+              <div>
+                <h3 class="font-bold">Živnostenský rejstřík</h3>
+                <div class="text-[11px] text-slate-500">MPO ČR</div>
+              </div>
+            </div>
+            <p class="text-sm text-slate-600 dark:text-slate-400">Aktivní a pozastavené živnosti s CZ-NACE klasifikací a hover tooltipy.</p>
+          </div>
+
+          <div class="src-tile rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 p-5">
+            <div class="flex items-center gap-3 mb-2">
+              <div class="feature-icon text-xl">💰</div>
+              <div>
+                <h3 class="font-bold">ADIS DPH</h3>
+                <div class="text-[11px] text-slate-500">Finanční správa</div>
+              </div>
+            </div>
+            <p class="text-sm text-slate-600 dark:text-slate-400">Plátce DPH, nespolehlivý plátce, oficiálně oznámené bankovní účty.</p>
+          </div>
+
+          <div class="src-tile rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 p-5">
+            <div class="flex items-center gap-3 mb-2">
+              <div class="feature-icon text-xl">⚠️</div>
+              <div>
+                <h3 class="font-bold">ISIR insolvence</h3>
+                <div class="text-[11px] text-slate-500">justice.cz</div>
+              </div>
+            </div>
+            <p class="text-sm text-slate-600 dark:text-slate-400">Aktivní + historické insolvenční řízení (úplný XML feed, ne jen vzorek).</p>
+          </div>
+
+          <div class="src-tile rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 p-5">
+            <div class="flex items-center gap-3 mb-2">
+              <div class="feature-icon text-xl">👤</div>
+              <div>
+                <h3 class="font-bold">UBO &mdash; skuteční majitelé</h3>
+                <div class="text-[11px] text-slate-500">Hlídač státu</div>
+              </div>
+            </div>
+            <p class="text-sm text-slate-600 dark:text-slate-400">Skutečný vlastník (Beneficial Owner) s podíly a strukturou ovládání.</p>
+          </div>
+
+          <div class="src-tile rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 p-5">
+            <div class="flex items-center gap-3 mb-2">
+              <div class="feature-icon text-xl">📑</div>
+              <div>
+                <h3 class="font-bold">Veřejné zakázky + dotace</h3>
+                <div class="text-[11px] text-slate-500">Hlídač státu + CEDR</div>
+              </div>
+            </div>
+            <p class="text-sm text-slate-600 dark:text-slate-400">Vyhrané státní zakázky a přijaté dotace &mdash; signál ekonomické aktivity i politické vazby.</p>
+          </div>
+
+          <div class="src-tile rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 p-5">
+            <div class="flex items-center gap-3 mb-2">
+              <div class="feature-icon text-xl">🏦</div>
+              <div>
+                <h3 class="font-bold">ČNB JERRS</h3>
+                <div class="text-[11px] text-slate-500">Česká národní banka</div>
+              </div>
+            </div>
+            <p class="text-sm text-slate-600 dark:text-slate-400">Regulované finanční subjekty: banky, pojišťovny, IZ, OCP, MFI atd.</p>
+          </div>
+
+          <div class="src-tile rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 p-5">
+            <div class="flex items-center gap-3 mb-2">
+              <div class="feature-icon text-xl">🚫</div>
+              <div>
+                <h3 class="font-bold">EU sankce</h3>
+                <div class="text-[11px] text-slate-500">Financial Sanctions Files</div>
+              </div>
+            </div>
+            <p class="text-sm text-slate-600 dark:text-slate-400">Přímý oficiální FSF feed &mdash; sankcionované subjekty započítané do risk skóre.</p>
+          </div>
+
+          <div class="src-tile rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 p-5">
+            <div class="flex items-center gap-3 mb-2">
+              <div class="feature-icon text-xl">™</div>
+              <div>
+                <h3 class="font-bold">Ochranné známky</h3>
+                <div class="text-[11px] text-slate-500">ÚPV ČR (ST.96 open data)</div>
+              </div>
+            </div>
+            <p class="text-sm text-slate-600 dark:text-slate-400">307&nbsp;000+ známek s denním přírůstkem. Match podle obchodního jména a sídla.</p>
+          </div>
+
+          <div class="src-tile rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 p-5">
+            <div class="flex items-center gap-3 mb-2">
+              <div class="feature-icon text-xl">📬</div>
+              <div>
+                <h3 class="font-bold">Datová schránka</h3>
+                <div class="text-[11px] text-slate-500">Ministerstvo vnitra</div>
+              </div>
+            </div>
+            <p class="text-sm text-slate-600 dark:text-slate-400">ID schránky pro elektronickou komunikaci. Pro PO veřejné dle § 14a zák. 300/2008.</p>
+          </div>
+
+          <div class="src-tile rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 p-5">
+            <div class="flex items-center gap-3 mb-2">
+              <div class="feature-icon text-xl">🏘️</div>
+              <div>
+                <h3 class="font-bold">Katastr nemovitostí</h3>
+                <div class="text-[11px] text-slate-500">ČÚZK</div>
+              </div>
+            </div>
+            <p class="text-sm text-slate-600 dark:text-slate-400">Vyhledání nemovitostí firmy a propojení v profilu.</p>
+          </div>
+
+        </div>
+
+        <div class="mt-10 p-5 rounded-xl border border-emerald-200 dark:border-emerald-800 bg-emerald-50/50 dark:bg-emerald-900/20 text-sm">
+          <strong class="text-emerald-700 dark:text-emerald-300">Vše veřejné · vše citované.</strong>
+          <span class="text-slate-600 dark:text-slate-300">Žádná data si neudržujeme natajno &mdash; každý údaj má v UI uvedený svůj zdroj
+          a kdy byl naposled aktualizován. Žádné placené API třetích stran &mdash; jen oficiální české a evropské registry.</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── 03: Jak to funguje (schéma) ──────────────────────────────── -->
+    <section id="schema" class="max-w-6xl mx-auto px-5 py-20">
+      <div class="flex items-baseline gap-3 mb-2">
+        <span class="font-mono text-sm text-emerald-600 dark:text-emerald-400">03</span>
+        <span class="text-xs uppercase tracking-wider text-slate-500 font-semibold">Architektura</span>
+      </div>
+      <h2 class="text-3xl sm:text-4xl font-bold tracking-tightest mb-3">Jak data tečou od registrů k vám</h2>
+      <p class="text-slate-600 dark:text-slate-300 mb-10 text-lg max-w-3xl">
+        Na pozadí běží agregační vrstva, která paralelně ptá 11 zdrojů, normalizuje výstupy do jednoho modelu firmy
+        a počítá risk skóre + mapu propojení. Vy zadáte IČO &mdash; dostanete kompletní obrázek.
+      </p>
+
+      <div class="rounded-2xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 p-6 sm:p-10 card-shadow overflow-x-auto">
+        <div class="mermaid">
+flowchart TB
+    classDef src fill:#ecfdf5,stroke:#047857,color:#065f46,stroke-width:1.5px
+    classDef agg fill:#fef3c7,stroke:#d97706,color:#78350f,stroke-width:2px
+    classDef out fill:#dbeafe,stroke:#1d4ed8,color:#1e3a8a,stroke-width:1.5px
+    classDef usr fill:#fce7f3,stroke:#be185d,color:#831843,stroke-width:2px
+
+    subgraph SRC["Veřejné registry"]
+      direction TB
+      A1["ARES<br/>identifikace"]
+      A2["Veřejný rejstřík<br/>statutáři + akcionáři"]
+      A3["ADIS DPH"]
+      A4["ISIR insolvence"]
+      A5["Hlídač státu<br/>UBO + zakázky + dotace"]
+      A6["ČNB JERRS"]
+      A7["EU sankce"]
+      A8["ÚPV ochranné známky"]
+      A9["Datová schránka"]
+      A10["ČÚZK katastr"]
+    end
+
+    AGR["Agregační vrstva<br/>icovazby.cz<br/>(paralelní fetch · cache · normalizace)"]
+    RISK["Risk skóre<br/>0–100"]
+    GRAPH["Mapa propojení<br/>holding + statutáři"]
+    AI["AI souhrn<br/>Claude / Gemini"]
+    EXP["Exporty<br/>PDF · ZIP · CSV<br/>Fakturoid · iDoklad"]
+    YOU(("Vy"))
+
+    SRC ==> AGR
+    AGR --> RISK
+    AGR --> GRAPH
+    AGR --> AI
+    AGR --> EXP
+    RISK --> YOU
+    GRAPH --> YOU
+    AI --> YOU
+    EXP --> YOU
+
+    class A1,A2,A3,A4,A5,A6,A7,A8,A9,A10 src
+    class AGR agg
+    class RISK,GRAPH,AI,EXP out
+    class YOU usr
+        </div>
+      </div>
+
+      <div class="grid md:grid-cols-3 gap-4 mt-6 text-sm">
+        <div class="rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 p-4">
+          <div class="font-bold mb-1">⚡ Paralelně</div>
+          <div class="text-slate-600 dark:text-slate-400">11 zdrojů se ptá zároveň. Žádný zdroj nečeká na druhého.</div>
+        </div>
+        <div class="rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 p-4">
+          <div class="font-bold mb-1">🔄 Cachované</div>
+          <div class="text-slate-600 dark:text-slate-400">Druhá prověrka té samé firmy je instantní. Cache se obnovuje denně.</div>
+        </div>
+        <div class="rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 p-4">
+          <div class="font-bold mb-1">🛡️ Bez registrace</div>
+          <div class="text-slate-600 dark:text-slate-400">Žádný účet, žádné osobní údaje na straně klienta &mdash; vyzkoušíte anonymně.</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── 04: Klíčové funkce ───────────────────────────────────────── -->
+    <section id="funkce" class="bg-slate-50 dark:bg-slate-800/50 py-20 border-y border-slate-200 dark:border-slate-700">
+      <div class="max-w-6xl mx-auto px-5">
+        <div class="flex items-baseline gap-3 mb-2">
+          <span class="font-mono text-sm text-emerald-600 dark:text-emerald-400">04</span>
+          <span class="text-xs uppercase tracking-wider text-slate-500 font-semibold">Funkce</span>
+        </div>
+        <h2 class="text-3xl sm:text-4xl font-bold tracking-tightest mb-12">Šest klíčových funkcí, které žádný jiný nástroj nemá v jednom</h2>
+
+        <!-- 4.1 Risk skóre -->
+        <div class="rounded-2xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 p-6 sm:p-8 card-shadow mb-6">
+          <div class="flex items-start gap-4 mb-4">
+            <div class="feature-icon text-2xl">📊</div>
+            <div>
+              <h3 class="text-2xl font-bold">Risk skóre 0–100</h3>
+              <p class="text-slate-600 dark:text-slate-400">Jeden pohled = okamžitý verdikt</p>
+            </div>
+          </div>
+          <p class="mb-4 text-slate-700 dark:text-slate-300">
+            Místo abyste sami zvažovali, kolik vážit insolvenci proti sankci a nespolehlivému plátci,
+            aplikace všechna negativa sečte do jednoho čísla 0–100 se zelenou/žlutou/červenou pillou.
+            Faktory jsou transparentní &mdash; kliknutím se rozbalí, co se na skóre podílelo.
+          </p>
+          <div class="grid sm:grid-cols-2 lg:grid-cols-4 gap-2 text-xs">
+            <div class="rounded-lg border border-rose-200 dark:border-rose-800 bg-rose-50 dark:bg-rose-900/20 p-2.5">
+              <div class="font-semibold text-rose-700 dark:text-rose-300">−50 EU sankce</div>
+            </div>
+            <div class="rounded-lg border border-rose-200 dark:border-rose-800 bg-rose-50 dark:bg-rose-900/20 p-2.5">
+              <div class="font-semibold text-rose-700 dark:text-rose-300">−30 Insolvence</div>
+            </div>
+            <div class="rounded-lg border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-900/20 p-2.5">
+              <div class="font-semibold text-amber-700 dark:text-amber-300">−20 Nespolehlivý plátce</div>
+            </div>
+            <div class="rounded-lg border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-900/20 p-2.5">
+              <div class="font-semibold text-amber-700 dark:text-amber-300">−10 Virtuální sídlo</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 4.2 Mapa propojení -->
+        <div class="rounded-2xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 p-6 sm:p-8 card-shadow mb-6">
+          <div class="flex items-start gap-4 mb-4">
+            <div class="feature-icon text-2xl">🗺️</div>
+            <div>
+              <h3 class="text-2xl font-bold">Mapa propojení a Rozkrytí holdingu</h3>
+              <p class="text-slate-600 dark:text-slate-400">Vidíte celý ekosystém, ne jen samotnou firmu</p>
+            </div>
+          </div>
+          <p class="mb-5 text-slate-700 dark:text-slate-300">
+            Aplikace automaticky prochází statutáře, akcionáře a beneficiální vlastníky a sestavuje graf vazeb mezi firmami a osobami.
+            U akciových společností s 5+ statutáři spustí auto-rozkrytí celého holdingu. Současně dělá <em>reverse discovery</em> &mdash;
+            hledá, kdo vlastní cílovou firmu shora.
+          </p>
+
+          <div class="rounded-xl bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 p-4 sm:p-6">
+            <div class="text-xs text-slate-500 dark:text-slate-400 mb-3 uppercase tracking-wider font-semibold">Ukázka grafu &mdash; zjednodušený příklad</div>
+            <div class="mermaid">
+flowchart LR
+    classDef target fill:#fef3c7,stroke:#d97706,color:#78350f,stroke-width:3px
+    classDef firm fill:#ecfdf5,stroke:#047857,color:#065f46,stroke-width:1.5px
+    classDef person fill:#fce7f3,stroke:#be185d,color:#831843,stroke-width:1.5px
+
+    P1(["Jan Novák<br/>* 1965"]):::person
+    P2(["Marie Dvořáková<br/>* 1971"]):::person
+    F1["Cílová firma s.r.o.<br/>cílová prověrka"]:::target
+    F2["Mateřská a.s.<br/>akcionář 60%"]:::firm
+    F3["Sesterská s.r.o."]:::firm
+    F4["Dceřinka s.r.o."]:::firm
+
+    F1 -.jednatel.-> P1
+    F2 -.akcionář 60%.-> F1
+    F2 -.jednatel.-> P2
+    P1 -.jednatel.-> F3
+    F2 -.100%.-> F4
+            </div>
+          </div>
+
+          <div class="mt-5 grid sm:grid-cols-3 gap-3 text-sm">
+            <div class="rounded-lg border border-slate-200 dark:border-slate-700 p-3">
+              <div class="font-semibold mb-1">📐 Statický (Mermaid)</div>
+              <div class="text-xs text-slate-500 dark:text-slate-400">Pro PDF přílohy a tisk &mdash; perfektní vykreslení.</div>
+            </div>
+            <div class="rounded-lg border border-slate-200 dark:border-slate-700 p-3">
+              <div class="font-semibold mb-1">🎯 Interaktivní (Cytoscape)</div>
+              <div class="text-xs text-slate-500 dark:text-slate-400">Posouvejte, zoomujte, klikejte na uzly pro detail.</div>
+            </div>
+            <div class="rounded-lg border border-slate-200 dark:border-slate-700 p-3">
+              <div class="font-semibold mb-1">⏰ Včetně historie</div>
+              <div class="text-xs text-slate-500 dark:text-slate-400">Zapnutím historie uvidíte i bývalé jednatele &mdash; klíčové pro M&A DD.</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 4.3 Možní jmenovci -->
+        <div class="rounded-2xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 p-6 sm:p-8 card-shadow mb-6">
+          <div class="flex items-start gap-4 mb-4">
+            <div class="feature-icon text-2xl">⚠️</div>
+            <div>
+              <h3 class="text-2xl font-bold">Možní jmenovci &mdash; jak se vypořádáme se shodou jmen</h3>
+              <p class="text-slate-600 dark:text-slate-400">Když registr neuvádí datum narození, rozhoduje uživatel s naší podporou</p>
+            </div>
+          </div>
+          <p class="mb-5 text-slate-700 dark:text-slate-300">
+            Při rozkrývání holdingu narážíme na lidi se stejným jménem &mdash; je <em>Jan Novák</em> ve firmě A
+            ten samý jako <em>Jan Novák</em> ve firmě B? Ideální klíč je <strong>datum narození</strong>.
+            Pokud ho ARES uvede, aplikace osoby <strong>tiše sloučí</strong>. Pokud ne (zejména u starších historických statutářů),
+            přesune kandidáty do sekce <em>Možní jmenovci</em> a nabídne vám rozhodnutí &mdash; s nápovědou:
+          </p>
+
+          <div class="rounded-xl bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 p-4 sm:p-6 mb-5">
+            <div class="text-xs text-slate-500 dark:text-slate-400 mb-3 uppercase tracking-wider font-semibold">Rozhodovací strom</div>
+            <div class="mermaid">
+flowchart TB
+    classDef auto fill:#ecfdf5,stroke:#047857,color:#065f46,stroke-width:2px
+    classDef manual fill:#fef3c7,stroke:#d97706,color:#78350f,stroke-width:2px
+    classDef out fill:#dbeafe,stroke:#1d4ed8,color:#1e3a8a,stroke-width:1.5px
+
+    START(["Nalezeno více osob<br/>se stejným jménem"])
+    Q{"Máme datum<br/>narození?"}
+    MERGE["Tichá deduplikace<br/>= jistá shoda"]:::auto
+    BUCKET["Bucket „Možní jmenovci\""]:::manual
+    SIG["Spočti signály:<br/>• sdílený holding<br/>• vše v inventory<br/>• více firem"]:::manual
+    SHOW["Ukáž seznam s memberships:<br/>IČO · jméno firmy · funkce · období"]:::manual
+    USER(["Uživatel rozhodne<br/>checkboxem"]):::manual
+    RENDER["Re-render grafu<br/>jen s vybranými"]:::out
+
+    START --> Q
+    Q -->|"ano"| MERGE
+    Q -->|"ne"| BUCKET
+    BUCKET --> SIG
+    SIG --> SHOW
+    SHOW --> USER
+    USER --> RENDER
+    MERGE --> RENDER
+            </div>
+          </div>
+
+          <div class="grid md:grid-cols-3 gap-3 mb-4">
+            <div class="signal-pill rounded-xl border border-emerald-200 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-900/20 p-4">
+              <div class="text-sm font-bold text-emerald-700 dark:text-emerald-300 mb-1">📎 sdílený holding</div>
+              <div class="text-xs text-slate-600 dark:text-slate-400">Kandidátova jiná firma je dceřinkou téhož mateřského IČA jako naše cílová &mdash; silný signál, že je to ten samý člověk.</div>
+            </div>
+            <div class="signal-pill rounded-xl border border-emerald-200 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-900/20 p-4">
+              <div class="text-sm font-bold text-emerald-700 dark:text-emerald-300 mb-1">📦 vše v inventory</div>
+              <div class="text-xs text-slate-600 dark:text-slate-400">Všechny firmy kandidáta už máme v naší DB &mdash; síť dává smysl, nejde o exotickou shodu jmen.</div>
+            </div>
+            <div class="signal-pill rounded-xl border border-emerald-200 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-900/20 p-4">
+              <div class="text-sm font-bold text-emerald-700 dark:text-emerald-300 mb-1">🔢 více firem</div>
+              <div class="text-xs text-slate-600 dark:text-slate-400">Kandidát sedí ve více než jedné firmě &mdash; typický pravý jmenovec, ne náhoda jména.</div>
+            </div>
+          </div>
+
+          <div class="rounded-xl bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 p-4 text-sm">
+            <div class="font-semibold text-amber-700 dark:text-amber-300 mb-1">Proč nepoužíváme „pravděpodobnost shody v %"?</div>
+            <p class="text-slate-700 dark:text-slate-300">
+              Falešná přesnost. „87 % shoda" bez data narození vypadá vědecky, ale uživatel by jí důvěřoval víc, než zaslouží.
+              Radši vám ukážeme surová fakta &mdash; kandidátovy memberships ve formátu IČO · jméno firmy · funkce · období podnikání &mdash;
+              a vy sami posoudíte: „Aha, tenhle Jan Novák je v 5 stavebních firmách v Brně, naše IT firma je v Praze → asi jiný člověk."
+            </p>
+          </div>
+        </div>
+
+        <!-- 4.4 AI souhrn -->
+        <div class="rounded-2xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 p-6 sm:p-8 card-shadow mb-6">
+          <div class="flex items-start gap-4 mb-4">
+            <div class="feature-icon text-2xl">🤖</div>
+            <div>
+              <h3 class="text-2xl font-bold">AI souhrn profilu</h3>
+              <p class="text-slate-600 dark:text-slate-400">Volitelný překlad surových dat do jazykového shrnutí</p>
+            </div>
+          </div>
+          <p class="mb-4 text-slate-700 dark:text-slate-300">
+            Volitelně může aplikace nechat <strong>Claude</strong> (Anthropic) nebo <strong>Gemini</strong> (Google) napsat 3&ndash;5 vět
+            shrnutí profilu &mdash; co firma dělá, jaká jsou rizika, na co si dát pozor. Užitečné, když potřebujete rychle
+            uvařit emailem &bdquo;Ahoj kolegyně, doporučuji opatrnost protože&hellip;&ldquo;.
+          </p>
+          <div class="grid md:grid-cols-2 gap-3 text-sm">
+            <div class="rounded-lg border border-slate-200 dark:border-slate-700 p-3">
+              <div class="font-semibold mb-1">💸 BYO klíč (Bring Your Own API Key)</div>
+              <div class="text-xs text-slate-600 dark:text-slate-400">Vy si platíte tokeny u Anthropicu/Googlu &mdash; my za vás neplatíme nic. Cena ~0,01&nbsp;Kč za souhrn.</div>
+            </div>
+            <div class="rounded-lg border border-slate-200 dark:border-slate-700 p-3">
+              <div class="font-semibold mb-1">🔒 Klíč zůstává u vás</div>
+              <div class="text-xs text-slate-600 dark:text-slate-400">Klíč se ukládá jen do vašeho prohlížeče (localStorage), nikdy na náš server. Volání API jde přes nás bez logování.</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 4.5 Bulk DD + Watchlist -->
+        <div class="rounded-2xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 p-6 sm:p-8 card-shadow mb-6">
+          <div class="flex items-start gap-4 mb-4">
+            <div class="feature-icon text-2xl">📥</div>
+            <div>
+              <h3 class="text-2xl font-bold">Bulk DD + Watchlist alerty</h3>
+              <p class="text-slate-600 dark:text-slate-400">Padesát firem najednou &mdash; nebo jednu, ale dlouhodobě</p>
+            </div>
+          </div>
+          <div class="grid md:grid-cols-2 gap-4">
+            <div>
+              <div class="text-sm font-semibold mb-2">Hromadná prověrka</div>
+              <p class="text-sm text-slate-700 dark:text-slate-300 mb-2">Nahrajete CSV s IČy a dostanete ZIP s PDF prověrkami všech firem najednou. Hodí se pro:</p>
+              <ul class="text-sm space-y-1 text-slate-600 dark:text-slate-400">
+                <li>• audit klientského portfolia účetní</li>
+                <li>• kontrolu seznamu dodavatelů korporátní compliance</li>
+                <li>• prověření developera u realitního makléře</li>
+              </ul>
+            </div>
+            <div>
+              <div class="text-sm font-semibold mb-2">Email alerty (Watchlist)</div>
+              <p class="text-sm text-slate-700 dark:text-slate-300 mb-2">Uložte si firmu do sledovacího seznamu a budete dostávat email vždy, když se změní:</p>
+              <ul class="text-sm space-y-1 text-slate-600 dark:text-slate-400">
+                <li>• statutáři/jednatelé</li>
+                <li>• status DPH plátce nebo bankovní účet</li>
+                <li>• vznik insolvence nebo zapsání na EU sankce</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+
+        <!-- 4.6 Embed widget -->
+        <div class="rounded-2xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 p-6 sm:p-8 card-shadow">
+          <div class="flex items-start gap-4 mb-4">
+            <div class="feature-icon text-2xl">🧩</div>
+            <div>
+              <h3 class="text-2xl font-bold">Embed widget pro web kanceláře</h3>
+              <p class="text-slate-600 dark:text-slate-400">Vložte aktuální kartu firmy přímo na svůj web</p>
+            </div>
+          </div>
+          <p class="mb-3 text-slate-700 dark:text-slate-300">
+            Máte na webu kanceláře sekci &bdquo;reference&ldquo; nebo &bdquo;náš klient měsíce&ldquo;? Vložte
+            karty s aktuálními daty &mdash; jeden řádek JS kódu, žádná údržba.
+          </p>
+          <pre class="font-mono text-xs bg-slate-900 text-slate-100 dark:bg-slate-950 rounded-lg p-4 overflow-x-auto"><code>&lt;script src="https://icovazby.cz/embed.js"&gt;&lt;/script&gt;
+&lt;icovazby-card ico="26185610"&gt;&lt;/icovazby-card&gt;</code></pre>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── 05: Scénáře použití ──────────────────────────────────────── -->
+    <section id="scenare" class="max-w-6xl mx-auto px-5 py-20">
+      <div class="flex items-baseline gap-3 mb-2">
+        <span class="font-mono text-sm text-emerald-600 dark:text-emerald-400">05</span>
+        <span class="text-xs uppercase tracking-wider text-slate-500 font-semibold">V praxi</span>
+      </div>
+      <h2 class="text-3xl sm:text-4xl font-bold tracking-tightest mb-12">Tři reálné scénáře, kdy aplikace ušetří hodiny</h2>
+
+      <div class="space-y-8">
+
+        <div class="rounded-2xl border border-slate-200 dark:border-slate-700 overflow-hidden card-shadow">
+          <div class="bg-gradient-to-r from-emerald-50 to-teal-50 dark:from-emerald-900/30 dark:to-teal-900/30 px-6 sm:px-8 py-5 border-b border-slate-200 dark:border-slate-700">
+            <div class="flex items-center gap-3">
+              <span class="text-3xl">⚖️</span>
+              <div>
+                <div class="text-xs uppercase tracking-wider text-emerald-700 dark:text-emerald-300 font-semibold">Scénář 1 · Advokátní kancelář</div>
+                <h3 class="text-xl font-bold">Due diligence před sepsáním smlouvy o úvěru na 5 mil. Kč</h3>
+              </div>
+            </div>
+          </div>
+          <div class="p-6 sm:p-8 grid md:grid-cols-2 gap-6">
+            <div>
+              <div class="text-xs uppercase tracking-wider text-slate-500 mb-2 font-semibold">Bez aplikace</div>
+              <ol class="text-sm space-y-2 text-slate-700 dark:text-slate-300">
+                <li>1. ARES → ověřit IČO, sídlo, statutáře (10 min)</li>
+                <li>2. Veřejný rejstřík → výpis &mdash; akcionáři, historie (15 min)</li>
+                <li>3. ADIS → ověřit, že není nespolehlivý plátce (5 min)</li>
+                <li>4. ISIR → ručně hledat insolvenci (10 min)</li>
+                <li>5. Hlídač státu → UBO a zakázky (10 min)</li>
+                <li>6. EU sankce → ručně grep v PDF (5 min)</li>
+                <li>7. Vytisknout vše do spisu (10 min)</li>
+              </ol>
+              <div class="mt-3 inline-block px-3 py-1 bg-rose-100 dark:bg-rose-900/40 text-rose-700 dark:text-rose-300 rounded-full text-xs font-semibold">⏱️ 65 minut</div>
+            </div>
+            <div>
+              <div class="text-xs uppercase tracking-wider text-emerald-700 dark:text-emerald-400 mb-2 font-semibold">S IČO vazby</div>
+              <ol class="text-sm space-y-2 text-slate-700 dark:text-slate-300">
+                <li>1. Vlepit IČO do vyhledávače</li>
+                <li>2. Zkontrolovat risk skóre &mdash; jediný pohled = verdikt</li>
+                <li>3. Rozkliknout Mapu propojení &mdash; kdo vlastní</li>
+                <li>4. Stáhnout PDF prověrku do klientského spisu</li>
+              </ol>
+              <div class="mt-3 inline-block px-3 py-1 bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300 rounded-full text-xs font-semibold">⏱️ 30 sekund</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="rounded-2xl border border-slate-200 dark:border-slate-700 overflow-hidden card-shadow">
+          <div class="bg-gradient-to-r from-emerald-50 to-teal-50 dark:from-emerald-900/30 dark:to-teal-900/30 px-6 sm:px-8 py-5 border-b border-slate-200 dark:border-slate-700">
+            <div class="flex items-center gap-3">
+              <span class="text-3xl">🏠</span>
+              <div>
+                <div class="text-xs uppercase tracking-wider text-emerald-700 dark:text-emerald-300 font-semibold">Scénář 2 · Realitní makléř</div>
+                <h3 class="text-xl font-bold">Firma chce koupit byt &mdash; je za ní někdo, koho byste nečekali?</h3>
+              </div>
+            </div>
+          </div>
+          <div class="p-6 sm:p-8">
+            <p class="text-sm text-slate-700 dark:text-slate-300 mb-4">
+              Zájemce uvádí jako kupujícího <em>NoveBydleni s.r.o.</em>, IČO vlepíte do aplikace a okamžitě vidíte:
+            </p>
+            <ul class="text-sm space-y-2 text-slate-700 dark:text-slate-300 mb-4">
+              <li>✅ <strong>Statutáři</strong> &mdash; jedna paní z Prahy, působí seriózně</li>
+              <li>🔍 <strong>Rozkrýt holding</strong> &mdash; ale akcionářem je <em>Realestate Holding s.r.o.</em>, kterou vlastní pán z Kypru</li>
+              <li>⚠️ <strong>UBO</strong> &mdash; skutečný vlastník je politicky exponovaná osoba (PEP) z Hlídače státu</li>
+              <li>🌐 <strong>Mapa propojení</strong> &mdash; v holdingu je 12 dalších s.r.o., 4 v insolvenci</li>
+            </ul>
+            <p class="text-sm text-slate-700 dark:text-slate-300">
+              <strong>Výsledek:</strong> Můžete klientovi (prodávajícímu) doložit, kdo skutečně bude majitelem
+              nemovitosti &mdash; pro účely AML/KYC i pro klid v duši. PDF prověrku přiložíte ke spisu prodeje.
+            </p>
+          </div>
+        </div>
+
+        <div class="rounded-2xl border border-slate-200 dark:border-slate-700 overflow-hidden card-shadow">
+          <div class="bg-gradient-to-r from-emerald-50 to-teal-50 dark:from-emerald-900/30 dark:to-teal-900/30 px-6 sm:px-8 py-5 border-b border-slate-200 dark:border-slate-700">
+            <div class="flex items-center gap-3">
+              <span class="text-3xl">📊</span>
+              <div>
+                <div class="text-xs uppercase tracking-wider text-emerald-700 dark:text-emerald-300 font-semibold">Scénář 3 · Účetní</div>
+                <h3 class="text-xl font-bold">Nový dodavatel posílá fakturu na 200 000 Kč &mdash; kontrola za 5 sekund</h3>
+              </div>
+            </div>
+          </div>
+          <div class="p-6 sm:p-8">
+            <p class="text-sm text-slate-700 dark:text-slate-300 mb-4">
+              Klient se ptá: &bdquo;Můžu zaplatit fakturu od <em>SluzbyExpres s.r.o.</em>?&ldquo; Místo dvou hodin ručního ověřování:
+            </p>
+            <div class="grid sm:grid-cols-2 gap-3 mb-4">
+              <div class="rounded-lg border border-emerald-200 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-900/20 p-3 text-sm">
+                <div class="font-semibold text-emerald-700 dark:text-emerald-300 mb-1">✅ Co aplikace potvrdí</div>
+                <ul class="space-y-1 text-slate-700 dark:text-slate-300 text-xs">
+                  <li>Status DPH plátce (ADIS)</li>
+                  <li>Bankovní účet uvedený na faktuře vs. oznámený FÚ</li>
+                  <li>Sídlo &mdash; nesouhlasí virtuální adresa?</li>
+                  <li>Insolvence, sankce, nespolehlivý plátce &mdash; vše čisté?</li>
+                </ul>
+              </div>
+              <div class="rounded-lg border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-900/20 p-3 text-sm">
+                <div class="font-semibold text-amber-700 dark:text-amber-300 mb-1">⚠️ Co zachytí</div>
+                <ul class="space-y-1 text-slate-700 dark:text-slate-300 text-xs">
+                  <li>Bankovní účet na faktuře <em>není</em> v ADISu &rarr; <strong>ručení za DPH!</strong></li>
+                  <li>Sídlo v Pražské 1 (virtuální coworking) &rarr; signál opatrnosti</li>
+                  <li>Statutář před 2 lety v insolvenci jiné firmy</li>
+                </ul>
+              </div>
+            </div>
+            <p class="text-sm text-slate-700 dark:text-slate-300">
+              <strong>Výsledek:</strong> Klient zaplatí dodavateli z jiného účtu nebo si počká na opravu &mdash;
+              ušetříte mu ručení za nezaplacenou DPH dodavatele (§ 109 ZDPH).
+            </p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── 06: Exporty ──────────────────────────────────────────────── -->
+    <section id="exporty" class="bg-slate-50 dark:bg-slate-800/50 py-20 border-y border-slate-200 dark:border-slate-700">
+      <div class="max-w-6xl mx-auto px-5">
+        <div class="flex items-baseline gap-3 mb-2">
+          <span class="font-mono text-sm text-emerald-600 dark:text-emerald-400">06</span>
+          <span class="text-xs uppercase tracking-wider text-slate-500 font-semibold">Výstupy</span>
+        </div>
+        <h2 class="text-3xl sm:text-4xl font-bold tracking-tightest mb-3">Z aplikace ven &mdash; do klientského spisu, do fakturačního systému</h2>
+        <p class="text-slate-600 dark:text-slate-300 mb-10 text-lg max-w-3xl">
+          Data nezůstávají uvnitř &mdash; klikem je dostanete tam, kde je potřebujete.
+        </p>
+
+        <div class="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div class="rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 p-5">
+            <div class="text-3xl mb-2">📄</div>
+            <h3 class="font-bold mb-1">PDF prověrka</h3>
+            <p class="text-xs text-slate-600 dark:text-slate-400">Profesionálně formátovaná příloha do klientského spisu &mdash; s razítkem zdroje a data tisku.</p>
+          </div>
+          <div class="rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 p-5">
+            <div class="text-3xl mb-2">📦</div>
+            <h3 class="font-bold mb-1">ZIP (bulk)</h3>
+            <p class="text-xs text-slate-600 dark:text-slate-400">N prověrek najednou &mdash; po nahrání CSV s IČy. Pro audit klientského portfolia.</p>
+          </div>
+          <div class="rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 p-5">
+            <div class="text-3xl mb-2">💼</div>
+            <h3 class="font-bold mb-1">Fakturoid · iDoklad · Pohoda</h3>
+            <p class="text-xs text-slate-600 dark:text-slate-400">Vyplní firemní údaje + bankovní účet do nové faktury jedním klikem.</p>
+          </div>
+          <div class="rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 p-5">
+            <div class="text-3xl mb-2">🔗</div>
+            <h3 class="font-bold mb-1">Sdílecí URL</h3>
+            <p class="text-xs text-slate-600 dark:text-slate-400">Read-only odkaz pro klienta nebo kolegu &mdash; bez nutnosti přihlášení.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── 07: Roadmap ──────────────────────────────────────────────── -->
+    <section id="roadmap" class="max-w-6xl mx-auto px-5 py-20">
+      <div class="flex items-baseline gap-3 mb-2">
+        <span class="font-mono text-sm text-emerald-600 dark:text-emerald-400">07</span>
+        <span class="text-xs uppercase tracking-wider text-slate-500 font-semibold">Vývoj</span>
+      </div>
+      <h2 class="text-3xl sm:text-4xl font-bold tracking-tightest mb-3">Co je hotové a co se chystá</h2>
+      <p class="text-slate-600 dark:text-slate-300 mb-10 text-lg max-w-3xl">
+        Aplikace se vyvíjí kontinuálně &mdash; následuje přehled aktuálního stavu a plánu na nejbližší měsíce.
+        Pokud potřebujete konkrétní funkci, dejte vědět &mdash; prioritizujeme podle reálné poptávky.
+      </p>
+
+      <div class="grid md:grid-cols-2 gap-6">
+        <!-- Hotové -->
+        <div class="rounded-2xl border border-emerald-200 dark:border-emerald-800 bg-emerald-50/30 dark:bg-emerald-900/10 p-6">
+          <div class="flex items-center gap-2 mb-4">
+            <span class="text-2xl">✅</span>
+            <h3 class="text-lg font-bold text-emerald-700 dark:text-emerald-300">Hotové (aktuální verze)</h3>
+          </div>
+          <ul class="space-y-2 text-sm">
+            <li class="flex gap-2"><span class="text-emerald-600 dark:text-emerald-400">→</span><span>11 datových zdrojů s denní obnovou cache</span></li>
+            <li class="flex gap-2"><span class="text-emerald-600 dark:text-emerald-400">→</span><span>Risk skóre s transparentními faktory</span></li>
+            <li class="flex gap-2"><span class="text-emerald-600 dark:text-emerald-400">→</span><span>Mapa propojení (statická + interaktivní)</span></li>
+            <li class="flex gap-2"><span class="text-emerald-600 dark:text-emerald-400">→</span><span>Auto-rozkrytí holdingu pro a.s. s 5+ statutáři</span></li>
+            <li class="flex gap-2"><span class="text-emerald-600 dark:text-emerald-400">→</span><span>Možní jmenovci &mdash; výběr checkboxem</span></li>
+            <li class="flex gap-2"><span class="text-emerald-600 dark:text-emerald-400">→</span><span>AI souhrn s BYO klíčem (Claude + Gemini)</span></li>
+            <li class="flex gap-2"><span class="text-emerald-600 dark:text-emerald-400">→</span><span>PDF prověrka, ZIP bulk, Fakturoid/iDoklad/Pohoda export</span></li>
+            <li class="flex gap-2"><span class="text-emerald-600 dark:text-emerald-400">→</span><span>Watchlist email alerty</span></li>
+            <li class="flex gap-2"><span class="text-emerald-600 dark:text-emerald-400">→</span><span>Embed widget pro vlastní web</span></li>
+            <li class="flex gap-2"><span class="text-emerald-600 dark:text-emerald-400">→</span><span>Datová schránka &mdash; ID lookup podle IČO</span></li>
+            <li class="flex gap-2"><span class="text-emerald-600 dark:text-emerald-400">→</span><span>EN překlad &mdash; interface i prověrka</span></li>
+          </ul>
+        </div>
+
+        <!-- Plán -->
+        <div class="rounded-2xl border border-amber-200 dark:border-amber-800 bg-amber-50/30 dark:bg-amber-900/10 p-6">
+          <div class="flex items-center gap-2 mb-4">
+            <span class="text-2xl">🚧</span>
+            <h3 class="text-lg font-bold text-amber-700 dark:text-amber-300">V plánu (následující měsíce)</h3>
+          </div>
+          <ul class="space-y-2 text-sm">
+            <li class="flex gap-2"><span class="text-amber-600 dark:text-amber-400">→</span><span>Demo screencast (3 min) na úvodní stránce</span></li>
+            <li class="flex gap-2"><span class="text-amber-600 dark:text-amber-400">→</span><span>Předplatné AI souhrnů (bez nutnosti vlastního API klíče)</span></li>
+            <li class="flex gap-2"><span class="text-amber-600 dark:text-amber-400">→</span><span>Tokenové dobíjení (kredity) pro malé use case</span></li>
+            <li class="flex gap-2"><span class="text-amber-600 dark:text-amber-400">→</span><span>Veřejné REST API + OpenAPI pro 3rd party integrace</span></li>
+            <li class="flex gap-2"><span class="text-amber-600 dark:text-amber-400">→</span><span>Týmové účty a sdílení prověrek mezi kolegy</span></li>
+            <li class="flex gap-2"><span class="text-amber-600 dark:text-amber-400">→</span><span>Mobilní aplikace (PWA jako další krok)</span></li>
+            <li class="flex gap-2"><span class="text-amber-600 dark:text-amber-400">→</span><span>Rozšíření o slovenský ORSR (cross-border DD)</span></li>
+            <li class="flex gap-2"><span class="text-amber-600 dark:text-amber-400">→</span><span>Hlubší integrace ÚPV &mdash; logo recognition</span></li>
+            <li class="flex gap-2"><span class="text-amber-600 dark:text-amber-400">→</span><span>Pokročilý alerting (Slack, Teams webhook)</span></li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="mt-8 p-5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm">
+        <div class="font-semibold mb-1">📌 Důležité &mdash; co zatím <em>není</em></div>
+        <p class="text-slate-600 dark:text-slate-400">
+          Účetní závěrky (rozvahy, výsledovky) &mdash; sbíhání ze Sbírky listin OR je v plánu, ale zatím
+          odkazujeme přímo na justice.cz. Stejně tak detailní výpis z katastru &mdash; ten je placený a vyžaduje
+          autentizaci přes ČÚZK.
+        </p>
+      </div>
+    </section>
+
+    <!-- ── 08: CTA ──────────────────────────────────────────────────── -->
+    <section id="kontakt" class="bg-gradient-to-br from-emerald-600 via-teal-600 to-emerald-700 text-white py-20">
+      <div class="max-w-4xl mx-auto px-5 text-center">
+        <div class="flex items-baseline gap-3 mb-2 justify-center">
+          <span class="font-mono text-sm text-emerald-200">08</span>
+          <span class="text-xs uppercase tracking-wider text-emerald-100 font-semibold">Zkusit</span>
+        </div>
+        <h2 class="text-3xl sm:text-5xl font-bold tracking-tightest mb-4">Vyzkoušejte na vlastním IČO &mdash; teď, bez registrace</h2>
+        <p class="text-emerald-50 text-lg mb-8 max-w-2xl mx-auto">
+          Žádný účet, žádná kreditní karta, žádné &bdquo;14 dní zdarma&ldquo;. Otevřete aplikaci, vlepte IČO klienta nebo protistrany
+          a uvidíte, jestli vám aplikace ušetří hodinu denně.
+        </p>
+        <div class="flex items-center justify-center gap-3 flex-wrap mb-12">
+          <a href="/" class="px-8 py-4 bg-white text-emerald-700 rounded-xl font-bold text-lg hover:bg-emerald-50 transition-colors card-shadow">
+            Otevřít icovazby.cz →
+          </a>
+          <a href="mailto:info@simplesolar.cz?subject=IČO%20vazby" class="px-6 py-3 border-2 border-white text-white rounded-xl font-semibold hover:bg-white/10 transition-colors">
+            ✉️ Napsat nám
+          </a>
+        </div>
+
+        <div class="grid sm:grid-cols-3 gap-4 max-w-2xl mx-auto text-sm">
+          <div class="rounded-xl bg-white/10 backdrop-blur p-4">
+            <div class="font-bold mb-1">🔓 Bez registrace</div>
+            <div class="text-emerald-100 text-xs">Žádný účet, anonymní použití</div>
+          </div>
+          <div class="rounded-xl bg-white/10 backdrop-blur p-4">
+            <div class="font-bold mb-1">💚 Open-source jádro</div>
+            <div class="text-emerald-100 text-xs">AGPL-3.0 &mdash; můžete si zkontrolovat kód</div>
+          </div>
+          <div class="rounded-xl bg-white/10 backdrop-blur p-4">
+            <div class="font-bold mb-1">🇪🇺 GDPR-compliant</div>
+            <div class="text-emerald-100 text-xs">Provoz v EU, žádný US cloud</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── Footer ───────────────────────────────────────────────────── -->
+    <footer class="bg-slate-900 text-slate-400 py-10 px-5 text-sm">
+      <div class="max-w-6xl mx-auto">
+        <div class="flex flex-wrap items-center justify-between gap-4 mb-4">
+          <div>
+            <div class="text-white font-semibold">IČO vazby</div>
+            <div class="text-xs">Provozovatel: SimpleSolar s.r.o., IČO 07315520</div>
+          </div>
+          <div class="flex gap-4 text-xs">
+            <a href="/" class="hover:text-emerald-400">Aplikace</a>
+            <a href="/privacy.html" class="hover:text-emerald-400">GDPR</a>
+            <a href="/terms.html" class="hover:text-emerald-400">Podmínky</a>
+            <a href="https://github.com/milos106/icovazby" class="hover:text-emerald-400">Zdrojový kód (AGPL)</a>
+          </div>
+        </div>
+        <div class="text-xs text-slate-500 border-t border-slate-800 pt-4">
+          Tento dokument je nabídkovou prezentací produktu. Veškerá data v aplikaci pochází z oficiálních veřejných registrů ČR a EU.
+          Aplikace neposkytuje právní ani daňové poradenství &mdash; rozhodnutí na základě prověrky činí uživatel sám.
+        </div>
+      </div>
+    </footer>
+
+  </body>
+</html>
