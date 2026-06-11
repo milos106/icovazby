@@ -4,6 +4,10 @@ Last updated: **2026-06-09**
 
 Strategický pohled na další směřování. Rozděleno podle horizontu a impactu. Tento dokument je živý — když dokončíme položku, posuneme ji do CHANGELOG (nebo task #N s `completed`); když narazíme na nový nápad, přidáme ho sem.
 
+### 🔧 Infra migrace (běží)
+
+**Hetzner DE → Hukot CZ (ivz1)** — kvůli MSP WAF blokaci Hetzner IP rozsahu a konsolidaci 4 fakturací (Hetzner + 3 Hukot webhostings) do jednoho VPS. Detailní plán s checkboxy: **[`docs/MIGRATION_HUKOT.md`](./MIGRATION_HUKOT.md)**.
+
 **Aktuální backbone** (k 2026-06-09):
 - 13 datových zdrojů (ARES, OR, RŽP, ADIS DPH, ISIR, ČNB, EU sankce, Hlídač státu UBO/dotace/smlouvy, ÚPV ochranné známky, …)
 - 307k značek + 17k subjektů + 22k osob + 900 ownership edges v SQLite
