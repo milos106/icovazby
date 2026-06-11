@@ -224,7 +224,8 @@ Z (před):                                       Na (po):
 - [x] Aktualizovat peer config na **macbookVPN** — provedeno vzdáleně přes SSH ProxyJump (lokál → Hetzner public → macbook WG)
   - ⚠️ **PAST:** `/usr/local/bin/wg-quick` na macbooku není standardní wg-quick, ale **custom „Catalina WireGuard launcher"** skript napsaný ručně. Má hardkód `CONF="/usr/local/etc/wireguard/hetzner.conf"` a hardkód `route delete 178.104.160.124` v down sekci.
   - Workaround: fyzický `hetzner.conf` přepsán ivz1 settings (jméno legacy, obsah = ivz1). `wg-quick up hetzner` startuje ivz1 tunel.
-  - **Pro čistý fix v budoucnu**: `brew reinstall wireguard-tools` → přepíše custom skript upstream verzí. Pak může `wg-quick up ivz1` fungovat normálně.
+  - **Symlink workaround (2026-06-11 odpoledne)**: `hetzner.conf` je symlink na `ivz1.conf`, takže `ivz1.conf` je jediný zdroj pravdy. Skript stále načítá přes legacy jméno.
+  - **Pro čistý fix v budoucnu**: `brew reinstall wireguard-tools` selhal (wireguard-go checksum mismatch). Zkusit znovu po brew update, nebo manuálně stáhnout upstream wg-quick.
   - **Recovery při zlomení**: `sudo cp /usr/local/bin/wg-quick.hacked.bak /usr/local/bin/wg-quick && sudo wg-quick up hetzner`
 - [ ] Po týdnu paralelního provozu (mobil + macbook ověřit) — `systemctl disable --now wg-quick@wg0` na Hetzneru
 - [ ] Smazat `/etc/wireguard/hetzner.conf` z lokálu po finálním vypnutí
