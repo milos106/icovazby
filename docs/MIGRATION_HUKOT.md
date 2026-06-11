@@ -35,14 +35,14 @@ Z (před):                                       Na (po):
 
 ---
 
-## Phase 1 — Objednávka + okamžitý kredit
+## Phase 1 — Objednávka
 
 - [ ] **Stisknout OBJEDNAT** s platbou kartou (~60 s aktivace)
 - [ ] Zaznamenat veřejnou IPv4 nového VPS: `___________________`
 - [ ] Zaznamenat počáteční root heslo (z welcome emailu)
-- [ ] **Zrušit WPH-01 kkevents.cz** (prázdný hosting = okamžitý kredit ~150–250 Kč)
-  - Email šablona viz **Příloha A**
 - [ ] Zaznamenat částku migračního bonusu (10 % nevyčerpaného Hetzner období) — po vyřízení Hukotu
+
+> ⚠️ **POZOR:** WPH-01 kkevents.cz **má obsah** (jen bez DB) — nezrušit okamžitě, viz Phase 8.
 
 ---
 
@@ -166,11 +166,28 @@ Z (před):                                       Na (po):
 
 ---
 
-## Phase 8 — kkevents.cz (placeholder + později nový PHP)
+## Phase 8 — Migrace kkevents.cz (WP soubory, **bez DB**)
 
-- [ ] Vytvořit jednoduchý HTML placeholder `/var/www/kkevents/index.html`: „Připravujeme nový web"
-- [ ] Caddy config: statický
-- [ ] **Pozdější:** přepsat WordPress → custom PHP (separate task)
+> Tarif WPH-01, WordPress hosting, PHP 8.4. Web má **obsah ale žádnou DB** — buď nedokončená WP instalace, statický export, nebo soubory bez aktivní DB. Stáhneme všechno a rozhodneme se na místě podle obsahu.
+
+- [ ] SSH na WPH-01 (Hukot shell) — projít strukturu `/home/.../www/`
+  - [ ] `ls -lah` v root webu — kolik MB, co tam je (wp-config.php? wp-content/uploads?)
+  - [ ] `find . -name "wp-config.php"` — pokud existuje, vytáhnout DB connection údaje (i když DB neexistuje, hodí se vědět, co tam mělo být)
+- [ ] Backup obsahu:
+  ```bash
+  tar czf kkevents-www.tar.gz /home/.../www/
+  ```
+- [ ] **Pokud má WP soubory:** zkontrolovat `wp-content/uploads/` (media) a `wp-content/themes/` (vlastní šablona?). To je to, co nelze znovu vytvořit.
+- [ ] **Pokud byla DB ale teď je smazaná:** zeptat se Hukot support, zda mají backup DB v zálohách
+- [ ] Scp tarball na nový VPS
+- [ ] Rozbalit do `/var/www/kkevents`
+- [ ] **Rozhodnutí podle obsahu:**
+  - **A) Funkční WordPress** → instalovat fresh WP na VPS, nahrát uploads + themes, ručně nastavit
+  - **B) Statický export** → Caddy serve jako statika
+  - **C) Hybridní (pár PHP skriptů)** → PHP-FPM passthrough
+- [ ] Caddy config pro `kkevents.cz`
+- [ ] **Akceptační test:** stránka odpovídá z nové IP s viditelným obsahem
+- [ ] **Pozdější:** přepsat na vlastní PHP / nový web (separate task)
 
 ---
 
@@ -243,7 +260,8 @@ Z (před):                                       Na (po):
 
 - [ ] **Email výpověď WH-01 mb-tenis** (Příloha B)
 - [ ] **Email výpověď WH-03 simplesolar** (Příloha B)
-- [ ] Počkat na potvrzení Hukotu + připsání kreditu
+- [ ] **Email výpověď WPH-01 kkevents** (Příloha B, varianta WPH)
+- [ ] Počkat na potvrzení Hukotu + připsání kreditu (souhrnně ~700–1 200 Kč)
 - [ ] Smazat hostings v admin panelu (až po písemném potvrzení)
 - [ ] **Hetzner backup:** vytvořit poslední snapshot persons-index.sqlite a stáhnout k sobě jako pojistku
 - [ ] Vypnout / smazat Hetzner VPS (cancel v admin panelu)
@@ -277,22 +295,9 @@ Z (před):                                       Na (po):
 
 ---
 
-## Příloha A — Email šablona: rušení **WPH-01 kkevents.cz** (dnes)
+## Příloha A — ~~Email šablona: rušení WPH-01 kkevents.cz (dnes)~~
 
-> **Předmět:** Výpověď služby WPH-01 kkevents.cz
->
-> Dobrý den,
->
-> tímto vypovídám smlouvu o poskytování služeb WordPress hostingu **kkevents.cz (WPH-01)** ke dni [DATUM]. Hosting je prázdný, nemáme tam žádný obsah.
->
-> Žádám prosím o:
-> 1. Potvrzení ukončení smlouvy
-> 2. Připsání alikvotní části za nevyčerpané období jako kredit na můj uživatelský účet u Hukotu (dle čl. X provozních podmínek)
->
-> Děkuji za vyřízení.
->
-> S pozdravem,
-> Miloš Pospíšil
+> ⚠️ **Zrušeno:** kkevents má obsah, nemůžeme okamžitě rušit. Migrace v Phase 8, výpověď v Phase 13 (viz Příloha B).
 
 ---
 
