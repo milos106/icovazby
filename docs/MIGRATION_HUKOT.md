@@ -211,16 +211,19 @@ Z (před):                                       Na (po):
 
 ## Phase 10 — WireGuard migrace z Hetzneru
 
-- [ ] Vygenerovat nový server key pair na `ivz1`:
-  ```bash
-  cd /etc/wireguard && wg genkey | tee privatekey | wg pubkey > publickey
-  ```
-- [ ] Vytvořit `/etc/wireguard/wg0.conf` (server)
-- [ ] `systemctl enable --now wg-quick@wg0`
-- [ ] Aktualizovat peer config na **desktopu** (`/etc/wireguard/hetzner.conf` → `/etc/wireguard/ivz1.conf`)
-- [ ] Aktualizovat peer config na **telefonu** (WireGuard app)
-- [ ] Test tunelu: `ping 10.8.0.1` z desktopu
-- [ ] Aktualizovat `~/.ssh/config` na desktopu (alias `ivz1`)
+- [x] Vygenerovat nový server key pair na `ivz1` — server pubkey: `pYouF8OkSrt23DJQqZ+lQa0WC8/N/rpSi2/RhNuvBXo=`
+- [x] Vytvořit `/etc/wireguard/wg0.conf` (server) — stejná subnet 10.7.0.0/24 + IPv6 `fddd:2c4:2c4:2c4::/64`, port 51820, NAT MASQUERADE/SNAT na ens18, 3 peery zkopírovány z Hetzneru (thinkpad, mobil, macbookVPN)
+- [x] `systemctl enable --now wg-quick@wg0`
+- [x] Aktualizovat peer config na **desktopu** — vytvořen `/etc/wireguard/ivz1.conf`, `hetzner.conf` ponechán jako fallback; `wg-quick down hetzner && wg-quick up ivz1`
+- [x] Aktualizovat `~/.ssh/known_hosts` (10.7.0.1 měl Hetzner SSH fingerprint, teď ivz1)
+- [x] `systemctl enable wg-quick@ivz1` (auto-up po rebootu)
+- [x] Test tunelu: `ssh root@10.7.0.1 hostname` → vrátí `ivz1` ✅
+- [ ] Aktualizovat peer config na **telefonu** (WireGuard app):
+  - Peer's Public Key: → `pYouF8OkSrt23DJQqZ+lQa0WC8/N/rpSi2/RhNuvBXo=`
+  - Endpoint: → `46.36.40.227:51820`
+- [ ] Aktualizovat peer config na **macbookVPN** (WireGuard.app) — stejné 2 fieldy
+- [ ] Po týdnu paralelního provozu (mobil + macbook ověřit) — `systemctl disable --now wg-quick@wg0` na Hetzneru
+- [ ] Smazat `/etc/wireguard/hetzner.conf` z lokálu po finálním vypnutí
 
 ---
 
