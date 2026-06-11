@@ -255,12 +255,16 @@ Z (před):                                       Na (po):
 
 ---
 
-## Phase 11 — ha1.pp.ua (DDNS / tunel)
+## Phase 11 — ha1.pp.ua + Home Assistant ekosystém ✅
 
-- [ ] Ověřit, zda DNS u `pp.ua` registrátora ukazuje na správné cílové místo
-- [ ] Pokud Cloudflare Tunnel z domácí HA: žádná změna na ivz1
-- [ ] Pokud reverse SSH tunel přes mojeVPS: přemigrovat na ivz1
-- [ ] Pokud jen ddclient z domácí: žádná akce nutná
+- [x] ha1.pp.ua: zóna v Cloudflare, `ssh.ha1.pp.ua` CNAME na CF Tunnel UUID (`d6e2fa43-...`) — funguje
+- [x] HA web access ověřen: primární cesta = **`ha.mb-tenis.cz` přes CF Tunnel** (CF orange, cloudflared add-on v HA)
+- [x] Sekundární cesta: `mpcz.duckdns.org:8123` (DDNS na home IP) — funguje ale legacy
+- [x] **Tailscale na Hetzneru = nepoužívaný** — analýza ukázala 0 established connections na port 443 za 15 s, většina iptables counter byly SYN flood od scanneru
+- [x] **Rozhodnutí:** Tailscale NE-migrovat na ivz1, vyhyne s Hetzner cleanupem (Phase 13)
+- [ ] User: HA UI → Settings → System → Network → External URL: změnit z `mpcz.duckdns.org:8123` na `https://ha.mb-tenis.cz` (kvůli ingress redirectům — motioneye atd.)
+- [ ] User: po external_url změně možno vypnout home router port forward 8123 (eliminace DDNS cesty, CF Tunnel jako jediná veřejná brána do HA)
+- [ ] User: HA → Settings → Add-ons → odinstalovat Tailscale add-on (leftover z testování)
 
 ---
 
