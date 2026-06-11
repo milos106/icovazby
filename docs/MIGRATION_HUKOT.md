@@ -227,6 +227,29 @@ Z (před):                                       Na (po):
 
 ---
 
+## Phase 10.5 — RustDesk self-hosted na ivz1 (nepředpokládaný bonus)
+
+> Mid-migration jsme objevili že veřejný RustDesk NY relay (`rs-ny.rustdesk.com:21117`) je dlouhodobě **down**. Padly RustDesk z mobilu i thinkpadu. Nasadili jsme vlastní `hbbs` + `hbbr` na ivz1.
+
+- [x] Stáhnut `rustdesk-server` 1.1.15 (oficiální OSS, MIT) z GitHub releases
+- [x] System user `rustdesk` + `/opt/rustdesk-server` ownership
+- [x] Systemd units: `rustdesk-hbbs.service` + `rustdesk-hbbr.service` (MemoryMax=256M každý)
+- [x] UFW: `21115-21119/tcp` + `21116/udp` allowed
+- [x] Public Key pro klienty: `kdz3PlzBwaCozKgucjImxBL3QLVYmVIP51POvVDoHCs=`
+- [x] Resource footprint: ~10 MB RAM, ~10 MB disk
+- [x] **RustDesk klient config** — ID server `46.36.40.227`, key výše
+
+### Vedlejší fix — UFW WG forwarding (pro full-tunnel mobil)
+
+- [x] `DEFAULT_FORWARD_POLICY` zůstává `DROP` (paranoidní default)
+- [x] UFW route allow:
+  - `in on wg0 out on ens18` — WG peery → internet (split + full tunnel)
+  - `in on ens18 out on wg0` — odpovědi
+  - `in on wg0 out on wg0` — peer-to-peer přes ivz1 hub (mobile ↔ thinkpad direct)
+- [x] Bez tohoto fixu: Chrome na mobilu nejede (full-tunnel WG dropuje pakety v UFW)
+
+---
+
 ## Phase 11 — ha1.pp.ua (DDNS / tunel)
 
 - [ ] Ověřit, zda DNS u `pp.ua` registrátora ukazuje na správné cílové místo
