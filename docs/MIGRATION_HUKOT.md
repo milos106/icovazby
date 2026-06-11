@@ -221,7 +221,7 @@ Z (před):                                       Na (po):
 - [ ] Aktualizovat peer config na **telefonu** (WireGuard app):
   - Peer's Public Key: → `pYouF8OkSrt23DJQqZ+lQa0WC8/N/rpSi2/RhNuvBXo=`
   - Endpoint: → `46.36.40.227:51820`
-- [ ] Aktualizovat peer config na **macbookVPN** (WireGuard.app) — stejné 2 fieldy
+- [x] Aktualizovat peer config na **macbookVPN** — provedeno vzdáleně přes SSH ProxyJump (lokál → Hetzner public → macbook WG); `wg-quick` na macbooku má hardkód `CONF="/usr/local/etc/wireguard/hetzner.conf"`, takže fyzický `hetzner.conf` přepsán ivz1 settings (jméno souboru je legacy, obsah = ivz1)
 - [ ] Po týdnu paralelního provozu (mobil + macbook ověřit) — `systemctl disable --now wg-quick@wg0` na Hetzneru
 - [ ] Smazat `/etc/wireguard/hetzner.conf` z lokálu po finálním vypnutí
 
