@@ -120,6 +120,14 @@
         -webkit-font-smoothing: antialiased;
         -moz-osx-font-smoothing: grayscale;
       }
+      /* Mint světlý režim — méně bílá, jemný emerald tón.
+         Body bg jde přes Tailwind arbitrary value, karty (bg-white) přes CSS
+         override. V tmavém režimu zůstávají Tailwindem řízené barvy beze změny
+         díky vyšší specificitě `.dark .dark\:bg-X` pravidel. */
+      html:not(.dark) .bg-white { background-color: #FAFFFC; }
+      /* Header background s blur — udržíme barevně koherentní */
+      html:not(.dark) header.bg-white\/85,
+      html:not(.dark) .bg-white\/85 { background-color: rgb(250 255 252 / 0.85); }
       /* Risk hero gradient bg (jen YELLOW/RED — GREEN je inline pill). */
       .risk-red { background: linear-gradient(135deg, #fee2e2, #fecaca); border-color: #dc2626; }
       .risk-yellow { background: linear-gradient(135deg, #fef3c7, #fde68a); border-color: #d97706; }
@@ -198,7 +206,7 @@
       .dark footer a { color: rgb(52 211 153); } /* emerald-400 */
     </style>
   </head>
-  <body class="bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-slate-100 min-h-screen flex flex-col transition-colors">
+  <body class="bg-[#F2FAF5] dark:bg-slate-900 text-slate-900 dark:text-slate-100 min-h-screen flex flex-col transition-colors">
     <header class="bg-white dark:bg-slate-800 border-b dark:border-slate-700 sticky top-0 z-30" x-data="historyBar()" x-init="init()">
       <div class="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between gap-3 flex-wrap">
         <a href="/" class="flex items-center gap-3 rounded-lg hover:opacity-90 transition-opacity" title="Domů">

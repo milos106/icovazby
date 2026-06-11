@@ -56,6 +56,9 @@
       }
       .mermaid svg { max-width: 100%; height: auto; background: transparent !important; }
       .dark .mermaid svg > rect:first-of-type { fill: transparent !important; }
+      /* Mint světlý režim — bg-white karty dostanou snow-mint odstín */
+      html:not(.dark) .bg-white { background-color: #FAFFFC; }
+      html:not(.dark) .bg-white\/85 { background-color: rgb(250 255 252 / 0.85); }
       .gradient-text {
         background: linear-gradient(135deg, #059669 0%, #047857 40%, #0f766e 100%);
         -webkit-background-clip: text;
@@ -135,7 +138,7 @@
       }
     </style>
   </head>
-  <body class="bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 font-sans">
+  <body class="bg-[#F2FAF5] dark:bg-slate-900 text-slate-900 dark:text-slate-100 font-sans">
 
     <!-- ── Header ───────────────────────────────────────────────────── -->
     <header class="sticky top-0 z-30 bg-white/85 dark:bg-slate-900/85 backdrop-blur border-b border-slate-200 dark:border-slate-800 no-print">
