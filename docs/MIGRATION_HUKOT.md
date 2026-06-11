@@ -259,12 +259,12 @@ Z (před):                                       Na (po):
 
 - [x] ha1.pp.ua: zóna v Cloudflare, `ssh.ha1.pp.ua` CNAME na CF Tunnel UUID (`d6e2fa43-...`) — funguje
 - [x] HA web access ověřen: primární cesta = **`ha.mb-tenis.cz` přes CF Tunnel** (CF orange, cloudflared add-on v HA)
-- [x] Sekundární cesta: `mpcz.duckdns.org:8123` (DDNS na home IP) — funguje ale legacy
+- [x] Sekundární cesta: `mpcz.duckdns.org:8123` — DNS sice resolves na home IP, ale port forward na home routeru **NEexistuje** (timeout z venku na všech portech 80/443/8123/22). DDNS je pouze update DNS záznamu, ale router nepropouští. Bezpečnostně dobré.
 - [x] **Tailscale na Hetzneru = nepoužívaný** — analýza ukázala 0 established connections na port 443 za 15 s, většina iptables counter byly SYN flood od scanneru
 - [x] **Rozhodnutí:** Tailscale NE-migrovat na ivz1, vyhyne s Hetzner cleanupem (Phase 13)
 - [ ] User: HA UI → Settings → System → Network → External URL: změnit z `mpcz.duckdns.org:8123` na `https://ha.mb-tenis.cz` (kvůli ingress redirectům — motioneye atd.)
-- [ ] User: po external_url změně možno vypnout home router port forward 8123 (eliminace DDNS cesty, CF Tunnel jako jediná veřejná brána do HA)
 - [ ] User: HA → Settings → Add-ons → odinstalovat Tailscale add-on (leftover z testování)
+- [x] Port forward 8123 v home routeru → **NEEXISTUJE** (ověřeno, žádná akce nutná)
 
 ---
 
