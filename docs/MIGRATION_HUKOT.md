@@ -292,16 +292,23 @@ Z (před):                                       Na (po):
 
 ---
 
-## Phase 13 — Vypnutí starých služeb (po 14 dnech)
+## Phase 13 — Vypnutí starých služeb
+
+### Hetzner ✅ (2026-06-11 odpoledne)
+
+- [x] **Hetzner backup:** persons-index.sqlite (93 MB) + .env + wg0.conf + 9 systemd units → `~/backups/hetzner-final-2026-06-11/`
+- [x] Smoke test ivz1 (žádná závislost na Hetzneru, žádný `178.104.160.124` v configu)
+- [x] **Fix CF SSL/TLS mode** z `Flexible` na `Full (strict)` — Flexible vytvořila 308 smyčku (CF↔origin přes HTTP, Caddy auto-redirect na HTTPS)
+- [x] **Hetzner VPS smazán** v Hetzner Cloud Console
+- [x] Ověřeno: `178.104.160.124` 100 % packet loss, SSH timeout — IP vrácena do poolu
+
+### 3 Hukot hostings (čeká po dokončení Phase 6-8)
 
 - [ ] **Email výpověď WH-01 mb-tenis** (Příloha B)
 - [ ] **Email výpověď WH-03 simplesolar** (Příloha B)
 - [ ] **Email výpověď WPH-01 kkevents** (Příloha B, varianta WPH)
 - [ ] Počkat na potvrzení Hukotu + připsání kreditu (souhrnně ~700–1 200 Kč)
 - [ ] Smazat hostings v admin panelu (až po písemném potvrzení)
-- [ ] **Hetzner backup:** vytvořit poslední snapshot persons-index.sqlite a stáhnout k sobě jako pojistku
-- [ ] Vypnout / smazat Hetzner VPS (cancel v admin panelu)
-- [ ] Ověřit, že úspora se dostavila na příští faktuře Hetzneru
 
 ---
 
@@ -396,8 +403,8 @@ rsync -av root@10.7.0.1:/etc/caddy/ ./caddy/
 
 **Datum zahájení:** 2026-06-11 12:00 CEST  
 **Datum cutover icovazby.cz na ivz1:** 2026-06-11 12:28 CEST  
-**Datum dokončení Phase 11:** _______________  
-**Datum vypnutí Hetzneru:** _______________  
+**Datum dokončení Phase 11 (HA + Tailscale):** 2026-06-11 15:30 CEST  
+**Datum vypnutí Hetzneru:** 2026-06-11 15:48 CEST  
 **Datum potvrzení kreditu Hukotu:** _______________
 
 ---
