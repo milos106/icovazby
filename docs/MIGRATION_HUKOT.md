@@ -1,9 +1,9 @@
 # Migrace na Hukot VPS-L04G (`ivz1`)
 
-> **Status:** připraveno k zahájení po objednávce VPS  
+> **Status:** Phase 1–5 hotovo, Phase 9 částečně (icovazby.cz cutover hotov). Pokračujeme Phase 6 (simplesolar).  
+> **VPS:** ivz1 (46.36.40.227 / 2a02:25b0:aaaa:2f27::), Ubuntu 24.04.4 LTS, Hukot Česká Třebová  
 > **Cíl:** Sjednotit Hetzner + 3 Hukot webhostings do jednoho VPS v ČR; odblokovat MSP Veřejný rejstřík (CZ IP)  
-> **Tarif:** Hukot VPS-L04G (4 GB / 2 vCPU / 40 GB NVMe / 140 Kč/měs), 12 měsíců předplatné, Ubuntu 24.04 LTS, datacentrum Česká Třebová  
-> **Pracovní okno:** ~3 h aktivního setupu + 14 dní paralelního provozu, pak cutover  
+> **Tarif:** Hukot VPS-L04G (4 GB / 2 vCPU / 40 GB NVMe / 140 Kč/měs), 12 měsíců předplatné  
 > **Tento dokument prochází v krocích shora dolů. Odškrtávat checkboxy po splnění.**
 
 ---
@@ -24,7 +24,7 @@ Z (před):                                       Na (po):
 
 ---
 
-## Phase 0 — Pre-migrace (před objednávkou)
+## Phase 0 — Pre-migrace (před objednávkou) ✅
 
 - [x] Hukot support potvrdil CZ datacentrum + CZ IP
 - [x] Tarif vybrán: **L04G ročně**
@@ -35,26 +35,26 @@ Z (před):                                       Na (po):
 
 ---
 
-## Phase 1 — Objednávka
+## Phase 1 — Objednávka ✅
 
-- [ ] **Stisknout OBJEDNAT** s platbou kartou (~60 s aktivace)
-- [ ] Zaznamenat veřejnou IPv4 nového VPS: `___________________`
-- [ ] Zaznamenat počáteční root heslo (z welcome emailu)
+- [x] **Stisknout OBJEDNAT** s platbou kartou (aktivace 2026-06-11)
+- [x] Zaznamenat veřejnou IPv4 nového VPS: **`46.36.40.227`** (IPv6: `2a02:25b0:aaaa:2f27::`)
+- [x] Zaznamenat počáteční root heslo (z welcome emailu)
 - [ ] Zaznamenat částku migračního bonusu (10 % nevyčerpaného Hetzner období) — po vyřízení Hukotu
 
 > ⚠️ **POZOR:** WPH-01 kkevents.cz **má obsah** (jen bez DB) — nezrušit okamžitě, viz Phase 8.
 
 ---
 
-## Phase 2 — SSH bootstrap + akceptační test (do 30 min od aktivace)
+## Phase 2 — SSH bootstrap + akceptační test ✅
 
-- [ ] První SSH login: `ssh root@<NEW_IP>` s heslem z welcome
-- [ ] Změnit root heslo: `passwd`
-- [ ] Vytvořit user `milos` se sudo: `adduser milos && usermod -aG sudo milos`
-- [ ] Přidat veřejný SSH klíč do `~milos/.ssh/authorized_keys` (varianta A z konverzace)
-- [ ] Otestovat přihlášení jako `milos` z desktopu
-- [ ] Zakázat SSH heslem v `/etc/ssh/sshd_config` (`PasswordAuthentication no`)
-- [ ] **🎯 AKCEPTAČNÍ TEST — curl MSP:**
+- [x] První SSH login: `ssh root@46.36.40.227` (Hukot konzole, heslo z welcome)
+- [x] Změnit root heslo: `passwd`
+- [x] Vytvořit user `milos` se sudo — _přeskočeno, používáme root + SSH klíč_
+- [x] Přidat veřejný SSH klíč do `~/.ssh/authorized_keys` (přes `ssh-copy-id` z lokálu)
+- [x] Otestovat přihlášení z desktopu
+- [x] Zakázat SSH heslem v `/etc/ssh/sshd_config` (`PasswordAuthentication no` + `PermitRootLogin prohibit-password`)
+- [x] **🎯 AKCEPTAČNÍ TEST — curl MSP:** ✅ **200 OK**, JSON s AGROFERT daty, 5/5 bez rate limitu, latence 150 ms
   ```bash
   curl -s -o /dev/null -w "%{http_code}\n" \
     -H "Accept: application/json" \
@@ -62,17 +62,17 @@ Z (před):                                       Na (po):
   ```
   - **Pokud `200`** → ✅ jedeme dál
   - **Pokud `403`** → 🛑 STOP, kontaktovat Hukot support (IP není CZ AS)
-- [ ] `whois <NEW_IP>` — potvrdit CZ AS / Hukot.net jako organizaci
-- [ ] `timedatectl set-timezone Europe/Prague`
-- [ ] `hostnamectl set-hostname ivz1`
-- [ ] `apt update && apt upgrade -y`
-- [ ] Zapnout unattended-upgrades
+- [x] `whois <NEW_IP>` — potvrdit CZ AS (Hukot písemné potvrzení postačí)
+- [x] `timedatectl set-timezone Europe/Prague`
+- [x] hostname `ivz1` byl nastaven Hukotem při bootstrapu
+- [x] `apt update && apt upgrade -y` (unattended-upgrades udělal automaticky při first boot)
+- [x] Zapnout unattended-upgrades
 
 ---
 
-## Phase 3 — Bezpečnostní vrstva
+## Phase 3 — Bezpečnostní vrstva ✅
 
-- [ ] UFW firewall:
+- [x] UFW firewall:
   ```bash
   ufw default deny incoming
   ufw default allow outgoing
@@ -82,49 +82,44 @@ Z (před):                                       Na (po):
   ufw allow 51820/udp  # WireGuard
   ufw enable
   ```
-- [ ] Fail2ban: `apt install fail2ban` + jail pro sshd
-- [ ] SSH only-key auth ověřit
-- [ ] `auditd` (volitelně)
+- [x] Fail2ban s sshd jail (1 jail aktivní)
+- [x] SSH only-key auth ověřeno
+- [ ] `auditd` (volitelně) — _přeskočeno_
 
 ---
 
-## Phase 4 — Stack instalace
+## Phase 4 — Stack instalace ✅
 
-- [ ] **Node 20 LTS** přes nvm pod userem `milos` (NE root)
-- [ ] **Caddy 2** z oficiálního repa (`https://caddyserver.com/docs/install#debian-ubuntu-raspbian`)
-- [ ] **PHP-FPM 8.4** + extensions: `php8.4-{fpm,mysql,curl,gd,xml,mbstring,intl,zip,bcmath}`
-- [ ] **MariaDB 11 LTS** (`mariadb-server`)
-  - [ ] `mysql_secure_installation`
-  - [ ] Disable remote root, drop test DB
-- [ ] **WireGuard tools** (`apt install wireguard`)
-- [ ] **Nástroje:** rsync, jq, htop, vim, git, screen, tmux
-- [ ] **Better-sqlite3 prereq:** `apt install build-essential python3` (kvůli native modulu)
+- [x] **Node 20 LTS** přes NodeSource apt repo (v20.20.2, npm 10.8.2) — systemový, ne nvm
+- [x] **Caddy 2** z oficiálního repa (v2.11.4)
+- [x] **PHP-FPM 8.4** + extensions: `php8.4-{fpm,cli,mysql,curl,gd,xml,mbstring,intl,zip,bcmath}` (8.4.22)
+- [x] **MariaDB 10.11 LTS** (Ubuntu 24.04 default; pro náš case LTS do 2028 stačí)
+  - [x] `mysql_secure_installation` ekvivalent (drop test DB, anonymous users)
+  - [x] Disable remote root, drop test DB
+- [x] **WireGuard tools**
+- [x] **Nástroje:** rsync, jq, htop, vim, git, tmux
+- [x] **Better-sqlite3 prereq:** `build-essential` + python3
 
 ---
 
-## Phase 5 — Migrace icovazby.cz (Node + SQLite)
+## Phase 5 — Migrace icovazby.cz (Node + SQLite) ✅
 
-- [ ] Vytvořit `/opt/icovazby` s ownership user `icovazby` (system user)
-- [ ] `git clone https://github.com/milos106/icovazby /opt/icovazby` *(nebo rsync z Hetzneru)*
-- [ ] **Rsync data z Hetzneru:**
-  ```bash
-  rsync -avz --progress root@10.7.0.1:/opt/icovazby/data/ /opt/icovazby/data/
-  ```
-- [ ] `cd /opt/icovazby && npm ci --omit=dev`
-- [ ] Vytvořit `.env` (kopírovat secrets z Hetzneru):
-  - `HLIDAC_API_TOKEN=...`
-  - `RESEND_API_KEY=...`
-  - `ARES_WEB_DATA_DIR=/opt/icovazby/data`
-  - **NEPOUŽÍVAT** `VR_PROXY_URL` ani `VR_PROXY_TOKEN` (volíme přímo MSP z CZ IP)
-- [ ] `npm run build`
-- [ ] Vytvořit `/etc/systemd/system/icovazby.service`
-- [ ] systemd timery:
-  - [ ] `icovazby-upv-refresh.timer` (denně 04:30)
-  - [ ] `icovazby-drip.timer` (4× denně) *(pokud používáme)*
-  - [ ] `vr-warmup.timer` *(zrušit — už nepotřebujeme CF Worker proxy)*
-- [ ] `systemctl enable --now icovazby`
-- [ ] Caddy config pro `icovazby.cz` → `:3000` (auto Let's Encrypt)
-- [ ] Test: `curl https://ivz1.simplesolar.cz/api/health` (po DNS) nebo `curl --resolve icovazby.cz:443:<NEW_IP> ...`
+- [x] Vytvořit `/opt/icovazby` s ownership user `icovazby` (system user UID 107)
+- [x] Tar pipe z Hetzneru přes lokál (`ssh hetzner tar c | ssh ivz1 tar x`) — 113 MB za 4 sekundy přes WG
+- [x] **Rsync data z Hetzneru** — persons-index.sqlite 93 MB, persons-index.json 21 MB, dist/, src/, public/
+- [x] `cd /opt/icovazby && npm ci --omit=dev` — dependencies nainstalovány
+- [x] Vytvořit `.env` (kopírováno z Hetzneru, odstraněno `VR_PROXY_URL` + `VR_PROXY_TOKEN`)
+- [x] **NE-spuštěn `npm run build`** — dist/server.js z Hetzneru je hotový (196 KB)
+- [x] Vytvořit `/etc/systemd/system/icovazby.service` (zkopírováno z Hetzneru)
+- [x] systemd timery:
+  - [x] `icovazby-upv-refresh.timer` (denně 04:30)
+  - [x] `icovazby-drip.timer` (hodinově)
+  - [x] `icovazby-refresh.timer` (neděle 03:00)
+  - [x] `vr-warmup.timer` *(zrušen — nepotřebujeme CF Worker proxy)*
+- [x] `systemctl enable --now icovazby` — služba běží, 145 MB RSS
+- [x] Caddy config pro `icovazby.cz` + `www.icovazby.cz` → `:3000` (auto Let's Encrypt)
+- [x] **LE cert získán** přes HTTP-01 challenge (po DNS cutover na ivz1 + dočasně DNS only)
+- [x] Test: `curl https://icovazby.cz/api/vr/26185610` → **200 OK, plný JSON s AGROFERT daty, latence 110 ms (přes CF: 81 ms)**
 
 ---
 
@@ -358,7 +353,59 @@ rsync -av root@10.7.0.1:/etc/caddy/ ./caddy/
 
 ## Sledování stavu
 
-**Datum zahájení:** _______________  
+**Datum zahájení:** 2026-06-11 12:00 CEST  
+**Datum cutover icovazby.cz na ivz1:** 2026-06-11 12:28 CEST  
 **Datum dokončení Phase 11:** _______________  
 **Datum vypnutí Hetzneru:** _______________  
 **Datum potvrzení kreditu Hukotu:** _______________
+
+---
+
+## Příloha E — Plánované enhancementy (po dokončení migrace)
+
+### E1. Cloudflare DNS-01 challenge pro Caddy LE renewal
+
+**Problém:** LE cert je platný 90 dní. Caddy auto-renew zkusí HTTP-01 challenge, ale skrz CF Proxy (orange cloud) selže — musí se manuálně přepnout na ⚪ DNS only na 5 minut během renewalu (každých ~60 dní).
+
+**Řešení:** Nasadit Caddy s `cloudflare` DNS pluginem + Cloudflare API token (Zone:DNS:Edit pro icovazby.cz + ostatní). Caddy poté použije DNS-01 challenge, který funguje i přes orange cloud.
+
+**Kroky:**
+1. Vygenerovat CF API token s `Zone → DNS → Edit` pro všechny naše zóny
+2. Rebuild Caddy přes xcaddy s `github.com/caddy-dns/cloudflare` modulem
+3. V Caddyfile globální `tls` direktiva s DNS provider:
+   ```caddy
+   {
+       acme_dns cloudflare {env.CLOUDFLARE_API_TOKEN}
+   }
+   ```
+4. Token uložit do `/etc/caddy/.env` (chmod 600 caddy:caddy)
+5. Test: `caddy reload`, sledovat získání certu přes DNS-01
+
+**Termín:** Před prvním renewalem (~2026-08-10, tj. 60 dní od získání).
+
+### E2. Caddy `client_ip` field v logu
+
+**Problém:** Caddy log obsahuje `remote_ip` (CF edge) a `cf-connecting-ip` v headers (reálná klientská IP), ale `client_ip` field zůstává CF edge, ač máme `client_ip_headers CF-Connecting-IP` v Caddyfile. Backend (Fastify) dostává správný X-Forwarded-For od Caddy, takže rate-limit + audit log fungují. Jen Caddy access log je trochu zavádějící.
+
+**Pravděpodobné příčiny:**
+- Caddy 2.11 možná interpretuje `client_ip_headers` v Caddyfile jinak než v JSON config
+- Možná je třeba `client_ip_headers` pod konkrétním server blokem, ne globálně
+- Případně reload neproběhl celý
+
+**Termín:** kdykoli — kosmetický fix, ne kritický.
+
+### E3. Cloudflare R2 backup persons-index.sqlite
+
+**Co:** Nightly cron rsync `/opt/icovazby/data/persons-index.sqlite` na R2 bucket (10 GB free tier).
+
+**Proč:** Pojistka proti SSD selhání ivz1 (recenze hlásily ojediněle propad).
+
+**Kroky:** Vytvořit R2 bucket, API klíče, instalovat `rclone`, cron 02:00 UTC daily, retention 30 dní.
+
+**Termín:** Před vypnutím Hetzneru (Phase 13).
+
+### E4. UptimeRobot ping na nový endpoint
+
+**Co:** Přidat HTTPS check `https://icovazby.cz/` na UptimeRobot.
+
+**Termín:** Po DNS cutover všech domén (Phase 9).
