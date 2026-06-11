@@ -121,6 +121,12 @@ Z (před):                                       Na (po):
 - [x] **LE cert získán** přes HTTP-01 challenge (po DNS cutover na ivz1 + dočasně DNS only)
 - [x] Test: `curl https://icovazby.cz/api/vr/26185610` → **200 OK, plný JSON s AGROFERT daty, latence 110 ms (přes CF: 81 ms)**
 
+### Cleanup CF Worker `vr-proxy` (po cutoveru icovazby.cz) ✅
+
+- [x] Hetzner `vr-warmup.timer` + `vr-warmup.service` disablovány (zbytečné pingování)
+- [x] Hetzner `.env`: odstraněn `VR_PROXY_URL` + `VR_PROXY_TOKEN`
+- [x] CF Worker `vr-proxy.milospospisil68.workers.dev` smazán z dashboardu (verified: vrací 404)
+
 ---
 
 ## Phase 6 — Migrace simplesolar.cz (PHP + 2 DB)
