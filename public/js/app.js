@@ -727,6 +727,14 @@ function graphSection() {
             },
           },
           {
+            // Hover afordance: emerald „ring" kolem firmy → signál, že je klikatelná.
+            selector: "node[type='firma'].hover",
+            style: {
+              "border-width": 4,
+              "border-color": isDark ? "#6ee7b7" : "#34d399",
+            },
+          },
+          {
             selector: "node[type='person']",
             style: {
               "background-color": isDark ? "#60a5fa" : "#3b82f6",
@@ -788,6 +796,15 @@ function graphSection() {
       this.cy.on("tap", "node[type='firma']", (evt) => {
         const ico = evt.target.data("ico");
         if (ico) window.dispatchEvent(new CustomEvent("open-search", { detail: { ico } }));
+      });
+      // Afordance: pointer kurzor + ring při najetí na firmu (uzel je klikatelný).
+      this.cy.on("mouseover", "node[type='firma']", (evt) => {
+        evt.target.addClass("hover");
+        container.style.cursor = "pointer";
+      });
+      this.cy.on("mouseout", "node[type='firma']", (evt) => {
+        evt.target.removeClass("hover");
+        container.style.cursor = "default";
       });
     },
     /** Unique key pro tentative kandidáta — pro Alpine x-model binding. */
