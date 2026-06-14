@@ -564,8 +564,9 @@ function graphSection() {
     error: "",
     result: null,
     mermaidSvg: "",
-    /** 'mermaid' | 'interactive' — toggle. Default Mermaid (zpětně kompatibilní). */
-    renderMode: "mermaid",
+    /** 'mermaid' | 'interactive' — toggle. Default interactive (klikatelný
+     *  drill-down do profilu); Mermaid je volba pro statický export. */
+    renderMode: "interactive",
     /** Cytoscape instance — odkaz pro relayout / destroy. */
     cy: null,
     // Selection map pro „Možné jmenovce" (tentativeCandidates). Key = jmeno|prijmeni
@@ -645,6 +646,11 @@ function graphSection() {
           } catch (e) {
             this.error = "Nepodařilo se vykreslit graf: " + e.message;
           }
+        }
+        // Default režim je interaktivní → vykresli Cytoscape i bez kliknutí na
+        // toggle (dřív se renderCytoscape spouštěl jen z toggle tlačítka).
+        if (this.renderMode === "interactive") {
+          requestAnimationFrame(() => this.renderCytoscape());
         }
       } catch (e) {
         this.error = e.message;
