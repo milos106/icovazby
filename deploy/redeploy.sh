@@ -4,6 +4,14 @@ set -euo pipefail
 SERVER="${1:-root@10.7.0.1}"
 
 cd "$(dirname "$0")/.."
+# Auto-bump patch verze PŘED buildem → změní ?v={{VERSION}} u app.js a rozbije
+# browser cache (jinak prohlížeče drží starý app.js až max-age 14400 = 4 h).
+# --no-git-tag-version: jen upraví package.json + lock, nedělá git commit/tag.
+# Skip přes BUMP=0 (např. redeploy beze změn frontendu).
+if [ "${BUMP:-1}" = "1" ]; then
+  npm version patch --no-git-tag-version >/dev/null
+  echo "→ verze $(node -p "require('./package.json').version") (cache-bust)"
+fi
 npm run build
 node scripts/build_static_pages.mjs
 rsync -avzc --delete -e ssh dist/ "$SERVER:/opt/icovazby/dist/"
