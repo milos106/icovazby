@@ -333,6 +333,10 @@ function searchSection() {
     licensesData: null,
     exportNotice: "",
     _initialized: false,
+    // True když Mapa propojení byla naplněna SEZNAMEM (≥2 IČO) → zobrazený
+    // profil může patřit jiné firmě než ta v mapě. Hint vybídne k volbě uzlu.
+    // Vyčistí se v run() (= načtení konkrétního profilu, vč. kliku na uzel).
+    mapHint: false,
     persistQuery() {
       try {
         if (this.query?.trim()) {
@@ -354,6 +358,11 @@ function searchSection() {
             /* scroll removed per user request */
           });
         }
+      });
+      // Mapa propojení naplněná seznamem (≥2 IČO) → profil může být „cizí".
+      // Zobraz hint vybízející k volbě firmy klikem v mapě (drill-down).
+      window.addEventListener("ares-seed-graph", (e) => {
+        this.mapHint = (e.detail?.icos?.length ?? 0) >= 2;
       });
       // Restore last query z localStorage (po refreshi / re-open tabu)
       try {
@@ -377,6 +386,7 @@ function searchSection() {
     },
     async run() {
       this.error = "";
+      this.mapHint = false; // načítáme konkrétní profil → hint už neplatí
       this.profile = null;
       this.results = [];
       this.totalFound = 0;
@@ -771,10 +781,13 @@ function graphSection() {
           },
         ],
       });
-      // Click na firmu = otevři její profil v search
+      // Click na firmu = otevři její profil v search.
+      // POZN.: searchSection poslouchá "open-search" (ne "ares-open-profile" —
+      // ten dříve nikdo nekonzumoval → klik byl mrtvý). Tím je drill-down
+      // z Mapy propojení do Profilu funkční: uzel = volba subjektu do pole 1.
       this.cy.on("tap", "node[type='firma']", (evt) => {
         const ico = evt.target.data("ico");
-        if (ico) window.dispatchEvent(new CustomEvent("ares-open-profile", { detail: { ico } }));
+        if (ico) window.dispatchEvent(new CustomEvent("open-search", { detail: { ico } }));
       });
     },
     /** Unique key pro tentative kandidáta — pro Alpine x-model binding. */

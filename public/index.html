@@ -527,6 +527,16 @@
             ></button>
           </form>
 
+          <!-- Hint: Mapa propojení byla naplněna SEZNAMEM firem → profil výše
+               nemusí odpovídat mapě. Vybídni k drill-downu klikem na uzel.
+               mapHint se nastaví na ares-seed-graph (≥2 IČO), zhasne v run(). -->
+          <template x-if="mapHint">
+            <div class="mt-3 flex items-start gap-2 text-xs px-3 py-2 rounded-lg border border-emerald-200 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-900/20 text-emerald-800 dark:text-emerald-200">
+              <span class="shrink-0">👆</span>
+              <span>Mapa propojení zobrazuje <strong>seznam více firem</strong> — profil výše patří poslednímu hledání. <a href="#graph" class="underline font-medium">Klikni na firmu v mapě</a> a načte se její profil.</span>
+            </div>
+          </template>
+
           <template x-if="error">
             <div class="mt-4 text-center py-6 px-4 border border-dashed border-slate-300 dark:border-slate-700 rounded-lg">
               <div class="text-3xl mb-2" x-text="window.classifyError(error) === 'network' ? '⚠️' : '🔍'"></div>
