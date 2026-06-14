@@ -1,4 +1,10 @@
-# Deployment — Hetzner CX11
+# Deployment
+
+> **⚠️ Aktuální produkce: Hukot VPS `ivz1` (`46.36.40.227`), ne Hetzner.**
+> Migrace 2026-06 (viz [`docs/MIGRATION_HUKOT.md`](../docs/MIGRATION_HUKOT.md)).
+> Tento návod je historicky psaný pro Hetzner CX11; obecné kroky (Ubuntu 24.04 +
+> Caddy + Node + systemd) platí pro libovolný VPS. Běžný redeploy aplikace:
+> `deploy/redeploy.sh` (cílí na `root@10.7.0.1` přes WireGuard).
 
 Tahle složka obsahuje **`install.sh`** — one-shot install skript pro produkční nasazení na čerstvé Ubuntu 24.04 LTS instanci.
 

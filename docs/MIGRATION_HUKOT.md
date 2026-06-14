@@ -1,6 +1,6 @@
 # Migrace na Hukot VPS-L04G (`ivz1`)
 
-> **Status:** Phase 1–5 hotovo, Phase 9 částečně (icovazby.cz cutover hotov). Pokračujeme Phase 6 (simplesolar).  
+> **Status (2026-06-14):** Phase 1–6 HOTOVO. Všechny 4 weby zmigrované na ivz1 (icovazby, mb-tenis, kkevents, **simplesolar** — cutover 13./14. 6.). Zbývá Phase 13: vypovědět 3 Hukot hostingy (WH-01 mb-tenis, WH-03 simplesolar, WPH-01 kkevents) + počkat na kredit. Pozn.: u simplesolaru je `info@` e-mail SOUČÁSTÍ WH-03 — před výpovědí ověřit, že CF Email Routing + odchozí pošta fungují (viz Phase 6). DNS simplesolar.cz je na Cloudflare (ne Hukot).  
 > **VPS:** ivz1 (46.36.40.227 / 2a02:25b0:aaaa:2f27::), Ubuntu 24.04.4 LTS, Hukot Česká Třebová  
 > **Cíl:** Sjednotit Hetzner + 3 Hukot webhostings do jednoho VPS v ČR; odblokovat MSP Veřejný rejstřík (CZ IP)  
 > **Tarif:** Hukot VPS-L04G (4 GB / 2 vCPU / 40 GB NVMe / 140 Kč/měs), 12 měsíců předplatné  
@@ -129,29 +129,36 @@ Z (před):                                       Na (po):
 
 ---
 
-## Phase 6 — Migrace simplesolar.cz (PHP + 2 DB)
+## Phase 6 — Migrace simplesolar.cz ✅ HOTOVO (cutover 2026-06-13/14)
 
-- [ ] SSH na WH-03 (Hukot shell)
-- [ ] Backup obsahu:
-  ```bash
-  tar czf simplesolar-www.tar.gz /home/.../www/
-  mysqldump --all-databases --single-transaction > simplesolar-dbs.sql
-  ```
-- [ ] Scp tarball + SQL na nový VPS
-- [ ] Rozbalit do `/var/www/simplesolar`
-- [ ] Vytvořit DB usera + import:
-  ```sql
-  CREATE DATABASE simplesolar_db1; CREATE DATABASE simplesolar_db2;
-  CREATE USER 'simplesolar'@'localhost' IDENTIFIED BY '...';
-  GRANT ALL ON simplesolar_db1.* TO 'simplesolar'@'localhost';
-  GRANT ALL ON simplesolar_db2.* TO 'simplesolar'@'localhost';
-  ```
-- [ ] Update DB connection v PHP konfigu (host=localhost, nová hesla)
-- [ ] PHP-FPM pool config pro `simplesolar` (vlastní socket)
-- [ ] Caddy config: `simplesolar.cz` → PHP-FPM passthrough
-- [ ] Převést cron jobs (z Hukot panelu) na crontab nebo systemd timery
-- [ ] **Test curl-called scriptů** z `curl http://localhost/skript.php`
-- [ ] **Akceptační test:** přístup přes `curl --resolve simplesolar.cz:443:<NEW_IP> https://simplesolar.cz/`
+> **Realita byla jiná než plán.** Nebyl to „PHP + 2 DB", ale **WooCommerce web (prázdný e-shop) + custom solární monitoring** (25× `zz_*.php`) + mobilní app API. Obě DB (`aps_10406` WP, `db_monitoring` solár 175 MB) byly na EXTERNÍM Hukotím MySQL `vix.securitynet.cz` (dostupném jen z WH-03 shellu). Web jsme **přestavěli na nový** (ne lift-and-shift) a WordPress úplně zahodili.
+
+### Přístup + stažení
+- [x] SSH na WH-03: `ssh.vix.hukot.net`, login `simplesolar.cz`, dedikovaný klíč `~/.ssh/simplesolar_wh03` (alias `wh03`). **Restriktivní whitelist shell** — jen `ls` + SFTP; `mysqldump`/`mysql`/`tar` zakázané. DB tedy export přes phpMyAdmin.
+- [x] Soubory (418 MB www, bez 349MB debug.log a redundantní .wpress) staženy přes SFTP do `/home/milos/work/simplesolar/wh03-pull-2026-06-13/`
+
+### Databáze (MySQL 8.0 → MariaDB 10.11)
+- [x] Export `aps_10406` + `db_monitoring` přes phpMyAdmin (gzip). Kompatibilita ověřena (žádné utf8mb4_0900, vše InnoDB)
+- [x] Import na ivz1 MariaDB 10.11. Lokální user `db_monitoring`@localhost (heslo 11MiDa22). Auth tabulka `fve_users` (z wp_users + table_monitoring)
+- [x] Finální čerstvý dump `db_monitoring` při nočním cutoveru (zachytit celý den) → re-import. Záloha předchozího stavu v `/root/simplesolar-migration/`
+
+### Nový web (redesign V3, ne migrace)
+- [x] Statický web V3 „Solární svítání" světlý+tmavý (přepínač), zdroj `/home/milos/work/simplesolar/web-new/` (generátor `build.py`). Stránky: Úvod, Varianty (Solax X3 10K G4.4), Vzdálené řízení, Dotace NZÚ (podmínky 2026), O nás, Kontakt, GDPR zásady
+- [x] Kontaktní formulář `poptavka.php` (honeypot, loguje do `/var/lib/simplesolar/poptavky.log`, odesílá přes postfix→Seznam relay)
+
+### Moje FVE modul (WordPress zahozen)
+- [x] Samostatné PHP: `prihlaseni.php` + `moje-fve.php` (dashboard s denní/měsíční historií) + `prepinace.php` (bojler/topení/nabíjení) + `inc/fve.php`. Login přes phpass (stávající WP hesla fungují), čte db_monitoring@localhost
+
+### zz_*.php (datalogger + mobilní app)
+- [x] 25 skriptů přepojeno na `localhost` (startscript.php). **4 pvapp opraveny** na prepared statements + ořez apostrofů z UserName/datum (app posílá `'dub042'`, `"2026-06-14"`). Legacy log skripty: `mysqli_report(MYSQLI_REPORT_OFF)` (jinak 500 na PHP 8.4)
+- [x] **Caddy: HTTP příjem pro `/zz_*.php` bez redirectu** — dataloggery POSTují přes HTTP, jinak 308 → ztráta dat
+- [x] **PHP date.timezone = Europe/Prague** (default UTC by posunul data o 2h oproti historii)
+
+### Deploy + cutover
+- [x] Docroot `/var/www/simplesolar` (staré WP záloha `/var/www/simplesolar-old-wp`), Caddy vhost + php8.4-fpm.sock
+- [x] **DNS přesunuto na Cloudflare** (ne Hukot — kvůli Email Routingu a rychlejším certům). A+AAAA → ivz1 (šedý mráček), LE cert
+- [x] Ověřeno end-to-end: web (IPv4+IPv6), Moje FVE, mobilní app (3 aktivní instalace: Dub042/Horní Rokytá, Srbsko, Rokyta píšou; mp1/Hostkovice nečinná od 8/2025), e-mail
+- [x] **E-mail: Cloudflare Email Routing** `info@simplesolar.cz` → Seznam/Gmail (info@ bylo SOUČÁSTÍ WH-03, ne samostatné). Odchozí „odesílat jako info@" po zrušení Hukotu řešit přes Zoho nebo odpovídat ze Seznamu
 
 ---
 
@@ -170,6 +177,10 @@ Z (před):                                       Na (po):
 ## Phase 8 — Migrace kkevents.cz (WP soubory, **bez DB**)
 
 > Tarif WPH-01, WordPress hosting, PHP 8.4. Web má **obsah ale žádnou DB** — buď nedokončená WP instalace, statický export, nebo soubory bez aktivní DB. Stáhneme všechno a rozhodneme se na místě podle obsahu.
+
+> **Update 2026-06-11 večer (Claude):** Na ivz1 už běží **nový statický web** kkevents.cz (zdroj `~/work/kkevents_web`, nasazeno do `/var/www/kkevents`, Caddy vhost `kkevents.cz, www.kkevents.cz` + log `/var/log/caddy/kkevents.log`; HTTP 308 ověřeno z venku, LE cert naskočí po DNS cutoveru — Phase 9). Public web už tedy na WPH-01 nezávisí.
+>
+> **Update 2026-06-11 pozdě večer:** Miloš prošel WPH-01 přes FTP — **`www` i `_log` jsou PRÁZDNÉ**, není co zálohovat. Premisa „web má obsah" už neplatí (Hukot soubory zřejmě smazal při suspendaci). Poslední šance na původní fotky/texty: ① zeptat se Hukot supportu, zda drží zálohu WPH-01 (soubory + DB), ② fotky od Kláry & Kristýny / jejich fotografů. Jinak Phase 8 = bezpředmětná, WPH-01 lze vypovědět hned po záloze e-mailové schránky (pokud existuje).
 
 - [ ] SSH na WPH-01 (Hukot shell) — projít strukturu `/home/.../www/`
   - [ ] `ls -lah` v root webu — kolik MB, co tam je (wp-config.php? wp-content/uploads?)
@@ -196,16 +207,12 @@ Z (před):                                       Na (po):
 
 > **Plán:** Cloudflare TTL je 60 s, propagace okamžitá. Cutover po doménách.
 
-- [ ] **icovazby.cz** A → `<NEW_IP>` (po úspěšném Phase 5)
-- [ ] **simplesolar.cz** A → `<NEW_IP>` (po úspěšném Phase 6)
-- [ ] **mb-tenis.cz** A → `<NEW_IP>` (po Phase 7)
-- [ ] **kkevents.cz** A → `<NEW_IP>` (po Phase 8)
-- [ ] **simplesolar.cz** Cloudflare Email Routing:
-  - [ ] Zapnout v Cloudflare dashboard
-  - [ ] CF automaticky přidá MX záznamy
-  - [ ] Custom address: `*@simplesolar.cz` (catchall) → `milospospisil68@gmail.com`
-  - [ ] Verifikace Gmail link
-  - [ ] **Test:** poslat email na `test@simplesolar.cz`, ověřit doručení do Gmailu
+- [x] **icovazby.cz** A → ivz1 ✅ (cutover 2026-06-11 12:28; běží přes CF orange cloud, ověřeno 2026-06-13: `/healthz` + `/api/vr` + `/api/ds` + `/api/dd` všechny 200)
+- [x] **simplesolar.cz** A+AAAA → `46.36.40.227` / `2a02:25b0:aaaa:2f27::` ✅ (cutover 2026-06-13/14; NS přesunuto na Cloudflare, šedý mráček, LE cert. Pozn.: cert naskočil až ~1h10m po cutoveru — Hukotí NS uzel dlouho vracel starou IP + zachytával ACME; vyřešilo se doběhem cache)
+- [x] **mb-tenis.cz** A → `46.36.40.227` ✅ (ověřeno 2026-06-13: DNS ukazuje na ivz1, nový web „MB tenis" servíruje z `/var/www/mb-tenis/app/public`, apex 200)
+- [x] **kkevents.cz** A → `46.36.40.227` ✅ (cutover 2026-06-11 večer: NS → Cloudflare, LE cert CN=kkevents.cz vydán 15:50 UTC, apex+www 200; resolver cache dobíhá ~1h)
+- [x] **simplesolar.cz** Cloudflare Email Routing ✅ (zapnuto, MX `route1/2/3.mx.cloudflare.net` + SPF; `info@simplesolar.cz` → Seznam, testovací mail dorazil 2026-06-14)
+  - [x] **Vyřešeno (rozhodnutí uživatele 2026-06-14):** (a) příchozí `info@` jde přes CF Routing → Seznam ✅. (b) **Bez Zoho** — odchozí „odesílat jako info@" v Gmailu se NEpoužívá; na poptávky se odpovídá ze Seznamu (kde mail chodí). Poptávkový formulář na webu posílá přes Seznam SMTP relay (From=`milos.pospisil@seznam.cz`, Reply-To=zákazník). User: smazat „odesílat jako info@" z Gmailu (Účty a import), ať to po zrušení Hukotu nehází chyby. (c) stará pošta z Hukot schránky — hostings zrušené, případnou archivaci řeší user.
 
 ---
 
@@ -218,7 +225,7 @@ Z (před):                                       Na (po):
 - [x] Aktualizovat `~/.ssh/known_hosts` (10.7.0.1 měl Hetzner SSH fingerprint, teď ivz1)
 - [x] `systemctl enable wg-quick@ivz1` (auto-up po rebootu)
 - [x] Test tunelu: `ssh root@10.7.0.1 hostname` → vrátí `ivz1` ✅
-- [ ] Aktualizovat peer config na **telefonu** (WireGuard app):
+- [x] Aktualizovat peer config na **telefonu** (WireGuard app) ✅ (ověřeno 2026-06-14: peer `10.7.0.3`, handshake aktivní — telefon jede)
   - Peer's Public Key: → `pYouF8OkSrt23DJQqZ+lQa0WC8/N/rpSi2/RhNuvBXo=`
   - Endpoint: → `46.36.40.227:51820`
 - [x] Aktualizovat peer config na **macbookVPN** — provedeno vzdáleně přes SSH ProxyJump (lokál → Hetzner public → macbook WG)
@@ -227,6 +234,7 @@ Z (před):                                       Na (po):
   - **Symlink workaround (2026-06-11 odpoledne)**: `hetzner.conf` je symlink na `ivz1.conf`, takže `ivz1.conf` je jediný zdroj pravdy. Skript stále načítá přes legacy jméno.
   - **Pro čistý fix v budoucnu**: `brew reinstall wireguard-tools` selhal (wireguard-go checksum mismatch). Zkusit znovu po brew update, nebo manuálně stáhnout upstream wg-quick.
   - **Recovery při zlomení**: `sudo cp /usr/local/bin/wg-quick.hacked.bak /usr/local/bin/wg-quick && sudo wg-quick up hetzner`
+  - **✅ Auto-restart fix (2026-06-14):** macbook WG tiše padal — `wireguard-go` proces umřel (spánek / změna sítě) a starý launchd `com.wireguard.hetzner` jen bootoval (`wg-hetzner-start.sh`), žádná průběžná obnova. Nasazen **launchd watchdog `com.wireguard.ivz1`** (`/Library/LaunchDaemons/com.wireguard.ivz1.plist`, skript `/usr/local/bin/wg-watchdog.sh`): `RunAtLoad` + `StartInterval 60` — když je utun10 dole nebo handshake > 180 s, udělá `wg-quick down/up`. Starý `com.wireguard.hetzner` vypnut (plist → `.disabled`). `PersistentKeepalive 25` už launcher nastavoval sám. Mac dosažitelný z desktopu přes **LAN `milospospisil@192.168.1.109`** (SSH klíč, passwordless sudo); WG endpoint v `ivz1.conf` byl správný (46.36.40.227), jen tunel nejel. Log watchdogu: `/var/log/wg-watchdog.log` na Macu.
 - [ ] Po týdnu paralelního provozu (mobil + macbook ověřit) — `systemctl disable --now wg-quick@wg0` na Hetzneru
 - [ ] Smazat `/etc/wireguard/hetzner.conf` z lokálu po finálním vypnutí
 
@@ -262,31 +270,31 @@ Z (před):                                       Na (po):
 - [x] Sekundární cesta: `mpcz.duckdns.org:8123` — DNS sice resolves na home IP, ale port forward na home routeru **NEexistuje** (timeout z venku na všech portech 80/443/8123/22). DDNS je pouze update DNS záznamu, ale router nepropouští. Bezpečnostně dobré.
 - [x] **Tailscale na Hetzneru = nepoužívaný** — analýza ukázala 0 established connections na port 443 za 15 s, většina iptables counter byly SYN flood od scanneru
 - [x] **Rozhodnutí:** Tailscale NE-migrovat na ivz1, vyhyne s Hetzner cleanupem (Phase 13)
-- [ ] User: HA UI → Settings → System → Network → External URL: změnit z `mpcz.duckdns.org:8123` na `https://ha.mb-tenis.cz` (kvůli ingress redirectům — motioneye atd.)
-- [ ] User: HA → Settings → Add-ons → odinstalovat Tailscale add-on (leftover z testování)
+- [x] User: HA UI → External URL změněno na `https://ha.mb-tenis.cz` *(hotovo, potvrzeno 2026-06-14)*
+- [x] User: HA → odinstalován Tailscale add-on (leftover z testování) *(hotovo, potvrzeno 2026-06-14)*
 - [x] Port forward 8123 v home routeru → **NEEXISTUJE** (ověřeno, žádná akce nutná)
 
 ---
 
 ## Phase 12 — Verifikace + 7 dní paralelního provozu
 
-- [ ] `icovazby.cz` z nové IP odpovídá s plnou funkcionalitou
-  - [ ] `/api/health` 200
-  - [ ] `/api/dd/26185610` plný profil
-  - [ ] `/api/vr/26185610` 200 s daty (NE `vr_blocked`!)
-  - [ ] `/api/ds/26185610` 200 s DS ID
+- [x] `icovazby.cz` z nové IP odpovídá s plnou funkcionalitou *(ověřeno 2026-06-13)*
+  - [x] `/healthz` 200 *(pozor: endpoint je `/healthz`, ne `/api/health` — to vrací 404)*
+  - [x] `/api/dd/26185610` plný profil (200)
+  - [x] `/api/vr/26185610` 200 s daty (NE `vr_blocked`!) — AGROFERT JSON, latence ~130 ms
+  - [x] `/api/ds/26185610` 200 s DS ID
   - [ ] AI souhrn funguje (BYO klíč)
   - [ ] PDF prověrka generuje se
   - [ ] Bulk DD ZIP test
-- [ ] `simplesolar.cz` odpovídá
+- [x] `simplesolar.cz` odpovídá *(cutover 2026-06-13, live z ivz1, LE cert, Moje FVE + mobilní app + formulář ověřeny)*
 - [ ] `mb-tenis.cz` odpovídá
 - [ ] `kkevents.cz` placeholder
-- [ ] Email forward funguje (test zpráva)
-- [ ] WG tunel desktop ↔ `ivz1` funguje
+- [x] Email forward funguje (CF Email Routing → Seznam, otestováno)
+- [x] WG tunel desktop ↔ `ivz1` funguje *(používán průběžně; Mac watchdog dořešen)*
 - [ ] **Monitoring 7 dní:**
   - [ ] `free -h` hourly screenshot v `journalctl`
   - [ ] `iostat -x 10` během Bulk DD
-  - [ ] UptimeRobot ping na `icovazby.cz/api/health`
+  - [x] UptimeRobot ping na `icovazby.cz` *(nastaveno, potvrzeno 2026-06-14)*
   - [ ] Sledovat OOM v `dmesg`
   - [ ] Sledovat I/O latence (SSD propad na 0 MB/s je známý risk)
 
@@ -304,22 +312,27 @@ Z (před):                                       Na (po):
 
 ### 3 Hukot hostings (čeká po dokončení Phase 6-8)
 
-- [ ] **Email výpověď WH-01 mb-tenis** (Příloha B)
-- [ ] **Email výpověď WH-03 simplesolar** (Příloha B)
-- [ ] **Email výpověď WPH-01 kkevents** (Příloha B, varianta WPH)
-- [ ] Počkat na potvrzení Hukotu + připsání kreditu (souhrnně ~700–1 200 Kč)
-- [ ] Smazat hostings v admin panelu (až po písemném potvrzení)
+- [x] **Email výpověď WH-01 mb-tenis** *(posláno)*
+- [x] **Email výpověď WH-03 simplesolar** *(posláno)*
+- [x] **Email výpověď WPH-01 kkevents** *(posláno)*
+- [x] **Hostings zrušené** *(potvrzeno uživatelem 2026-06-14)*
+- [ ] Počkat na potvrzení Hukotu + připsání kreditu (souhrnně ~700–1 200 Kč) — *pasivně sledovat*
 
 ---
 
 ## Phase 14 — Cleanup + dokumentace
 
-- [ ] Aktualizovat memory `reference_hetzner_vpn.md` → `reference_hukot_ivz1.md`
-- [ ] Aktualizovat README s novou IP / `/etc/hosts` aliasy
-- [ ] **Cloudflare R2 backup** persons-index.sqlite (denně cron + retention 30 dní)
-- [ ] Aktualizovat `deploy/redeploy.sh` na novou cílovou IP/hostname
-- [ ] Aktualizovat `.env.example` s novými proměnnými (bez VR_PROXY_*)
-- [ ] Vytvořit zaznamenat **bezpečnostní postup** (kdo má SSH klíč, kde jsou recovery codes)
+- [x] Memory: žádný `reference_hetzner_vpn.md` soubor neexistoval (moot). Aktuální projektová memory = `simplesolar-migrace-redesign.md` (udržovaná průběžně).
+- [x] README: root `README.md` bez Hetzner/starých-IP referencí (ověřeno grepem). `deploy/README.md` + `deploy/install.sh` dostaly banner „aktuální produkce = Hukot VPS ivz1 (46.36.40.227)" + odkaz na tento dokument (2026-06-14).
+- [x] **Offsite backup DB → Google Drive** ✅ (2026-06-14; místo R2 použit existující rclone GDrive remote). Pattern pro **db_monitoring** (solár) i **persons-index** (icovazby): ivz1 systemd timer noční záloha (`/usr/local/bin/{simplesolar,icovazby}-db-backup.sh`, `*-backup.timer` 02:30/02:45, lokálně 30 dní) → desktop cron 9:15 (`/home/milos/work/simplesolar/backups/offsite-backup.sh`) stáhne přes rsync + `rclone copy` na `GoogleDrive:backups/{simplesolar,icovazby}/` (rotace 14 dní). persons-index přes bezpečný sqlite3 `.backup` (WAL DB). Data tedy na 3 místech (ivz1 + desktop + GDrive).
+- [x] `deploy/redeploy.sh` — žádná změna nutná, už cílí na `root@10.7.0.1` (WG IP ivz1).
+- [ ] **`.env.example`** — odstranit `VR_PROXY_URL` + `VR_PROXY_TOKEN`. ⚠️ MUSÍ UDĚLAT USER RUČNĚ — Claude má deny pravidlo na čtení/zápis `**/.env.*` souborů, takže k `.env.example` nemá přístup.
+- [x] **Bezpečnostní postup** (kdo má co):
+  - SSH na ivz1: klíč `~/.ssh/` na desktopu (milos), root login přes WG IP `10.7.0.1` nebo veřejně `46.36.40.227`.
+  - WG peery: desktop (`10.7.0.2`), telefon, externí osoba read-only Adminer (`10.7.0.5`, AllowedIPs jen `10.7.0.1/32`, UFW restrikce). Server pubkey `pYouF8OkSrt23DJQqZ+lQa0WC8/N/rpSi2/RhNuvBXo=`, endpoint `:51820`.
+  - Seznam SMTP heslo (relay pro poptávkový formulář) v `/etc/postfix/sasl_passwd` na ivz1 (root, chmod 600).
+  - Cloudflare účet (DNS + Email Routing) = osobní účet uživatele. Recovery codes: u uživatele.
+  - DB hesla: `db_monitoring` (`11MiDa22`), v `inc/fve.php` + `startscript.php` na ivz1.
 
 ---
 
@@ -442,18 +455,12 @@ rsync -av root@10.7.0.1:/etc/caddy/ ./caddy/
 
 **Termín:** kdykoli — kosmetický fix, ne kritický.
 
-### E3. Cloudflare R2 backup persons-index.sqlite
+### E3. ✅ HOTOVO — Offsite backup DB na Google Drive (2026-06-14)
 
-**Co:** Nightly cron rsync `/opt/icovazby/data/persons-index.sqlite` na R2 bucket (10 GB free tier).
-
-**Proč:** Pojistka proti SSD selhání ivz1 (recenze hlásily ojediněle propad).
-
-**Kroky:** Vytvořit R2 bucket, API klíče, instalovat `rclone`, cron 02:00 UTC daily, retention 30 dní.
+Realizováno přes **Google Drive** (existující rclone remote) místo R2 — viz Phase 14. Pokrývá `persons-index.sqlite` (icovazby) i `db_monitoring` (solár). Bezpečný sqlite3 `.backup`, ivz1 systemd timer + desktop cron → `rclone copy` na GDrive, rotace 14 dní.
 
 **Termín:** Před vypnutím Hetzneru (Phase 13).
 
-### E4. UptimeRobot ping na nový endpoint
+### E4. ✅ HOTOVO — UptimeRobot ping na nový endpoint (2026-06-14)
 
-**Co:** Přidat HTTPS check `https://icovazby.cz/` na UptimeRobot.
-
-**Termín:** Po DNS cutover všech domén (Phase 9).
+HTTPS check `https://icovazby.cz/` přidán na UptimeRobot (potvrzeno uživatelem).

@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
-# IČO vazby — Hetzner CX11 production install script
-# Tested on Ubuntu 24.04 LTS minimal.
+# IČO vazby — production install script (Ubuntu 24.04 LTS minimal)
+# POZN.: Aktuální produkce běží na Hukot VPS ivz1 (46.36.40.227), ne na Hetzneru.
+#        Migrace 2026-06, viz docs/MIGRATION_HUKOT.md. Kroky níže jsou generické
+#        pro libovolný čistý Ubuntu 24.04 VPS. Redeploy: deploy/redeploy.sh.
 #
 # Run as root on čerstvé instanci:
 #   curl -fsSL https://raw.githubusercontent.com/milos106/icovazby/main/deploy/install.sh | bash -s your-domain.tld
