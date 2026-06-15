@@ -2653,6 +2653,10 @@ function ddAiSummaryCard() {
       if (code >= 0.6) return { label: "Střední důvěra", color: "amber" };
       return { label: "Nízká důvěra", color: "rose" };
     },
+    openSettings() {
+      // Odlož o tick — jinak tentýž klik spustí @click.outside Nastavení a hned ho zavře.
+      setTimeout(() => window.dispatchEvent(new CustomEvent("ares-open-settings")), 0);
+    },
   };
 }
 window.ddAiSummaryCard = ddAiSummaryCard;
