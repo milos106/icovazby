@@ -677,6 +677,9 @@ function graphSection() {
       if (!this.result || !window.cytoscape) return;
       const container = document.getElementById("cytoscape-container");
       if (!container) return;
+      // Nový render = čistý fokus (ego-graf si ho nastaví znovu přes pendingFocusPerson).
+      this.focusedPersonKey = null;
+      this.focusedPersonLabel = "";
       if (this.cy) {
         this.cy.destroy();
         this.cy = null;
@@ -899,6 +902,9 @@ function graphSection() {
           if (vis === 0) n.addClass("layer-off");
         });
       });
+      // Po změně viditelnosti znovu aplikuj fokus (zachová zvýraznění osoby
+      // napříč vrstvami; když je osoba v dané vrstvě skrytá, nefáduje se).
+      this.applyFocus();
     },
     /** Fáze B — fokus na osobu: ztlumí vše kromě osoby, jejích hran a firem
      *  na druhém konci. Druhý klik na tutéž osobu fokus zruší (toggle). */
@@ -917,7 +923,9 @@ function graphSection() {
       this.cy.elements().removeClass("faded");
       if (!this.focusedPersonKey) return;
       const node = this.cy.getElementById(this.focusedPersonKey);
-      if (!node || node.empty()) { this.focusedPersonKey = null; this.focusedPersonLabel = ""; return; }
+      // Osoba ve grafu není, nebo je skrytá aktuální vrstvou → nefáduj (ukaž
+      // celou vrstvu), ale fokus PONECHEJ (návrat na vrstvu ji zase zvýrazní).
+      if (!node || node.empty() || node.hasClass("layer-off")) return;
       const keep = node.union(node.connectedEdges()).union(node.connectedEdges().connectedNodes());
       this.cy.elements().not(keep).addClass("faded");
     },
