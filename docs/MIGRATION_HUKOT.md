@@ -160,6 +160,13 @@ Z (před):                                       Na (po):
 - [x] Ověřeno end-to-end: web (IPv4+IPv6), Moje FVE, mobilní app (3 aktivní instalace: Dub042/Horní Rokytá, Srbsko, Rokyta píšou; mp1/Hostkovice nečinná od 8/2025), e-mail
 - [x] **E-mail: Cloudflare Email Routing** `info@simplesolar.cz` → Seznam/Gmail (info@ bylo SOUČÁSTÍ WH-03, ne samostatné). Odchozí „odesílat jako info@" po zrušení Hukotu řešit přes Zoho nebo odpovídat ze Seznamu
 
+### Post-cutover fix — denní souhrny zamrzlé (MariaDB strict mód) 🐞 → ✅ (2026-06-15)
+- **Symptom:** appka i dashboard ukazovaly „Vyrobená/Spotřebovaná Energie – Dnes" **zamrzlou na hodnotě z 13.6.** (den cutoveru). Živá data (aktuální výkon) i `table_min` ale chodily normálně.
+- **Příčina:** `table_day` (a `table_month`) mají sloupce `Es_1/Es_2/Es_3` jako **NOT NULL bez defaultu**, ale `zz_log_*.php` je v INSERTu nového dne/měsíce **nevyplňují** (jen 6 sloupců). Starý **Hukot MySQL běžel v lenient módu** → implicitní 0. **MariaDB na ivz1 = STRICT** (`STRICT_TRANS_TABLES,...`) → INSERT padá `ERROR 1364: Field 'Es_1' doesn't have a default value`, a kvůli `mysqli_report(OFF)` **tiše**. Systémové — od cutoveru `MAX(day)=20260613` pro všechny weby.
+- **Fix:** `sql_mode = NO_ENGINE_SUBSTITUTION` (legacy-compat) — okamžitě přes `SET GLOBAL` (PHP otevírá fresh connection per request → hned) + persistentně v `/etc/mysql/mariadb.conf.d/99-legacy-sqlmode.cnf`. **Bez restartu** = žádný výpadek příjmu. Jeden fix místo úprav ~25 skriptů; předešel i pádu `table_month` k 1.7.
+- **Backfill:** chybějící denní souhrny 14.+15.6. dopočítány z `table_min` (`E_str1=SUM(Vyroba)/12000` atd. — 5min vzorky × 5min/60000). Přesnost ověřena proti známému 13.6.: odchylka **0,2–0,5 %**. Žádná data se neztratila (`table_min` netknutý).
+- **Pozn. do budoucna:** legacy solární kód předpokládá lenient MySQL — strict mód na MariaDB je třeba držet vypnutý (config výše), jinak tiše padají další INSERTy.
+
 ---
 
 ## Phase 7 — Migrace mb-tenis.cz (PHP)
