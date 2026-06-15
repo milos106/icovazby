@@ -3034,9 +3034,9 @@
               <div x-show="renderMode === 'interactive' && result?.hasOwnership" class="flex items-center gap-2 text-xs mb-3">
                 <span class="text-slate-500 dark:text-slate-400">Vrstvy:</span>
                 <div class="inline-flex rounded-lg border dark:border-slate-600 overflow-hidden">
-                  <button type="button" @click="graphLayer='persons'; focusedPersonKey=null; focusedPersonLabel=''; renderCytoscape()" :class="graphLayer==='persons' ? 'bg-emerald-600 text-white' : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700'" class="px-2.5 py-1">👥 Osoby</button>
-                  <button type="button" @click="graphLayer='ownership'; focusedPersonKey=null; focusedPersonLabel=''; renderCytoscape()" :class="graphLayer==='ownership' ? 'bg-emerald-600 text-white' : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700'" class="px-2.5 py-1 border-l dark:border-slate-600">🏢 Vlastnictví</button>
-                  <button type="button" @click="graphLayer='both'; focusedPersonKey=null; focusedPersonLabel=''; renderCytoscape()" :class="graphLayer==='both' ? 'bg-emerald-600 text-white' : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700'" class="px-2.5 py-1 border-l dark:border-slate-600">Obojí</button>
+                  <button type="button" @click="graphLayer='persons'; clearFocus(); applyLayer()" :class="graphLayer==='persons' ? 'bg-emerald-600 text-white' : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700'" class="px-2.5 py-1">👥 Osoby</button>
+                  <button type="button" @click="graphLayer='ownership'; clearFocus(); applyLayer()" :class="graphLayer==='ownership' ? 'bg-emerald-600 text-white' : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700'" class="px-2.5 py-1 border-l dark:border-slate-600">🏢 Vlastnictví</button>
+                  <button type="button" @click="graphLayer='both'; clearFocus(); applyLayer()" :class="graphLayer==='both' ? 'bg-emerald-600 text-white' : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700'" class="px-2.5 py-1 border-l dark:border-slate-600">Obojí</button>
                 </div>
               </div>
               <!-- Fokus na osobu (Fáze B) — chip se zrušením -->

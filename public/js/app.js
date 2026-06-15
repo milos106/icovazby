@@ -717,8 +717,6 @@ function graphSection() {
             for (const m of p.memberships || []) {
               const isOwner = m.relation === "owner";
               if (isOwner && !includeOwner) continue; // vlastnické hrany jen z activePersons (jednou)
-              if (isOwner && this.graphLayer === "persons") continue;
-              if (!isOwner && this.graphLayer === "ownership") continue;
               personUsed.add(pid);
               const id = pid + "-" + m.ico + (isOwner ? "-own" : "") + suffix;
               if (seenEdge.has(id)) continue; // dedup: vícenásobná členství k téže firmě = jedna hrana
@@ -736,13 +734,11 @@ function graphSection() {
           if (personUsed.has(key)) elements.push(node);
         }
       }
-      // Vrstva VLASTNICTVÍ firma→firma (akcionář/společník-PO). Skrytá v 'persons'.
-      if (this.graphLayer !== "persons") {
-        for (const e of this.result.ownershipEdges || []) {
-          elements.push({
-            data: { id: "OWN-" + e.from + "-" + e.to, source: "F-" + e.from, target: "F-" + e.to, type: "ownership" },
-          });
-        }
+      // Vlastnické hrany firma→firma (vždy v elements; viditelnost řeší applyLayer).
+      for (const e of this.result.ownershipEdges || []) {
+        elements.push({
+          data: { id: "OWN-" + e.from + "-" + e.to, source: "F-" + e.from, target: "F-" + e.to, type: "ownership" },
+        });
       }
 
       // Uzly PŘED hranami — robustnost při re-renderu (žádné forward-reference
@@ -849,6 +845,11 @@ function graphSection() {
             selector: ".faded",
             style: { "opacity": 0.12, "text-opacity": 0.12 },
           },
+          {
+            // Plán B — skrytá vrstva: prvek úplně schován (přepínání vrstev).
+            selector: ".layer-off",
+            style: { "display": "none" },
+          },
         ],
       });
       // Click na firmu = otevři její profil v search.
@@ -874,10 +875,30 @@ function graphSection() {
       });
       this.cy.on("mouseover", "node[type='person'], node[type='legalPerson']", () => { container.style.cursor = "pointer"; });
       this.cy.on("mouseout", "node[type='person'], node[type='legalPerson']", () => { container.style.cursor = "default"; });
-      // Fáze C: čeká-li osoba k zaměření (ego-graf), zaměř ji; jinak
-      // znovu-aplikuj stávající fokus (přepnutí vrstev zaměření nezruší).
+      // Plán B: viditelnost vrstev se řeší zde (bez re-renderu při přepnutí).
+      this.applyLayer();
+      // Fáze C: čeká-li osoba k zaměření (ego-graf), zaměř ji; jinak fokus.
       if (this.pendingFocusPerson) this.applyPendingFocus();
       else this.applyFocus();
+    },
+    /** Plán B — přepnutí vrstev BEZ re-renderu: jen mění viditelnost prvků
+     *  (display:none přes .layer-off). Tím nemůže žádný uzel „vypadnout". */
+    applyLayer() {
+      if (!this.cy) return;
+      const layer = this.graphLayer;
+      this.cy.batch(() => {
+        this.cy.elements().removeClass("layer-off");
+        if (layer === "persons") {
+          this.cy.edges("[type='ownership']").addClass("layer-off");
+        } else if (layer === "ownership") {
+          this.cy.edges().filter((e) => e.data("type") !== "ownership").addClass("layer-off");
+        }
+        // osoby bez viditelné hrany skryj (firmy necháme vždy)
+        this.cy.nodes("[type='person'], [type='legalPerson']").forEach((n) => {
+          const vis = n.connectedEdges().filter((e) => !e.hasClass("layer-off")).length;
+          if (vis === 0) n.addClass("layer-off");
+        });
+      });
     },
     /** Fáze B — fokus na osobu: ztlumí vše kromě osoby, jejích hran a firem
      *  na druhém konci. Druhý klik na tutéž osobu fokus zruší (toggle). */
