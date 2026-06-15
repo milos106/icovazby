@@ -1,6 +1,6 @@
 {
   "name": "icovazby",
-  "version": "0.9.23",
+  "version": "0.9.24",
   "private": true,
   "description": "Webová prověrka českých firem a jejich propojení — agreguje ARES, OR, RŽP, ADIS DPH, ISIR, ČNB JERRS, EU sankce a Hlídač státu do risk skóre + holding discovery + cross-company graph.",
   "license": "AGPL-3.0-or-later",
@@ -17,6 +17,7 @@
     "dev": "tsx watch --env-file=.env src/server.ts",
     "start": "node --env-file-if-exists=.env dist/server.js",
     "test": "vitest run",
+    "test:e2e": "playwright test",
     "typecheck": "tsc --noEmit",
     "format": "biome format --write src tests public"
   },
@@ -38,6 +39,7 @@
   },
   "devDependencies": {
     "@biomejs/biome": "^1.9.4",
+    "@playwright/test": "^1.61.0",
     "@types/better-sqlite3": "^7.6.13",
     "@types/node": "^20.17.10",
     "@types/nodemailer": "^8.0.0",

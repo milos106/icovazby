@@ -700,9 +700,6 @@ function graphSection() {
       if (!this.result || !window.cytoscape) return;
       const container = document.getElementById("cytoscape-container");
       if (!container) return;
-      // Manuální „Vykreslit" (bez pendingFocusPerson) = čistý seznam subjektů.
-      // Ego-graf / rozbalení (pending set) subjekty ZACHOVÁ (multi-fokus přežije).
-      if (!this.pendingFocusPerson) { this.egoPersons = []; this.fullKeys = []; }
       if (this.cy) {
         this.cy.destroy();
         this.cy = null;
@@ -911,6 +908,10 @@ function graphSection() {
       });
       this.cy.on("mouseover", "node[type='person'], node[type='legalPerson']", () => { container.style.cursor = "pointer"; });
       this.cy.on("mouseout", "node[type='person'], node[type='legalPerson']", () => { container.style.cursor = "default"; });
+      // Prune subjekty/full na ty, jejichž uzel v NOVÉM grafu reálně existuje —
+      // robustní proti spurious re-renderům (dřív je render bez pending vynuloval).
+      this.egoPersons = this.egoPersons.filter((e) => this.cy.getElementById(e.key).nonempty());
+      this.fullKeys = this.fullKeys.filter((k) => this.cy.getElementById(k).nonempty());
       // Plán B: viditelnost vrstev se řeší zde (bez re-renderu při přepnutí).
       this.applyLayer();
       // Fáze C: čeká-li osoba k zaměření (ego-graf), zaměř ji; jinak fokus.
