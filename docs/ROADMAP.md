@@ -8,11 +8,12 @@ Strategický pohled na další směřování. Rozděleno podle horizontu a impac
 
 **Hetzner DE → Hukot CZ (ivz1)** — kvůli MSP WAF blokaci Hetzner IP rozsahu a konsolidaci 4 fakturací (Hetzner + 3 Hukot webhostings) do jednoho VPS. Detailní plán s checkboxy: **[`docs/MIGRATION_HUKOT.md`](./MIGRATION_HUKOT.md)**.
 
-**Aktuální backbone** (k 2026-06-09):
+**Aktuální backbone** (k 2026-06-15):
 - 13 datových zdrojů (ARES, OR, RŽP, ADIS DPH, ISIR, ČNB, EU sankce, Hlídač státu UBO/dotace/smlouvy, ÚPV ochranné známky, …)
 - 307k značek + 17k subjektů + 22k osob + 900 ownership edges v SQLite
 - Audit log, CI/CD, per-user HS token, multi-tenant začátek
-- Mapa propojení (Mermaid + Cytoscape), DD karty, PDF prověrky, bulk DD, alerty, sharing read-only
+- **Mapa propojení** (Mermaid + Cytoscape, default interaktivní) s **dvěma přepínatelnými vrstvami** — 🏢 vlastnictví (firma→firma i fyzické společníky/akcionáře) a 👥 osoby (sdílení statutáři) — + fokus na osobu, drill-down klikem do profilu, legenda
+- DD karty, PDF prověrky, bulk DD, alerty, sharing read-only
 
 ---
 

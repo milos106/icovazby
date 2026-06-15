@@ -17,7 +17,7 @@
 |---|---|
 | **🛡️ Profil firmy** | IČO nebo název → 🟢🟡🔴 risk badge + findings + identifikace + DPH + jednatelé + OR + UBO + dotace + smlouvy + sankce + insolvence + JERRS + živnosti. Rozbalovací karty s persistovaným stavem. |
 | **🔍 Rozkrýt holding** | Auto-trigger pro a.s./s.r.o. — BFS po sdílených jednatelech + akcionářích z OR portálu. Najde subsidiaries i přes 2. úroveň. |
-| **🌐 Mapa propojení** | 2–50 IČO → osoby ve více firmách + Mermaid graf. Volitelně historické vazby (nominee detection). |
+| **🌐 Mapa propojení** | 2–50 IČO → interaktivní graf (Cytoscape) se **dvěma vrstvami**: 🏢 vlastnictví (firma→firma i fyzické společníky/akcionáře) a 👥 osoby (sdílení statutáři). Fokus na osobu, drill-down klikem do profilu. Volitelně historické vazby (nominee detection). |
 | **🔗 Vazby osoby** | Klik na jednatele → všechny jeho firmy (z lokálního indexu osoba→firmy budovaného postupně). |
 | **🏢 Hledat na adrese** | Detekce virtuálních kanceláří (>50 firem = ⚠️, >500 = 🚨). |
 | **📄 PDF prověrka** | `/report/:ico` → printable HTML s auto-print, uložíš jako PDF deliverable. |
@@ -31,9 +31,9 @@
 
 ## Stack
 
-- **Backend:** Fastify (TS), zod, undici, p-retry, p-limit, lru-cache, **Resend** (alerty) / nodemailer (fallback) — žádná databáze (jen JSON pro inventory + subscribers).
-- **Frontend:** vanilla HTML + Tailwind CDN + Alpine.js + Mermaid 11 + Inter font — bez build stepu.
-- **Persistence:** `persons-index.json` (~5 MB pro 16k+ firem) s vlastním schema v3: subjects + persons + ownership.byParent — denormalizovaný index pro O(1) holding discovery.
+- **Backend:** Fastify (TS), zod, undici, p-retry, p-limit, lru-cache, **Resend** (alerty) / nodemailer (fallback) — SQLite pro index + subscribers.
+- **Frontend:** vanilla HTML + Tailwind CDN + Alpine.js + Mermaid 11 + Cytoscape (interaktivní graf) + Inter font — bez build stepu.
+- **Persistence:** `persons-index.sqlite` (subjects + persons + ownership) — denormalizovaný index pro O(1) holding discovery (migrováno z JSON).
 - **Data:** veřejná REST API českých registrů. Žádný proxy, žádné scraping, žádná AI vrstva.
 
 ## Spuštění lokálně
@@ -93,7 +93,7 @@ Hot reload pro vývoj: `npm run dev`.
 
 - **`src/services.ts`** — pure business logic, framework-free.
 - **`src/holding/discover.ts`** — BFS po grafu firma→firma, dva typy hran.
-- **`src/graph/crossCompanyPersons.ts`** — Mermaid graph builder.
+- **`src/graph/crossCompanyPersons.ts`** — cross-company graph builder (osoby + vlastnické hrany firma→firma i osoba→firma; Mermaid + JSON pro Cytoscape).
 - **`src/persons_index/store.ts`** — lokální cache osoba→firmy + subjekty inventář.
 - **`src/alerts/`** — subscribe → diff snapshot → SMTP.
 - **`src/report/html.ts`** — printable HTML pro PDF export.
@@ -109,7 +109,7 @@ Hot reload pro vývoj: `npm run dev`.
 | `GET /report/:ico` | **Printable HTML report pro PDF** |
 | `GET /demo/:ico` | **Demo bez tokenu** (jen pre-selected IČO) |
 | `POST /api/holding/discover` | Body: `{ ico, depth?, maxIcos? }` → subsidiaries |
-| `POST /api/cross-persons` | Body: `{ icos[], includeHistorical? }` → osoby + Mermaid |
+| `POST /api/cross-persons` | Body: `{ icos[], includeHistorical? }` → osoby + vlastnické hrany (`ownershipEdges`, `hasOwnership`) + Mermaid |
 | `POST /api/alerts/subscribe` | Body: `{ email, ico }` → potvrzovací e-mail |
 | `GET /api/alerts/verify/:token` | Aktivace odběru |
 | `DELETE /api/alerts/:id` | Unsubscribe |

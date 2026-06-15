@@ -488,7 +488,7 @@ flowchart TB
 
     AGR["Agregační vrstva<br/>icovazby.cz<br/>(paralelní fetch · cache · normalizace)"]
     RISK["Risk skóre<br/>0–100"]
-    GRAPH["Mapa propojení<br/>holding + statutáři"]
+    GRAPH["Mapa propojení<br/>vlastnictví + osoby"]
     AI["AI souhrn<br/>Claude / Gemini"]
     EXP["Exporty<br/>PDF · ZIP · CSV<br/>Fakturoid · iDoklad"]
     YOU(("Vy"))
@@ -575,9 +575,12 @@ flowchart TB
             </div>
           </div>
           <p class="mb-5 text-slate-700 dark:text-slate-300">
-            Aplikace automaticky prochází statutáře, akcionáře a beneficiální vlastníky a sestavuje graf vazeb mezi firmami a osobami.
-            U akciových společností s 5+ statutáři spustí auto-rozkrytí celého holdingu. Současně dělá <em>reverse discovery</em> &mdash;
-            hledá, kdo vlastní cílovou firmu shora.
+            Aplikace automaticky prochází statutáře, akcionáře, společníky i beneficiální vlastníky a sestavuje
+            <strong>interaktivní graf</strong> vazeb mezi firmami a osobami. U firem se statutáry spustí auto-rozkrytí
+            holdingu a <em>reverse discovery</em> (kdo vlastní cílovou firmu shora). Graf má <strong>dvě přepínatelné
+            vrstvy</strong> &mdash; 🏢&nbsp;<strong>vlastnictví</strong> (kdo koho vlastní, včetně fyzických společníků
+            a akcionářů) a 👥&nbsp;<strong>osoby</strong> (sdílení statutáři napříč firmami). Klik na firmu otevře její
+            profil, klik na osobu zaměří jen její vztahy.
           </p>
 
           <div class="rounded-xl bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 p-4 sm:p-6">
