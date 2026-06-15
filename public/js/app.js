@@ -571,13 +571,14 @@ function graphSection() {
      *  (osoby = sdílení statutáři, vlastnictví = akcionář→firma). */
     graphLayer: "both",
     /** Fáze B — fokus na osobu: id uzlu osoby (null = bez fokusu) + label do chipu. */
-    focusedPersonKey: null,
-    focusedPersonLabel: "",
+    /** C+b — investigativní SUBJEKTY (víc osob naráz). Každý {key,label,dob}.
+     *  Všichni se zvýrazní (keep = sjednocení jejich okolí) → overlap vynikne. */
+    egoPersons: [],
     /** Fáze C — osoba k zaměření po příštím renderu (z „Vazby osoby" ego-grafu). */
     pendingFocusPerson: null,
-    /** C+a — osoba, jejíž VŠECHNY firmy už jsou v grafu (ego / právě rozbalená);
-     *  u ní by „Rozbalit" nic nepřidal → tlačítko zašedneme. */
-    lastFullKey: null,
+    /** Osoby, jejichž VŠECHNY firmy už jsou v grafu (ego/rozbalené) → „Rozbalit"
+     *  u nich zašedneme. */
+    fullKeys: [],
     /** Cytoscape instance — odkaz pro relayout / destroy. */
     cy: null,
     // Selection map pro „Možné jmenovce" (tentativeCandidates). Key = jmeno|prijmeni
@@ -680,10 +681,9 @@ function graphSection() {
       if (!this.result || !window.cytoscape) return;
       const container = document.getElementById("cytoscape-container");
       if (!container) return;
-      // Nový render = čistý fokus (ego-graf si ho nastaví znovu přes pendingFocusPerson).
-      this.focusedPersonKey = null;
-      this.focusedPersonLabel = "";
-      this.lastFullKey = null;
+      // Manuální „Vykreslit" (bez pendingFocusPerson) = čistý seznam subjektů.
+      // Ego-graf / rozbalení (pending set) subjekty ZACHOVÁ (multi-fokus přežije).
+      if (!this.pendingFocusPerson) { this.egoPersons = []; this.fullKeys = []; }
       if (this.cy) {
         this.cy.destroy();
         this.cy = null;
@@ -913,24 +913,32 @@ function graphSection() {
     /** Fáze B — fokus na osobu: ztlumí vše kromě osoby, jejích hran a firem
      *  na druhém konci. Druhý klik na tutéž osobu fokus zruší (toggle). */
     focusPerson(nodeId, label) {
-      this.focusedPersonKey = this.focusedPersonKey === nodeId ? null : nodeId;
-      this.focusedPersonLabel = this.focusedPersonKey ? label || "" : "";
+      const i = this.egoPersons.findIndex((e) => e.key === nodeId);
+      if (i >= 0) this.egoPersons.splice(i, 1); // klik na zvýrazněného = odebrat
+      else this.egoPersons.push({ key: nodeId, label: label || "", dob: nodeId.split("|")[1] || "" });
       this.applyFocus();
     },
     clearFocus() {
-      this.focusedPersonKey = null;
-      this.focusedPersonLabel = "";
+      this.egoPersons = [];
       this.applyFocus();
     },
+    removeEgo(key) {
+      this.egoPersons = this.egoPersons.filter((e) => e.key !== key);
+      this.applyFocus();
+    },
+    /** Multi-fokus: keep = sjednocení okolí VŠECH subjektů; zbytek zašedne.
+     *  Subjekt skrytý aktuální vrstvou se přeskočí (návrat ho zase zvýrazní). */
     applyFocus() {
       if (!this.cy) return;
       this.cy.elements().removeClass("faded");
-      if (!this.focusedPersonKey) return;
-      const node = this.cy.getElementById(this.focusedPersonKey);
-      // Osoba ve grafu není, nebo je skrytá aktuální vrstvou → nefáduj (ukaž
-      // celou vrstvu), ale fokus PONECHEJ (návrat na vrstvu ji zase zvýrazní).
-      if (!node || node.empty() || node.hasClass("layer-off")) return;
-      const keep = node.union(node.connectedEdges()).union(node.connectedEdges().connectedNodes());
+      if (this.egoPersons.length === 0) return;
+      let keep = this.cy.collection();
+      for (const ego of this.egoPersons) {
+        const node = this.cy.getElementById(ego.key);
+        if (!node || node.empty() || node.hasClass("layer-off")) continue;
+        keep = keep.union(node).union(node.connectedEdges()).union(node.connectedEdges().connectedNodes());
+      }
+      if (keep.length === 0) return; // všichni subjekti skrytí v této vrstvě
       this.cy.elements().not(keep).addClass("faded");
     },
     /** Fáze C — zaměří osobu z ego-grafu. Hledá uzel podle data narození
@@ -949,20 +957,20 @@ function graphSection() {
         }
       });
       if (match) {
-        this.focusedPersonKey = match.id();
-        this.focusedPersonLabel = match.data("label") || "";
-        this.lastFullKey = match.id(); // tahle osoba je teď v grafu celá (ego/rozbalená)
+        const key = match.id();
+        if (!this.egoPersons.some((e) => e.key === key)) {
+          this.egoPersons.push({ key, label: match.data("label") || "", dob: key.split("|")[1] || "" });
+        }
+        if (!this.fullKeys.includes(key)) this.fullKeys.push(key); // celá (ego/rozbalená)
       }
       this.applyFocus();
     },
     /** C+a — rozbalit zaměřenou osobu: přidá její DALŠÍ firmy do grafu
      *  (z persons/vazby) a překreslí. Roste vyšetřovací plátno + odhalí
      *  skryté vazby přes spolu-statutáry. Po překreslení osobu zase zaměří. */
-    async expandFocusedPerson() {
-      if (!this.focusedPersonKey) return;
-      const dob = this.focusedPersonKey.split("|")[1] || "";
-      const jmeno = this.focusedPersonLabel || "";
-      if (!dob || !jmeno) return;
+    async expandEgo(key, label, dob) {
+      if (!key || !dob || !label) return;
+      const jmeno = label;
       this.loading = true;
       this.error = "";
       try {

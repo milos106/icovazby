@@ -3028,7 +3028,7 @@
               <!-- Prominentní výzva: klik na uzel firmy → profil (drill-down). -->
               <div x-show="renderMode === 'interactive'" class="flex items-center gap-2 text-sm px-3 py-2 mb-3 rounded-lg border border-emerald-200 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-900/20 text-emerald-800 dark:text-emerald-200">
                 <span class="shrink-0">👆</span>
-                <span><strong>Klikni na firmu</strong> → otevře profil · <strong>klikni na osobu</strong> → zaměří jen její vztahy.</span>
+                <span><strong>Klikni na firmu</strong> → otevře profil · <strong>klikni na osobu</strong> → přidá/odebere ji ze subjektů (zvýrazní). Víc subjektů = vidíš jejich překryv.</span>
               </div>
               <!-- Přepínač vrstev — jen když dotaz vrátil vlastnické hrany -->
               <div x-show="renderMode === 'interactive' && result?.hasOwnership" class="flex items-center gap-2 text-xs mb-3">
@@ -3040,16 +3040,19 @@
                 </div>
               </div>
               <!-- Fokus na osobu (Fáze B) — chip se zrušením -->
-              <div x-show="renderMode === 'interactive' && focusedPersonKey" class="flex items-center gap-2 text-xs mb-3">
-                <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-100 dark:bg-emerald-900/40 text-emerald-800 dark:text-emerald-200 border border-emerald-200 dark:border-emerald-800">
-                  🎯 Zaměřeno: <strong x-text="focusedPersonLabel"></strong>
-                  <button type="button" @click="clearFocus()" class="ml-1 font-bold hover:text-emerald-950 dark:hover:text-white" title="Zrušit fokus">✕</button>
-                </span>
-                <button type="button" @click="expandFocusedPerson()" :disabled="loading || focusedPersonKey === lastFullKey"
-                  class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full border border-emerald-300 dark:border-emerald-700 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-50 dark:hover:bg-emerald-900/30 disabled:opacity-40 disabled:cursor-not-allowed"
-                  :title="focusedPersonKey === lastFullKey ? 'Tato osoba je v grafu už celá (ego) — rozbal jiného statutára (klikni na něj)' : 'Přidá další firmy této osoby do grafu — odhalí skryté vazby přes spolu-statutáry'">
-                  <span x-text="loading ? 'Rozbaluji…' : '➕ Rozbalit dalšího statutára'"></span>
-                </button>
+              <!-- C+b — subjekty (multi-fokus). Každý chip: ➕ rozbalit · ✕ odebrat. -->
+              <div x-show="renderMode === 'interactive' && egoPersons.length > 0" class="flex items-center gap-2 flex-wrap text-xs mb-3">
+                <span class="text-slate-500 dark:text-slate-400">Subjekty:</span>
+                <template x-for="ego in egoPersons" :key="ego.key">
+                  <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-emerald-100 dark:bg-emerald-900/40 text-emerald-800 dark:text-emerald-200 border border-emerald-200 dark:border-emerald-800">
+                    🎯 <strong x-text="ego.label"></strong>
+                    <button type="button" @click="expandEgo(ego.key, ego.label, ego.dob)" :disabled="loading || fullKeys.includes(ego.key)"
+                      class="ml-1 disabled:opacity-40 disabled:cursor-not-allowed hover:text-emerald-950 dark:hover:text-white"
+                      :title="fullKeys.includes(ego.key) ? 'Tato osoba je v grafu už celá' : 'Přidat další firmy této osoby (odhalí skryté vazby)'">➕</button>
+                    <button type="button" @click="removeEgo(ego.key)" class="font-bold hover:text-emerald-950 dark:hover:text-white" title="Odebrat ze subjektů">✕</button>
+                  </span>
+                </template>
+                <button type="button" x-show="egoPersons.length > 1" @click="clearFocus()" class="text-slate-500 dark:text-slate-400 underline hover:text-slate-700 dark:hover:text-slate-200">vyčistit vše</button>
               </div>
               <div x-show="renderMode === 'interactive'" id="cytoscape-container" class="w-full h-[60vh] min-h-[400px] max-h-[600px]"></div>
               <p x-show="renderMode === 'interactive'" class="text-xs text-slate-500 dark:text-slate-400 mt-2">
