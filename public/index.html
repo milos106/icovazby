@@ -2580,6 +2580,15 @@
                   🌐 Ego-graf osoby — vše do mapy (<span x-text="resolvedIcoCount()"></span>)
                 </button>
 
+                <!-- C+d — přidat osobu k JIŽ existující mapě (multi-subjekt + detekce vazby) -->
+                <button
+                  @click="addToMap()"
+                  :disabled="resolvedIcoCount() < 1"
+                  class="text-sm px-3 py-1.5 border border-emerald-400 dark:border-emerald-600 text-emerald-700 dark:text-emerald-300 rounded hover:bg-emerald-50 dark:hover:bg-emerald-900/30 disabled:opacity-50 font-medium"
+                  title="Přidá tuto osobu k JIŽ existující Mapě propojení (nenahradí ji) → uvidíš, jak se její svět protíná s předchozími subjekty">
+                  ➕ Přidat do mapy
+                </button>
+
                 <!-- Copy do clipboardu pro paste mimo aplikaci. -->
                 <button
                   @click="copyIcosToClipboard()"

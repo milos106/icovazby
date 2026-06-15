@@ -610,6 +610,20 @@ function graphSection() {
         const d = e.detail || {};
         if (d.datumNarozeni) this.pendingFocusPerson = { jmeno: d.jmeno || "", datumNarozeni: d.datumNarozeni };
       });
+      // C+d — přidat osobu k EXISTUJÍCÍ mapě (sjednocení firem + nový subjekt).
+      // Na rozdíl od ego-grafu (nahradí) tohle přidává → multi-subjekt + detekce vazby.
+      window.addEventListener("ares-add-to-graph", (e) => {
+        const { icos, person } = e.detail || {};
+        if (!Array.isArray(icos) || icos.length === 0) return;
+        const set = new Set(this.parseIcos(this.raw));
+        for (const ico of icos) { if (set.size >= 50) break; set.add(ico); }
+        if (person && person.datumNarozeni) {
+          this.pendingFocusPerson = { jmeno: person.jmeno || "", datumNarozeni: person.datumNarozeni };
+        }
+        const h = window.Alpine?.store("history"); if (h) h.enabled = true; // ať se osoba (i historicky) ukáže
+        this.raw = [...set].join("\n");
+        this.run();
+      });
     },
     parseIcos(raw) {
       return (raw || "")
@@ -1233,6 +1247,17 @@ function personVazbySection() {
       }));
       window.Alpine?.store("sections")?.setVisible("graph", true);
       window.dispatchEvent(new CustomEvent("ares-seed-graph", { detail: { icos } }));
+      requestAnimationFrame(() => document.querySelector("#graph")?.scrollIntoView({ behavior: "smooth" }));
+    },
+    /** C+d — PŘIDAT osobu k existující Mapě propojení (nenahradí ji). Sjednotí
+     *  její firmy + udělá z ní další subjekt → multi-fokus + detekce vazby. */
+    addToMap() {
+      const icos = this.allResolvedIcos();
+      if (icos.length < 1) return;
+      window.Alpine?.store("sections")?.setVisible("graph", true);
+      window.dispatchEvent(new CustomEvent("ares-add-to-graph", {
+        detail: { icos, person: { jmeno: this.form.jmeno, datumNarozeni: this.form.datumNarozeni } },
+      }));
       requestAnimationFrame(() => document.querySelector("#graph")?.scrollIntoView({ behavior: "smooth" }));
     },
     copiedNotice: "",
