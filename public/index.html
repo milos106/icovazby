@@ -3143,6 +3143,9 @@
 
               <!-- Fáze D — uložit / sdílet plátno (D+a) + export do PDF (D+c). -->
               <div x-show="renderMode === 'interactive' && result" class="flex flex-wrap items-center gap-2 text-xs mt-3 pt-3 border-t dark:border-slate-700">
+                <input type="text" x-show="!shared" x-model="investigationName" maxlength="80"
+                  @keydown.enter="saveInvestigation()" placeholder="Název vyšetřování (volitelně)"
+                  class="px-2 py-1.5 w-48 max-w-full rounded-lg border dark:border-slate-600 dark:bg-slate-900 text-slate-700 dark:text-slate-200" />
                 <button type="button" x-show="!shared" @click="saveInvestigation()" :disabled="saving"
                   class="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-50"
                   x-text="saving ? 'Ukládám…' : '💾 Uložit / sdílet vyšetřování'"></button>
@@ -3179,9 +3182,9 @@
           <ul x-show="libOpen" x-transition class="px-3 pb-3 space-y-1.5">
             <template x-for="inv in savedInvestigations" :key="inv.id">
               <li class="flex items-center gap-2 text-sm border-t dark:border-slate-700/60 pt-1.5">
-                <button type="button" @click="openInvestigation(inv)" class="flex-1 text-left truncate text-emerald-700 dark:text-emerald-400 hover:underline" :title="inv.label">
-                  <span x-text="inv.label"></span>
-                  <span class="text-xs text-slate-400" x-text="'· ' + new Date(inv.savedAt).toLocaleDateString('cs-CZ')"></span>
+                <button type="button" @click="openInvestigation(inv)" class="flex-1 min-w-0 flex items-baseline gap-2 text-left text-emerald-700 dark:text-emerald-400 hover:underline" :title="inv.label">
+                  <span class="basis-2/3 truncate" x-text="inv.label"></span>
+                  <span class="text-xs text-slate-400 shrink-0" x-text="new Date(inv.savedAt).toLocaleString('cs-CZ', { day:'numeric', month:'numeric', year:'numeric', hour:'2-digit', minute:'2-digit', timeZone:'Europe/Prague' })"></span>
                 </button>
                 <button type="button" @click="navigator.clipboard.writeText(inv.url)" class="text-xs text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 shrink-0" title="Kopírovat odkaz">🔗</button>
                 <button type="button" @click="removeSavedInvestigation(inv.id)" class="text-xs text-slate-400 hover:text-rose-600 shrink-0" title="Odebrat ze seznamu">✕</button>

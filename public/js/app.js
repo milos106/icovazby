@@ -623,6 +623,7 @@ function graphSection() {
     /** D+e — „knihovna": seznam uložených vyšetřování (link+label v localStorage). */
     savedInvestigations: [],
     libOpen: false,
+    investigationName: "", // volitelný název při ukládání
     init() {
       this.loadSavedInvestigations();
       // Fáze D — sdílené vyšetřování: /v/<id> → dotáhni stav a obnov plátno.
@@ -770,6 +771,7 @@ function graphSection() {
         this.shareUrl = `${location.origin}/v/${r.id}`;
         // D+e — zapamatuj si ho do „knihovny" (localStorage), ať jde znovu otevřít bez linku.
         this.recordSavedInvestigation(r.id, icos);
+        this.investigationName = ""; // vyčisti pole názvu po uložení
         this.libOpen = true; // auto-rozbal knihovnu, ať je po uložení vidět
         try {
           await navigator.clipboard.writeText(this.shareUrl);
@@ -793,8 +795,9 @@ function graphSection() {
       try { localStorage.setItem(STORAGE_INVESTIGATIONS, JSON.stringify(this.savedInvestigations)); } catch { /* private mode */ }
     },
     recordSavedInvestigation(id, icos) {
-      const label = (this.egoPersons || []).map((e) => e.label).join(", ")
+      const auto = (this.egoPersons || []).map((e) => e.label).join(", ")
         || `${(icos || []).length} subjektů`;
+      const label = (this.investigationName || "").trim() || auto;
       // dedup dle id, nový nahoru, drž max 50
       this.savedInvestigations = this.savedInvestigations.filter((x) => x.id !== id);
       this.savedInvestigations.unshift({
