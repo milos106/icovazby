@@ -508,6 +508,16 @@
       </div>
     </header>
 
+    <!-- CTA: narazil-li sdílený HS token na limit, nabídni vložení vlastního tokenu. -->
+    <div x-data x-show="$store.hsLimit.hit" x-cloak class="bg-amber-50 dark:bg-amber-900/30 border-b border-amber-300 dark:border-amber-700 text-amber-900 dark:text-amber-200 text-sm">
+      <div class="max-w-6xl mx-auto px-4 py-2 flex items-center gap-3 flex-wrap">
+        <span class="shrink-0">🔑</span>
+        <span class="flex-1 min-w-[200px]">Narazil jsi na <strong>limit Hlídače státu</strong> (sdílený token pro všechny návštěvníky). Vlož <strong>vlastní HS token</strong> a budeš mít vlastní kvótu — je zdarma a část dat (UBO, dotace, zakázky) se ti zase načte.</span>
+        <button type="button" @click="setTimeout(() => window.dispatchEvent(new CustomEvent('ares-open-settings')), 0)" class="shrink-0 px-3 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-600 text-white text-xs font-semibold">⚙️ Vložit HS token</button>
+        <button type="button" @click="$store.hsLimit.hit = false" class="shrink-0 text-amber-700 dark:text-amber-300 hover:opacity-70 text-xl leading-none" title="Zavřít">×</button>
+      </div>
+    </div>
+
     <main class="flex-1 max-w-6xl mx-auto w-full px-4 py-8 space-y-10">
       <!-- ─── Search ────────────────────────────────────────────────── -->
       <!-- ─── Profil firmy (sloučený search + report) ──────────────── -->

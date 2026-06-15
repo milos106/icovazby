@@ -206,6 +206,8 @@ document.addEventListener("alpine:init", () => {
 
   // Návrh B — „Další registry a zdroje": jeden store pro celý accordion v profilu.
   window.Alpine.store("dalsiRegistry", { open: false });
+  // CTA při naražení na limit Hlídače státu (sdílený token) → nabídni vlastní HS token.
+  window.Alpine.store("hsLimit", { hit: false });
 });
 
 // Návrh B — klik v levém menu na blok uvnitř „Další registry" → otevři accordion
@@ -259,6 +261,13 @@ async function jsonFetch(url, opts) {
   }
   const r = await fetch(url, { ...(opts || {}), headers });
   const data = await r.json().catch(() => ({}));
+  // HS sdílený token narazil na limit → nabídni userovi vlastní token (jen pokud ho ještě nemá).
+  if (data && data.reason === "hs_rate_limited") {
+    try {
+      const hasOwn = (localStorage.getItem(STORAGE_HS_TOKEN) || "").trim().length > 0;
+      if (!hasOwn && window.Alpine?.store("hsLimit")) window.Alpine.store("hsLimit").hit = true;
+    } catch { /* ignore */ }
+  }
   if (!r.ok) {
     throw new Error(data.message || data.error || `HTTP ${r.status}`);
   }
