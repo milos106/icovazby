@@ -574,6 +574,8 @@ function graphSection() {
     /** C+b — investigativní SUBJEKTY (víc osob naráz). Každý {key,label,dob}.
      *  Všichni se zvýrazní (keep = sjednocení jejich okolí) → overlap vynikne. */
     egoPersons: [],
+    /** C+c — textový výrok o vazbě mezi subjekty (sdílené firmy / mosty). */
+    connectionMsg: "",
     /** Fáze C — osoba k zaměření po příštím renderu (z „Vazby osoby" ego-grafu). */
     pendingFocusPerson: null,
     /** Osoby, jejichž VŠECHNY firmy už jsou v grafu (ego/rozbalené) → „Rozbalit"
@@ -857,6 +859,11 @@ function graphSection() {
             selector: ".layer-off",
             style: { "display": "none" },
           },
+          {
+            // C+c — overlap: sdílená firma / mostová osoba mezi subjekty (zlatý ring).
+            selector: ".overlap",
+            style: { "border-width": 5, "border-color": isDark ? "#fbbf24" : "#d97706" },
+          },
         ],
       });
       // Click na firmu = otevři její profil v search.
@@ -930,16 +937,55 @@ function graphSection() {
      *  Subjekt skrytý aktuální vrstvou se přeskočí (návrat ho zase zvýrazní). */
     applyFocus() {
       if (!this.cy) return;
-      this.cy.elements().removeClass("faded");
+      this.cy.elements().removeClass("faded").removeClass("overlap");
+      this.connectionMsg = "";
       if (this.egoPersons.length === 0) return;
       let keep = this.cy.collection();
+      const egoNodes = [];
       for (const ego of this.egoPersons) {
         const node = this.cy.getElementById(ego.key);
         if (!node || node.empty() || node.hasClass("layer-off")) continue;
+        egoNodes.push(node);
         keep = keep.union(node).union(node.connectedEdges()).union(node.connectedEdges().connectedNodes());
       }
       if (keep.length === 0) return; // všichni subjekti skrytí v této vrstvě
       this.cy.elements().not(keep).addClass("faded");
+      if (egoNodes.length >= 2) this.detectConnections(egoNodes);
+    },
+    /** C+c — overlap + textová detekce vazby mezi ≥2 subjekty. Sdílené firmy
+     *  a mostové osoby dostanou třídu .overlap; sestaví výrok do connectionMsg. */
+    detectConnections(egoNodes) {
+      const egoFirms = egoNodes.map((node) => {
+        const firms = new Set();
+        node.connectedEdges().connectedNodes("[type='firma']").forEach((f) => {
+          const ico = f.data("ico"); if (ico) firms.add(ico);
+        });
+        return firms;
+      });
+      // Sdílené firmy (v okolí ≥2 subjektů) = přímá vazba.
+      const firmCount = new Map();
+      for (const fs of egoFirms) for (const ico of fs) firmCount.set(ico, (firmCount.get(ico) || 0) + 1);
+      const shared = [...firmCount].filter(([, c]) => c >= 2).map(([ico]) => ico);
+      for (const ico of shared) this.cy.getElementById("F-" + ico).addClass("overlap");
+      // Mosty (nepřímá vazba) hledej jen když nemají přímou sdílenou firmu.
+      const bridges = [];
+      if (shared.length === 0) {
+        const egoIds = new Set(egoNodes.map((n) => n.id()));
+        this.cy.nodes("[type='person'], [type='legalPerson']").forEach((p) => {
+          if (egoIds.has(p.id()) || p.hasClass("layer-off")) return;
+          const pf = new Set();
+          p.connectedEdges().connectedNodes("[type='firma']").forEach((f) => { const ico = f.data("ico"); if (ico) pf.add(ico); });
+          let touch = 0;
+          for (const fs of egoFirms) if ([...pf].some((ico) => fs.has(ico))) touch++;
+          if (touch >= 2) { bridges.push(p.data("label")); p.addClass("overlap"); }
+        });
+      }
+      const parts = [];
+      if (shared.length) parts.push(`sdílí ${shared.length} ${shared.length === 1 ? "firmu" : "firem"}`);
+      if (bridges.length) parts.push(`propojeni přes ${bridges.slice(0, 3).join(", ")}${bridges.length > 3 ? " …" : ""}`);
+      this.connectionMsg = parts.length
+        ? "🔗 Subjekty propojeny — " + parts.join(" · ")
+        : "Subjekty v grafu nemají společnou firmu ani most (zkus ➕ rozbalit).";
     },
     /** Fáze C — zaměří osobu z ego-grafu. Hledá uzel podle data narození
      *  (spolehlivý klíč) + příjmení, protože display label se může lišit. */

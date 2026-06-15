@@ -3054,6 +3054,8 @@
                 </template>
                 <button type="button" x-show="egoPersons.length > 1" @click="clearFocus()" class="text-slate-500 dark:text-slate-400 underline hover:text-slate-700 dark:hover:text-slate-200">vyčistit vše</button>
               </div>
+              <!-- C+c — textový výrok o vazbě mezi subjekty (zlatě zvýrazněn most v grafu) -->
+              <div x-show="renderMode === 'interactive' && connectionMsg" class="text-xs mb-3 px-3 py-2 rounded-lg border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-900/20 text-amber-800 dark:text-amber-200" x-text="connectionMsg"></div>
               <div x-show="renderMode === 'interactive'" id="cytoscape-container" class="w-full h-[60vh] min-h-[400px] max-h-[600px]"></div>
               <p x-show="renderMode === 'interactive'" class="text-xs text-slate-500 dark:text-slate-400 mt-2">
                 Drag = posun · scroll = zoom. Layout: cose force-directed.
