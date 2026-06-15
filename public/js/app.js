@@ -626,23 +626,9 @@ function graphSection() {
     investigationName: "", // volitelný název při ukládání
     init() {
       this.loadSavedInvestigations();
-      // Fáze D — sdílené vyšetřování: /v/<id> → dotáhni stav a obnov plátno.
-      const invMatch = location.pathname.match(/^\/v\/([A-Za-z0-9_-]{1,32})$/);
-      if (invMatch) {
-        const id = invMatch[1];
-        // Vlastní záznam (je v MÉ knihovně) → otevři normálně k editaci (Uložit i
-        // ostatní tlačítka jako v běžném režimu). Jen CIZÍ přijatý odkaz → read-only.
-        const own = this.savedInvestigations.find((x) => x.id === id);
-        this.shared = !own;
-        if (own) this.investigationName = own.label; // předvyplň pole názvem uloženého
-        this.loadInvestigation(id);
-        return;
-      }
-      const url = readUrl();
-      if (url.icos) {
-        this.raw = url.icos.split(",").join("\n");
-        this.run();
-      }
+      // DŮLEŽITÉ: event listenery registruj VŽDY a JAKO PRVNÍ — dřív byly až za
+      // /v/ early-returnem, takže v načteném vyšetřování nefungoval ego-graf ani
+      // „Přidat do mapy" (ares-focus-person/ares-add-to-graph listener chyběl).
       // re-render Mermaid on theme switch
       window.addEventListener("ares-theme-changed", async () => {
         if (this.result?.mermaid && window.__mermaid) {
@@ -674,6 +660,22 @@ function graphSection() {
         this.raw = [...set].join("\n");
         this.run();
       });
+      // Fáze D — sdílené/uložené vyšetřování: /v/<id> → dotáhni stav a obnov plátno.
+      const invMatch = location.pathname.match(/^\/v\/([A-Za-z0-9_-]{1,32})$/);
+      if (invMatch) {
+        const id = invMatch[1];
+        // Vlastní záznam (je v MÉ knihovně) → editace jako normálně; cizí přijatý odkaz → read-only.
+        const own = this.savedInvestigations.find((x) => x.id === id);
+        this.shared = !own;
+        if (own) this.investigationName = own.label; // předvyplň pole názvem uloženého
+        this.loadInvestigation(id);
+        return;
+      }
+      const url = readUrl();
+      if (url.icos) {
+        this.raw = url.icos.split(",").join("\n");
+        this.run();
+      }
     },
     parseIcos(raw) {
       return (raw || "")
@@ -1252,14 +1254,24 @@ function graphSection() {
       this.pendingFocusPerson = null;
       if (!fp || !this.cy) { this.applyFocus(); return; }
       const surname = (fp.jmeno || "").trim().split(/\s+/).pop().toLowerCase();
+      const persons = this.cy.nodes("[type='person'], [type='legalPerson']");
+      // 1) přesná shoda data narození + příjmení
       let match = null;
-      this.cy.nodes("[type='person'], [type='legalPerson']").forEach((n) => {
-        if (match) return;
-        if (n.data("datumNarozeni") === fp.datumNarozeni &&
-            (!surname || (n.data("label") || "").toLowerCase().includes(surname))) {
-          match = n;
-        }
-      });
+      if (fp.datumNarozeni) {
+        persons.forEach((n) => {
+          if (match) return;
+          if (n.data("datumNarozeni") === fp.datumNarozeni &&
+              (!surname || (n.data("label") || "").toLowerCase().includes(surname))) {
+            match = n;
+          }
+        });
+      }
+      // 2) fallback: uzel bez DOB (historik z VR) / DOB nesedí → podle příjmení,
+      //    ale jen když je v grafu JEDNOZNAČNÉ (jediný uzel s tím příjmením).
+      if (!match && surname) {
+        const byName = persons.filter((n) => (n.data("label") || "").toLowerCase().includes(surname));
+        if (byName.length === 1) match = byName[0];
+      }
       if (match) {
         const key = match.id();
         if (!this.egoPersons.some((e) => e.key === key)) {
