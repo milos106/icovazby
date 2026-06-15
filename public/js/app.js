@@ -575,6 +575,9 @@ function graphSection() {
     focusedPersonLabel: "",
     /** Fáze C — osoba k zaměření po příštím renderu (z „Vazby osoby" ego-grafu). */
     pendingFocusPerson: null,
+    /** C+a — osoba, jejíž VŠECHNY firmy už jsou v grafu (ego / právě rozbalená);
+     *  u ní by „Rozbalit" nic nepřidal → tlačítko zašedneme. */
+    lastFullKey: null,
     /** Cytoscape instance — odkaz pro relayout / destroy. */
     cy: null,
     // Selection map pro „Možné jmenovce" (tentativeCandidates). Key = jmeno|prijmeni
@@ -680,6 +683,7 @@ function graphSection() {
       // Nový render = čistý fokus (ego-graf si ho nastaví znovu přes pendingFocusPerson).
       this.focusedPersonKey = null;
       this.focusedPersonLabel = "";
+      this.lastFullKey = null;
       if (this.cy) {
         this.cy.destroy();
         this.cy = null;
@@ -947,6 +951,7 @@ function graphSection() {
       if (match) {
         this.focusedPersonKey = match.id();
         this.focusedPersonLabel = match.data("label") || "";
+        this.lastFullKey = match.id(); // tahle osoba je teď v grafu celá (ego/rozbalená)
       }
       this.applyFocus();
     },
