@@ -574,6 +574,9 @@ function graphSection() {
     /** C+b — investigativní SUBJEKTY (víc osob naráz). Každý {key,label,dob}.
      *  Všichni se zvýrazní (keep = sjednocení jejich okolí) → overlap vynikne. */
     egoPersons: [],
+    /** #2 — PRIMÁRNÍ subjekt: když je nastaven, graf se zaměří jen na něj
+     *  (single fokus + výrazné zvýraznění). Klik na subjekt přepíná. */
+    primaryKey: null,
     /** C+c — textový výrok o vazbě mezi subjekty (sdílené firmy / mosty). */
     connectionMsg: "",
     /** AND — režim „jen společné firmy" (průnik): skryje vše kromě subjektů
@@ -879,6 +882,11 @@ function graphSection() {
             style: { "border-width": 5, "border-color": isDark ? "#fbbf24" : "#d97706" },
           },
           {
+            // #2 — primární subjekt: výrazný indigo ring (odlišný od zlatého overlapu).
+            selector: ".primary",
+            style: { "border-width": 8, "border-color": isDark ? "#818cf8" : "#4f46e5" },
+          },
+          {
             // AND — průnik: prvek mimo společné firmy úplně schován.
             selector: ".intersect-off",
             style: { "display": "none" },
@@ -912,6 +920,7 @@ function graphSection() {
       // robustní proti spurious re-renderům (dřív je render bez pending vynuloval).
       this.egoPersons = this.egoPersons.filter((e) => this.cy.getElementById(e.key).nonempty());
       this.fullKeys = this.fullKeys.filter((k) => this.cy.getElementById(k).nonempty());
+      if (this.primaryKey && this.cy.getElementById(this.primaryKey).empty()) this.primaryKey = null;
       // Plán B: viditelnost vrstev se řeší zde (bez re-renderu při přepnutí).
       this.applyLayer();
       // Fáze C: čeká-li osoba k zaměření (ego-graf), zaměř ji; jinak fokus.
@@ -944,25 +953,49 @@ function graphSection() {
      *  na druhém konci. Druhý klik na tutéž osobu fokus zruší (toggle). */
     focusPerson(nodeId, label) {
       const i = this.egoPersons.findIndex((e) => e.key === nodeId);
-      if (i >= 0) this.egoPersons.splice(i, 1); // klik na zvýrazněného = odebrat
-      else this.egoPersons.push({ key: nodeId, label: label || "", dob: nodeId.split("|")[1] || "" });
+      if (i < 0) {
+        // nová osoba → přidat jako subjekt (multi-fokus)
+        this.egoPersons.push({ key: nodeId, label: label || "", dob: nodeId.split("|")[1] || "" });
+      } else {
+        // už je subjekt → klik přepíná „primární" (single fokus na něj / zpět na multi)
+        this.primaryKey = this.primaryKey === nodeId ? null : nodeId;
+      }
+      this.applyFocus();
+    },
+    /** #2 — nastav/zruš primární subjekt (klik na chip). */
+    setPrimary(key) {
+      this.primaryKey = this.primaryKey === key ? null : key;
       this.applyFocus();
     },
     clearFocus() {
       this.egoPersons = [];
+      this.primaryKey = null;
       this.applyFocus();
     },
     removeEgo(key) {
       this.egoPersons = this.egoPersons.filter((e) => e.key !== key);
+      if (this.primaryKey === key) this.primaryKey = null;
       this.applyFocus();
     },
     /** Multi-fokus: keep = sjednocení okolí VŠECH subjektů; zbytek zašedne.
      *  Subjekt skrytý aktuální vrstvou se přeskočí (návrat ho zase zvýrazní). */
     applyFocus() {
       if (!this.cy) return;
-      this.cy.elements().removeClass("faded").removeClass("overlap");
+      this.cy.elements().removeClass("faded").removeClass("overlap").removeClass("primary");
       this.connectionMsg = "";
-      if (this.egoPersons.length === 0) return;
+      if (this.egoPersons.length === 0) { this.primaryKey = null; return; }
+      // #2 — PRIMÁRNÍ režim: single fokus jen na primární subjekt + výrazné zvýraznění.
+      if (this.primaryKey) {
+        const node = this.cy.getElementById(this.primaryKey);
+        if (node.nonempty() && !node.hasClass("layer-off")) {
+          node.addClass("primary");
+          const keep = node.union(node.connectedEdges()).union(node.connectedEdges().connectedNodes());
+          this.cy.elements().not(keep).addClass("faded");
+          this.applyIntersect();
+          return;
+        }
+      }
+      // MULTI režim: keep = sjednocení okolí VŠECH subjektů; zbytek zašedne.
       let keep = this.cy.collection();
       const egoNodes = [];
       for (const ego of this.egoPersons) {

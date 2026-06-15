@@ -88,3 +88,45 @@ test("subjekt přežije přidání další osoby (ego Jedlička → ➕ Cingr)",
   expect(after2).toEqual(expect.arrayContaining([expect.stringContaining("CINGR")]));
   expect(after2.length).toBe(2);
 });
+
+test("primární subjekt — klik na chip zaměří jen jeho (#2)", async ({ page, request }) => {
+  const jIcos = await resolveIcos(request, JEDLICKA);
+  const cIcos = await resolveIcos(request, CINGR);
+  await page.goto(BASE, { waitUntil: "domcontentloaded" });
+  await page.waitForFunction(() => !!window.Alpine && !!document.querySelector('[x-data*="graphSection"]'));
+  await page.waitForTimeout(800);
+
+  // postav 2-subjektový graf (ego Jedlička + ➕ Cingr)
+  await page.evaluate(({ p, icos }) => {
+    window.dispatchEvent(new CustomEvent("ares-focus-person", { detail: { jmeno: p.jmeno, datumNarozeni: p.dob } }));
+    window.dispatchEvent(new CustomEvent("ares-seed-graph", { detail: { icos } }));
+  }, { p: JEDLICKA, icos: jIcos });
+  await page.waitForTimeout(5000);
+  await page.evaluate(({ p, icos }) => {
+    window.dispatchEvent(new CustomEvent("ares-add-to-graph", { detail: { icos, person: { jmeno: p.jmeno, datumNarozeni: p.dob } } }));
+  }, { p: CINGR, icos: cIcos });
+  await page.waitForTimeout(5000);
+  expect((await egoLabels(page)).length).toBe(2);
+
+  // klik na chip Jedličky → primární
+  const res = await page.evaluate(() => {
+    const d = window.Alpine.$data(document.querySelector('[x-data*="graphSection"]'));
+    const jKey = d.egoPersons.find((e) => e.label.includes("JEDLIČKA")).key;
+    d.setPrimary(jKey);
+    const faded = d.cy.nodes().filter((n) => n.hasClass("faded")).length;
+    return { primaryKey: d.primaryKey, jKey, jHasPrimary: d.cy.getElementById(jKey).hasClass("primary"), fadedNodes: faded };
+  });
+  console.log("→ primary:", JSON.stringify(res));
+  expect(res.primaryKey).toBe(res.jKey);
+  expect(res.jHasPrimary).toBe(true);     // primární má .primary ring
+  expect(res.fadedNodes).toBeGreaterThan(0); // něco (Cingrovo výlučné okolí) je zašedlé
+
+  // klik znovu → zpět na multi
+  const off = await page.evaluate(() => {
+    const d = window.Alpine.$data(document.querySelector('[x-data*="graphSection"]'));
+    d.setPrimary(d.primaryKey);
+    return { primaryKey: d.primaryKey, anyPrimaryClass: d.cy.nodes(".primary").length };
+  });
+  expect(off.primaryKey).toBeNull();
+  expect(off.anyPrimaryClass).toBe(0);
+});

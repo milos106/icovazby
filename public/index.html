@@ -3053,12 +3053,15 @@
               <div x-show="renderMode === 'interactive' && egoPersons.length > 0" class="flex items-center gap-2 flex-wrap text-xs mb-3">
                 <span class="text-slate-500 dark:text-slate-400">Subjekty:</span>
                 <template x-for="ego in egoPersons" :key="ego.key">
-                  <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-emerald-100 dark:bg-emerald-900/40 text-emerald-800 dark:text-emerald-200 border border-emerald-200 dark:border-emerald-800">
+                  <span @click="setPrimary(ego.key)"
+                    :class="primaryKey === ego.key ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-emerald-100 dark:bg-emerald-900/40 text-emerald-800 dark:text-emerald-200 border-emerald-200 dark:border-emerald-800'"
+                    class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full border cursor-pointer"
+                    title="Klik = zaměřit jen tuto osobu (primární) · klik znovu = zpět na všechny">
                     🎯 <strong x-text="ego.label"></strong>
-                    <button type="button" @click="expandEgo(ego.key, ego.label, ego.dob)" :disabled="loading || fullKeys.includes(ego.key)"
-                      class="ml-1 disabled:opacity-40 disabled:cursor-not-allowed hover:text-emerald-950 dark:hover:text-white"
+                    <button type="button" @click.stop="expandEgo(ego.key, ego.label, ego.dob)" :disabled="loading || fullKeys.includes(ego.key)"
+                      class="ml-1 disabled:opacity-40 disabled:cursor-not-allowed hover:opacity-70"
                       :title="fullKeys.includes(ego.key) ? 'Tato osoba je v grafu už celá' : 'Přidat další firmy této osoby (odhalí skryté vazby)'">➕</button>
-                    <button type="button" @click="removeEgo(ego.key)" class="font-bold hover:text-emerald-950 dark:hover:text-white" title="Odebrat ze subjektů">✕</button>
+                    <button type="button" @click.stop="removeEgo(ego.key)" class="font-bold hover:opacity-70" title="Odebrat ze subjektů">✕</button>
                   </span>
                 </template>
                 <button type="button" x-show="egoPersons.length > 1" @click="intersectMode = !intersectMode; applyFocus()"
