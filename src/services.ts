@@ -449,6 +449,7 @@ export async function crossCompanyPersonsService(
       isLegalEntity: p.personKey.startsWith("LEGAL|"),
       memberships: p.memberships,
     })),
+    hasOwnership: graph.hasOwnership,
     ...(graph.ownershipEdges.length > 0 ? { ownershipEdges: graph.ownershipEdges } : {}),
     ...(skipped.length > 0 ? { skipped } : {}),
     ...(args.emitMermaid !== false ? { mermaid: graph.mermaid } : {}),

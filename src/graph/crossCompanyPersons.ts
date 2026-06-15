@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-import type { VrOdpoved } from "../ares/types.js";
+import type { VrOdpoved, VrFyzickaOsoba } from "../ares/types.js";
 import {
   currentObchodniJmeno,
   flattenMembers,
@@ -18,6 +18,9 @@ export interface Membership {
   company?: string;
   funkce?: string;
   organ?: string;
+  /** 'statutary' = člen statutárního orgánu (default), 'owner' = vlastník
+   *  (společník s.r.o. / akcionář a.s.). Řídí barvu a vrstvu hrany v mapě. */
+  relation?: "statutary" | "owner";
   /** Set when the membership has ended (historical entry). */
   datumVymazu?: string | null;
   datumZapisu?: string | null;
@@ -41,6 +44,9 @@ export interface GraphResult {
   /** Vlastnické hrany mezi firmami v sadě (akcionář-PO → vlastněná firma).
    *  Jen v rámci dotazované sady IČO — pro „vrstvu vlastnictví" v mapě. */
   ownershipEdges: { from: string; to: string }[];
+  /** True pokud existuje JAKÉKOLI vlastnictví (firma→firma nebo osoba→firma).
+   *  Frontend podle toho zobrazuje přepínač vrstev. */
+  hasOwnership: boolean;
   mermaid: string;
 }
 
@@ -123,6 +129,31 @@ export function buildCrossCompanyGraph(
         });
       }
     }
+
+    // Fyzičtí vlastníci (společníci s.r.o. / akcionáři a.s.) → osoby s relation='owner'.
+    for (const o of extractPersonOwners(vr, includeHistorical)) {
+      const key = personKey(o.fo);
+      if (!key) continue;
+      if (!personMap.has(key)) {
+        const name = [o.fo.titulPredJmenem, o.fo.jmeno, o.fo.prijmeni, o.fo.titulZaJmenem]
+          .filter(Boolean).join(" ").trim();
+        personMap.set(key, {
+          personKey: key,
+          jmeno: name || (o.fo.prijmeni ?? "?"),
+          datumNarozeni: o.fo.datumNarozeni,
+          memberships: [],
+        });
+      }
+      personMap.get(key)!.memberships.push({
+        ico,
+        company: obchodniJmeno,
+        funkce: o.funkce,
+        organ: "Vlastníci",
+        relation: "owner",
+        datumZapisu: o.datumZapisu ?? null,
+        datumVymazu: o.datumVymazu ?? null,
+      });
+    }
   }
 
   // Vlastnické hrany: pro každou firmu vytáhni vlastníky-PO (společníci s.r.o.
@@ -140,6 +171,9 @@ export function buildCrossCompanyGraph(
       ownershipEdges.push({ from: owner, to: ico });
     }
   }
+  // Existuje jakékoli vlastnictví? (firma→firma NEBO osoba-vlastník)
+  const hasOwnership = ownershipEdges.length > 0 ||
+    [...personMap.values()].some((p) => p.memberships.some((m) => m.relation === "owner"));
 
   // Všechny osoby napříč firmami (aspoň jedna aktivní vazba) — pro expand
   // „Aktivních osob" v UI. Seřazené podle počtu unikátních firem.
@@ -159,8 +193,43 @@ export function buildCrossCompanyGraph(
     activePersons,
     sharedPersons,
     ownershipEdges,
+    hasOwnership,
     mermaid: renderMermaid(companyMeta, sharedPersons),
   };
+}
+
+/**
+ * Vytáhne z VR fyzické vlastníky (společníci s.r.o. / akcionáři a.s. — osoby).
+ * Vrací FyzickaOsoba + funkci (společník/akcionář) + datumy.
+ */
+function extractPersonOwners(
+  vr: VrOdpoved | null,
+  includeHistorical: boolean,
+): Array<{ fo: VrFyzickaOsoba; funkce: string; datumZapisu?: string | null; datumVymazu?: string | null }> {
+  if (!vr) return [];
+  const out: Array<{ fo: VrFyzickaOsoba; funkce: string; datumZapisu?: string | null; datumVymazu?: string | null }> = [];
+  type AkcionarBlock = {
+    datumVymazu?: string | null;
+    clenoveOrganu?: Array<{ datumZapisu?: string | null; datumVymazu?: string | null; fyzickaOsoba?: VrFyzickaOsoba }>;
+  };
+  for (const zaznam of vr.zaznamy ?? []) {
+    for (const s of zaznam.spolecnici ?? []) {
+      if (!includeHistorical && s.datumVymazu) continue;
+      if (s.fyzickaOsoba?.prijmeni) {
+        out.push({ fo: s.fyzickaOsoba, funkce: "společník", datumZapisu: s.datumZapisu, datumVymazu: s.datumVymazu });
+      }
+    }
+    for (const blok of (zaznam as { akcionari?: AkcionarBlock[] }).akcionari ?? []) {
+      if (!includeHistorical && blok.datumVymazu) continue;
+      for (const clen of blok.clenoveOrganu ?? []) {
+        if (!includeHistorical && clen.datumVymazu) continue;
+        if (clen.fyzickaOsoba?.prijmeni) {
+          out.push({ fo: clen.fyzickaOsoba, funkce: "akcionář", datumZapisu: clen.datumZapisu, datumVymazu: clen.datumVymazu });
+        }
+      }
+    }
+  }
+  return out;
 }
 
 /**

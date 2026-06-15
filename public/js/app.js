@@ -678,9 +678,12 @@ function graphSection() {
           data: { id: "F-" + c.ico, label: c.obchodniJmeno || c.ico, ico: c.ico, type: "firma" },
         });
       }
-      // Vrstva OSOBY (sdílení statutáři). Skrytá v režimu 'ownership'.
-      if (this.graphLayer !== "ownership") {
+      // Osoby + jejich hrany. Statutární (modré) → vrstva „osoby"; vlastnické
+      // (oranžové, relation='owner') → vrstva „vlastnictví". Uzel osoby se přidá
+      // jen pokud má v aktuální vrstvě aspoň jednu viditelnou hranu.
+      {
         const personNodes = new Map();
+        const personUsed = new Set();
         const addPerson = (p) => {
           const key = "P-" + (p.jmeno || "") + "|" + (p.datumNarozeni || "");
           if (!personNodes.has(key)) {
@@ -695,25 +698,29 @@ function graphSection() {
           }
           return key;
         };
-        for (const p of this.result.activePersons || []) {
-          const pid = addPerson(p);
-          for (const m of p.memberships || []) {
-            elements.push({
-              data: { id: pid + "-" + m.ico, source: pid, target: "F-" + m.ico, label: m.funkce || "" },
-            });
+        const addEdges = (list, suffix, includeOwner) => {
+          for (const p of list || []) {
+            const pid = addPerson(p);
+            for (const m of p.memberships || []) {
+              const isOwner = m.relation === "owner";
+              if (isOwner && !includeOwner) continue; // vlastnické hrany jen z activePersons (jednou)
+              if (isOwner && this.graphLayer === "persons") continue;
+              if (!isOwner && this.graphLayer === "ownership") continue;
+              personUsed.add(pid);
+              const data = { id: pid + "-" + m.ico + (isOwner ? "-own" : "") + suffix, source: pid, target: "F-" + m.ico, label: m.funkce || "" };
+              if (isOwner) data.type = "ownership";
+              else if (suffix) data.shared = true;
+              elements.push({ data });
+            }
           }
+        };
+        addEdges(this.result.activePersons, "", true);
+        addEdges(this.result.sharedPersons, "-s", false);
+        for (const [key, node] of personNodes) {
+          if (personUsed.has(key)) elements.push(node);
         }
-        for (const p of this.result.sharedPersons || []) {
-          const pid = addPerson(p);
-          for (const m of p.memberships || []) {
-            elements.push({
-              data: { id: pid + "-" + m.ico + "-s", source: pid, target: "F-" + m.ico, label: m.funkce || "", shared: true },
-            });
-          }
-        }
-        for (const node of personNodes.values()) elements.push(node);
       }
-      // Vrstva VLASTNICTVÍ (akcionář-PO → vlastněná firma). Skrytá v režimu 'persons'.
+      // Vrstva VLASTNICTVÍ firma→firma (akcionář/společník-PO). Skrytá v 'persons'.
       if (this.graphLayer !== "persons") {
         for (const e of this.result.ownershipEdges || []) {
           elements.push({
