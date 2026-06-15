@@ -3039,7 +3039,7 @@
               <!-- Prominentní výzva: klik na uzel firmy → profil (drill-down). -->
               <div x-show="renderMode === 'interactive'" class="flex items-center gap-2 text-sm px-3 py-2 mb-3 rounded-lg border border-emerald-200 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-900/20 text-emerald-800 dark:text-emerald-200">
                 <span class="shrink-0">👆</span>
-                <span><strong>Klikni na libovolnou firmu</strong> v grafu → otevře se její profil.</span>
+                <span><strong>Klikni na firmu</strong> → otevře profil · <strong>klikni na osobu</strong> → zaměří jen její vztahy.</span>
               </div>
               <!-- Přepínač vrstev — jen když dotaz vrátil vlastnické hrany -->
               <div x-show="renderMode === 'interactive' && result?.hasOwnership" class="flex items-center gap-2 text-xs mb-3">
@@ -3049,6 +3049,13 @@
                   <button type="button" @click="graphLayer='ownership'; renderCytoscape()" :class="graphLayer==='ownership' ? 'bg-emerald-600 text-white' : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700'" class="px-2.5 py-1 border-l dark:border-slate-600">🏢 Vlastnictví</button>
                   <button type="button" @click="graphLayer='both'; renderCytoscape()" :class="graphLayer==='both' ? 'bg-emerald-600 text-white' : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700'" class="px-2.5 py-1 border-l dark:border-slate-600">Obojí</button>
                 </div>
+              </div>
+              <!-- Fokus na osobu (Fáze B) — chip se zrušením -->
+              <div x-show="renderMode === 'interactive' && focusedPersonKey" class="flex items-center gap-2 text-xs mb-3">
+                <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-100 dark:bg-emerald-900/40 text-emerald-800 dark:text-emerald-200 border border-emerald-200 dark:border-emerald-800">
+                  🎯 Zaměřeno: <strong x-text="focusedPersonLabel"></strong>
+                  <button type="button" @click="clearFocus()" class="ml-1 font-bold hover:text-emerald-950 dark:hover:text-white" title="Zrušit fokus">✕</button>
+                </span>
               </div>
               <div x-show="renderMode === 'interactive'" id="cytoscape-container" class="w-full h-[60vh] min-h-[400px] max-h-[600px]"></div>
               <p x-show="renderMode === 'interactive'" class="text-xs text-slate-500 dark:text-slate-400 mt-2">

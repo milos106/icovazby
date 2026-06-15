@@ -570,6 +570,9 @@ function graphSection() {
     /** 'both' | 'persons' | 'ownership' — které vrstvy mapy zobrazit
      *  (osoby = sdílení statutáři, vlastnictví = akcionář→firma). */
     graphLayer: "both",
+    /** Fáze B — fokus na osobu: id uzlu osoby (null = bez fokusu) + label do chipu. */
+    focusedPersonKey: null,
+    focusedPersonLabel: "",
     /** Cytoscape instance — odkaz pro relayout / destroy. */
     cy: null,
     // Selection map pro „Možné jmenovce" (tentativeCandidates). Key = jmeno|prijmeni
@@ -825,6 +828,11 @@ function graphSection() {
               "width": 2.5,
             },
           },
+          {
+            // Fokus na osobu (Fáze B): ostatní prvky ztlumené.
+            selector: ".faded",
+            style: { "opacity": 0.12, "text-opacity": 0.12 },
+          },
         ],
       });
       // Click na firmu = otevři její profil v search.
@@ -844,6 +852,35 @@ function graphSection() {
         evt.target.removeClass("hover");
         container.style.cursor = "default";
       });
+      // Klik na osobu = fokus na její vztahy (Fáze B). Pointer kurzor = afordance.
+      this.cy.on("tap", "node[type='person'], node[type='legalPerson']", (evt) => {
+        this.focusPerson(evt.target.id(), evt.target.data("label"));
+      });
+      this.cy.on("mouseover", "node[type='person'], node[type='legalPerson']", () => { container.style.cursor = "pointer"; });
+      this.cy.on("mouseout", "node[type='person'], node[type='legalPerson']", () => { container.style.cursor = "default"; });
+      // Znovu-aplikuj fokus po re-renderu (přepnutí vrstev nezruší zaměření).
+      this.applyFocus();
+    },
+    /** Fáze B — fokus na osobu: ztlumí vše kromě osoby, jejích hran a firem
+     *  na druhém konci. Druhý klik na tutéž osobu fokus zruší (toggle). */
+    focusPerson(nodeId, label) {
+      this.focusedPersonKey = this.focusedPersonKey === nodeId ? null : nodeId;
+      this.focusedPersonLabel = this.focusedPersonKey ? label || "" : "";
+      this.applyFocus();
+    },
+    clearFocus() {
+      this.focusedPersonKey = null;
+      this.focusedPersonLabel = "";
+      this.applyFocus();
+    },
+    applyFocus() {
+      if (!this.cy) return;
+      this.cy.elements().removeClass("faded");
+      if (!this.focusedPersonKey) return;
+      const node = this.cy.getElementById(this.focusedPersonKey);
+      if (!node || node.empty()) { this.focusedPersonKey = null; this.focusedPersonLabel = ""; return; }
+      const keep = node.union(node.connectedEdges()).union(node.connectedEdges().connectedNodes());
+      this.cy.elements().not(keep).addClass("faded");
     },
     /** Unique key pro tentative kandidáta — pro Alpine x-model binding. */
     candidateKey(c) {
