@@ -984,18 +984,8 @@ function graphSection() {
       this.cy.elements().removeClass("faded").removeClass("overlap").removeClass("primary");
       this.connectionMsg = "";
       if (this.egoPersons.length === 0) { this.primaryKey = null; return; }
-      // #2 — PRIMÁRNÍ režim: single fokus jen na primární subjekt + výrazné zvýraznění.
-      if (this.primaryKey) {
-        const node = this.cy.getElementById(this.primaryKey);
-        if (node.nonempty() && !node.hasClass("layer-off")) {
-          node.addClass("primary");
-          const keep = node.union(node.connectedEdges()).union(node.connectedEdges().connectedNodes());
-          this.cy.elements().not(keep).addClass("faded");
-          this.applyIntersect();
-          return;
-        }
-      }
-      // MULTI režim: keep = sjednocení okolí VŠECH subjektů; zbytek zašedne.
+      // MULTI-fokus VŽDY: keep = sjednocení okolí VŠECH subjektů; zbytek zašedne.
+      // (Kontext + vazby mezi subjekty zůstanou — nezužujeme na jednoho.)
       let keep = this.cy.collection();
       const egoNodes = [];
       for (const ego of this.egoPersons) {
@@ -1007,6 +997,11 @@ function graphSection() {
       if (keep.length === 0) return; // všichni subjekti skrytí v této vrstvě
       this.cy.elements().not(keep).addClass("faded");
       if (egoNodes.length >= 2) this.detectConnections(egoNodes);
+      // #2 — primární subjekt jen VIZUÁLNĚ zvýrazni (indigo ring); kontext zůstává.
+      if (this.primaryKey) {
+        const p = this.cy.getElementById(this.primaryKey);
+        if (p.nonempty()) p.addClass("primary");
+      }
       this.applyIntersect();
     },
     /** AND — průnik: nech jen subjekty + společné firmy (overlap firma) a hrany

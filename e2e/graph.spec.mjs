@@ -108,18 +108,22 @@ test("primární subjekt — klik na chip zaměří jen jeho (#2)", async ({ pag
   await page.waitForTimeout(5000);
   expect((await egoLabels(page)).length).toBe(2);
 
-  // klik na chip Jedličky → primární
+  // klik na chip Jedličky → primární (jen zvýraznění, kontext zůstává)
   const res = await page.evaluate(() => {
     const d = window.Alpine.$data(document.querySelector('[x-data*="graphSection"]'));
     const jKey = d.egoPersons.find((e) => e.label.includes("JEDLIČKA")).key;
+    const cKey = d.egoPersons.find((e) => e.label.includes("CINGR")).key;
     d.setPrimary(jKey);
-    const faded = d.cy.nodes().filter((n) => n.hasClass("faded")).length;
-    return { primaryKey: d.primaryKey, jKey, jHasPrimary: d.cy.getElementById(jKey).hasClass("primary"), fadedNodes: faded };
+    return {
+      primaryKey: d.primaryKey, jKey,
+      jHasPrimary: d.cy.getElementById(jKey).hasClass("primary"),
+      cingrFaded: d.cy.getElementById(cKey).hasClass("faded"),
+    };
   });
   console.log("→ primary:", JSON.stringify(res));
   expect(res.primaryKey).toBe(res.jKey);
-  expect(res.jHasPrimary).toBe(true);     // primární má .primary ring
-  expect(res.fadedNodes).toBeGreaterThan(0); // něco (Cingrovo výlučné okolí) je zašedlé
+  expect(res.jHasPrimary).toBe(true);  // primární má .primary ring
+  expect(res.cingrFaded).toBe(false);  // druhý subjekt ZŮSTANE viditelný (kontext + vazba)
 
   // klik znovu → zpět na multi
   const off = await page.evaluate(() => {

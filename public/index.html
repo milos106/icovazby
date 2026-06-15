@@ -3056,7 +3056,7 @@
                   <span @click="setPrimary(ego.key)"
                     :class="primaryKey === ego.key ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-emerald-100 dark:bg-emerald-900/40 text-emerald-800 dark:text-emerald-200 border-emerald-200 dark:border-emerald-800'"
                     class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full border cursor-pointer"
-                    title="Klik = zaměřit jen tuto osobu (primární) · klik znovu = zpět na všechny">
+                    title="Klik = zvýraznit tuto osobu (primární, indigo) · klik znovu = zrušit">
                     🎯 <strong x-text="ego.label"></strong>
                     <button type="button" @click.stop="expandEgo(ego.key, ego.label, ego.dob)" :disabled="loading || fullKeys.includes(ego.key)"
                       class="ml-1 disabled:opacity-40 disabled:cursor-not-allowed hover:opacity-70"
