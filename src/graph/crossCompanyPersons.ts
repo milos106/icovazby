@@ -38,6 +38,9 @@ export interface GraphResult {
    *  osob" v UI. */
   activePersons: SharedPerson[];
   sharedPersons: SharedPerson[];
+  /** Vlastnické hrany mezi firmami v sadě (akcionář-PO → vlastněná firma).
+   *  Jen v rámci dotazované sady IČO — pro „vrstvu vlastnictví" v mapě. */
+  ownershipEdges: { from: string; to: string }[];
   mermaid: string;
 }
 
@@ -122,6 +125,22 @@ export function buildCrossCompanyGraph(
     }
   }
 
+  // Vlastnické hrany: pro každou firmu vytáhni vlastníky-PO (společníci s.r.o.
+  // / akcionáři a.s.) a pokud je vlastník TAKÉ v dotazované sadě, přidej hranu
+  // vlastník → vlastněná firma. Jen v rámci sady (hrany ven by visely).
+  const setIcos = new Set(companies.map((c) => c.ico));
+  const ownershipEdges: { from: string; to: string }[] = [];
+  const seenEdge = new Set<string>();
+  for (const { ico, vr } of companies) {
+    for (const owner of extractOwnerIcos(vr, includeHistorical)) {
+      if (owner === ico || !setIcos.has(owner)) continue;
+      const k = `${owner}>${ico}`;
+      if (seenEdge.has(k)) continue;
+      seenEdge.add(k);
+      ownershipEdges.push({ from: owner, to: ico });
+    }
+  }
+
   // Všechny osoby napříč firmami (aspoň jedna aktivní vazba) — pro expand
   // „Aktivních osob" v UI. Seřazené podle počtu unikátních firem.
   const activePersons = [...personMap.values(), ...legalMap.values()]
@@ -139,8 +158,43 @@ export function buildCrossCompanyGraph(
     totalActivePersons: activePersons.length,
     activePersons,
     sharedPersons,
+    ownershipEdges,
     mermaid: renderMermaid(companyMeta, sharedPersons),
   };
+}
+
+/**
+ * Vytáhne IČO vlastníků-právnických osob z VR. Pokrývá obě formy:
+ *  - s.r.o. → blok `spolecnici` (plochý VrClenOrganu[], typovaný)
+ *  - a.s.   → blok `akcionari` (vnořený, mimo typovaný model → assertion)
+ * Vlastník = právnická osoba s IČO.
+ */
+function extractOwnerIcos(vr: VrOdpoved | null, includeHistorical: boolean): string[] {
+  if (!vr) return [];
+  const out = new Set<string>();
+  const addIco = (ico?: string) => {
+    if (ico && /^\d{7,8}$/.test(ico)) out.add(ico.padStart(8, "0"));
+  };
+  type AkcionarBlock = {
+    datumVymazu?: string | null;
+    clenoveOrganu?: Array<{ datumVymazu?: string | null; pravnickaOsoba?: { ico?: string } }>;
+  };
+  for (const zaznam of vr.zaznamy ?? []) {
+    // s.r.o. — společníci (plochý seznam)
+    for (const s of zaznam.spolecnici ?? []) {
+      if (!includeHistorical && s.datumVymazu) continue;
+      addIco(s.pravnickaOsoba?.ico);
+    }
+    // a.s. — akcionáři (vnořená struktura)
+    for (const blok of (zaznam as { akcionari?: AkcionarBlock[] }).akcionari ?? []) {
+      if (!includeHistorical && blok.datumVymazu) continue;
+      for (const clen of blok.clenoveOrganu ?? []) {
+        if (!includeHistorical && clen.datumVymazu) continue;
+        addIco(clen.pravnickaOsoba?.ico);
+      }
+    }
+  }
+  return [...out];
 }
 
 function uniqueIcoCount(memberships: Membership[]): number {

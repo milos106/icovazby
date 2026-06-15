@@ -567,6 +567,9 @@ function graphSection() {
     /** 'mermaid' | 'interactive' — toggle. Default interactive (klikatelný
      *  drill-down do profilu); Mermaid je volba pro statický export. */
     renderMode: "interactive",
+    /** 'both' | 'persons' | 'ownership' — které vrstvy mapy zobrazit
+     *  (osoby = sdílení statutáři, vlastnictví = akcionář→firma). */
+    graphLayer: "both",
     /** Cytoscape instance — odkaz pro relayout / destroy. */
     cy: null,
     // Selection map pro „Možné jmenovce" (tentativeCandidates). Key = jmeno|prijmeni
@@ -675,38 +678,49 @@ function graphSection() {
           data: { id: "F-" + c.ico, label: c.obchodniJmeno || c.ico, ico: c.ico, type: "firma" },
         });
       }
-      const personNodes = new Map();
-      const addPerson = (p) => {
-        const key = "P-" + (p.jmeno || "") + "|" + (p.datumNarozeni || "");
-        if (!personNodes.has(key)) {
-          personNodes.set(key, {
-            data: {
-              id: key,
-              label: p.jmeno,
-              type: p.isLegalEntity ? "legalPerson" : "person",
-              shared: p.memberships && p.memberships.length > 1,
-            },
-          });
+      // Vrstva OSOBY (sdílení statutáři). Skrytá v režimu 'ownership'.
+      if (this.graphLayer !== "ownership") {
+        const personNodes = new Map();
+        const addPerson = (p) => {
+          const key = "P-" + (p.jmeno || "") + "|" + (p.datumNarozeni || "");
+          if (!personNodes.has(key)) {
+            personNodes.set(key, {
+              data: {
+                id: key,
+                label: p.jmeno,
+                type: p.isLegalEntity ? "legalPerson" : "person",
+                shared: p.memberships && p.memberships.length > 1,
+              },
+            });
+          }
+          return key;
+        };
+        for (const p of this.result.activePersons || []) {
+          const pid = addPerson(p);
+          for (const m of p.memberships || []) {
+            elements.push({
+              data: { id: pid + "-" + m.ico, source: pid, target: "F-" + m.ico, label: m.funkce || "" },
+            });
+          }
         }
-        return key;
-      };
-      for (const p of this.result.activePersons || []) {
-        const pid = addPerson(p);
-        for (const m of p.memberships || []) {
+        for (const p of this.result.sharedPersons || []) {
+          const pid = addPerson(p);
+          for (const m of p.memberships || []) {
+            elements.push({
+              data: { id: pid + "-" + m.ico + "-s", source: pid, target: "F-" + m.ico, label: m.funkce || "", shared: true },
+            });
+          }
+        }
+        for (const node of personNodes.values()) elements.push(node);
+      }
+      // Vrstva VLASTNICTVÍ (akcionář-PO → vlastněná firma). Skrytá v režimu 'persons'.
+      if (this.graphLayer !== "persons") {
+        for (const e of this.result.ownershipEdges || []) {
           elements.push({
-            data: { id: pid + "-" + m.ico, source: pid, target: "F-" + m.ico, label: m.funkce || "" },
+            data: { id: "OWN-" + e.from + "-" + e.to, source: "F-" + e.from, target: "F-" + e.to, type: "ownership" },
           });
         }
       }
-      for (const p of this.result.sharedPersons || []) {
-        const pid = addPerson(p);
-        for (const m of p.memberships || []) {
-          elements.push({
-            data: { id: pid + "-" + m.ico + "-s", source: pid, target: "F-" + m.ico, label: m.funkce || "", shared: true },
-          });
-        }
-      }
-      for (const node of personNodes.values()) elements.push(node);
 
       const isDark = document.documentElement.classList.contains("dark");
       this.cy = window.cytoscape({
@@ -792,6 +806,17 @@ function graphSection() {
           {
             selector: "edge[?shared]",
             style: { "line-color": isDark ? "#fbbf24" : "#d97706", "target-arrow-color": isDark ? "#fbbf24" : "#d97706", "width": 2 },
+          },
+          {
+            // Vlastnická hrana: akcionář-PO → vlastněná firma (oranžová, směrová).
+            selector: "edge[type='ownership']",
+            style: {
+              "line-color": isDark ? "#fb923c" : "#ea580c",
+              "target-arrow-color": isDark ? "#fb923c" : "#ea580c",
+              "target-arrow-shape": "triangle",
+              "curve-style": "bezier",
+              "width": 2.5,
+            },
           },
         ],
       });
