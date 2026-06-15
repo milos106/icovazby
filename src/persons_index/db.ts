@@ -181,6 +181,16 @@ function initSchema(d: DbType): void {
       created_at INTEGER NOT NULL
     );
     CREATE INDEX IF NOT EXISTS idx_investigations_created ON investigations(created_at DESC);
+
+    -- Persistentní L2 cache odpovědí (přežije restart) — hlavně HS endpointy
+    -- (UBO, dotace, zakázky, ISIR) + DD/VR/timeline. fetched_at = timestamp pro TTL.
+    -- Šetří čerpání sdíleného HS tokenu po deployi/restartu.
+    CREATE TABLE IF NOT EXISTS response_cache (
+      key TEXT PRIMARY KEY,
+      payload TEXT NOT NULL,
+      fetched_at INTEGER NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS idx_response_cache_fetched ON response_cache(fetched_at);
   `);
 }
 
@@ -256,6 +266,30 @@ export function dbSaveInvestigation(id: string, state: unknown): void {
     INSERT INTO investigations (id, state, created_at) VALUES (?, ?, ?)
     ON CONFLICT(id) DO UPDATE SET state = excluded.state, created_at = excluded.created_at
   `).run(id, JSON.stringify(state), Date.now());
+}
+
+// ─── Persistentní response cache (L2, přežije restart) ─────────────────────────
+
+export function dbGetResponseCache(key: string, maxAgeMs: number): unknown | undefined {
+  const d = getDb();
+  const row = d.prepare(`SELECT payload, fetched_at FROM response_cache WHERE key = ?`).get(key) as
+    | { payload: string; fetched_at: number }
+    | undefined;
+  if (!row) return undefined;
+  if (Date.now() - row.fetched_at > maxAgeMs) return undefined; // expirováno → re-fetch
+  try {
+    return JSON.parse(row.payload);
+  } catch {
+    return undefined;
+  }
+}
+
+export function dbSetResponseCache(key: string, payload: unknown): void {
+  const d = getDb();
+  d.prepare(`
+    INSERT INTO response_cache (key, payload, fetched_at) VALUES (?, ?, ?)
+    ON CONFLICT(key) DO UPDATE SET payload = excluded.payload, fetched_at = excluded.fetched_at
+  `).run(key, JSON.stringify(payload), Date.now());
 }
 
 export function dbLoadInvestigation(id: string): { state: unknown; createdAt: number } | null {

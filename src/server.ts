@@ -423,7 +423,7 @@ app.get("/report/:ico", async (req: FastifyRequest, reply) => {
 app.get("/api/dd/:ico", async (req: FastifyRequest, reply) => {
   try {
     const ico = (req.params as { ico: string }).ico;
-    const data = await cached(`dd:${ico}`, () => fullDueDiligenceService(client, ico));
+    const data = await cached(`dd:${ico}`, () => fullDueDiligenceService(client, ico), { persist: true });
     reply.send(data);
   } catch (e) {
     sendError(reply, e);
@@ -474,7 +474,7 @@ app.get("/v/:id", serveIndex);
 app.get("/api/timeline/:ico", async (req: FastifyRequest, reply) => {
   try {
     const ico = (req.params as { ico: string }).ico;
-    const data = await cached(`timeline:${ico}`, () => buildTimeline(client, ico));
+    const data = await cached(`timeline:${ico}`, () => buildTimeline(client, ico), { persist: true });
     reply.send(data);
   } catch (e) {
     sendError(reply, e);
@@ -605,7 +605,7 @@ app.get("/api/cnb/rates", async (_req: FastifyRequest, reply) => {
 app.get("/api/vr/:ico", async (req: FastifyRequest, reply) => {
   try {
     const ico = (req.params as { ico: string }).ico;
-    const data = await cached(`vr:${ico}`, () => getVrDetailService(ico));
+    const data = await cached(`vr:${ico}`, () => getVrDetailService(ico), { persist: true });
     reply.send(data);
   } catch (e) {
     sendError(reply, e);
@@ -665,7 +665,7 @@ app.post("/api/eu-sanctions/screen", async (req: FastifyRequest, reply) => {
 app.get("/api/isir/:ico", async (req: FastifyRequest, reply) => {
   try {
     const ico = (req.params as { ico: string }).ico;
-    reply.send(await getInsolvenceDetailService(ico));
+    reply.send(await cached(`isir:${ico}`, () => getInsolvenceDetailService(ico), { persist: true }));
   } catch (e) {
     sendError(reply, e);
   }
@@ -675,7 +675,7 @@ app.get("/api/isir/:ico", async (req: FastifyRequest, reply) => {
 app.get("/api/dotace/:ico", async (req: FastifyRequest, reply) => {
   try {
     const ico = (req.params as { ico: string }).ico;
-    reply.send(await getDotaceService(ico));
+    reply.send(await cached(`dotace:${ico}`, () => getDotaceService(ico), { persist: true }));
   } catch (e) {
     sendError(reply, e);
   }
@@ -685,7 +685,7 @@ app.get("/api/dotace/:ico", async (req: FastifyRequest, reply) => {
 app.get("/api/smlouvy/:ico", async (req: FastifyRequest, reply) => {
   try {
     const ico = (req.params as { ico: string }).ico;
-    reply.send(await getSmlouvyService(ico));
+    reply.send(await cached(`smlouvy:${ico}`, () => getSmlouvyService(ico), { persist: true }));
   } catch (e) {
     sendError(reply, e);
   }
@@ -695,7 +695,7 @@ app.get("/api/smlouvy/:ico", async (req: FastifyRequest, reply) => {
 app.get("/api/ubo/:ico", async (req: FastifyRequest, reply) => {
   try {
     const ico = (req.params as { ico: string }).ico;
-    reply.send(await getUboService(ico));
+    reply.send(await cached(`ubo:${ico}`, () => getUboService(ico), { persist: true }));
   } catch (e) {
     sendError(reply, e);
   }

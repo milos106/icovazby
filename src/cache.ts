@@ -24,12 +24,35 @@ const cache = new LRUCache<string, unknown>({
 export async function cached<T>(
   key: string,
   fn: () => Promise<T>,
-  opts: { ttlMs?: number } = {},
+  opts: { ttlMs?: number; persist?: boolean } = {},
 ): Promise<T> {
+  // L1: in-memory LRU
   const hit = cache.get(key);
   if (hit !== undefined) return hit as T;
+  const ttl = opts.ttlMs ?? DEFAULT_TTL_MS;
+  // L2: persistentní SQLite (přežije restart) — jen pro persist:true (HS/DD/VR…).
+  if (opts.persist) {
+    try {
+      const { dbGetResponseCache } = await import("./persons_index/db.js");
+      const p = dbGetResponseCache(key, ttl);
+      if (p !== undefined) {
+        cache.set(key, p as T, opts.ttlMs ? { ttl: opts.ttlMs } : undefined);
+        return p as T;
+      }
+    } catch {
+      /* SQLite nedostupné → spadni na fetch */
+    }
+  }
   const value = await fn();
   cache.set(key, value, opts.ttlMs ? { ttl: opts.ttlMs } : undefined);
+  if (opts.persist) {
+    try {
+      const { dbSetResponseCache } = await import("./persons_index/db.js");
+      dbSetResponseCache(key, value);
+    } catch {
+      /* ignore — cache write je best-effort */
+    }
+  }
   return value;
 }
 
