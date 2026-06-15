@@ -628,8 +628,11 @@ function graphSection() {
       // Fáze D — sdílené vyšetřování: /v/<id> → dotáhni stav a obnov plátno.
       const invMatch = location.pathname.match(/^\/v\/([A-Za-z0-9_-]{1,32})$/);
       if (invMatch) {
-        this.shared = true;
-        this.loadInvestigation(invMatch[1]);
+        const id = invMatch[1];
+        // Vlastní záznam (je v MÉ knihovně) → otevři normálně k editaci (Uložit i
+        // ostatní tlačítka jako v běžném režimu). Jen CIZÍ přijatý odkaz → read-only.
+        this.shared = !this.savedInvestigations.some((x) => x.id === id);
+        this.loadInvestigation(id);
         return;
       }
       const url = readUrl();
