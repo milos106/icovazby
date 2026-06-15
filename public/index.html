@@ -2235,7 +2235,7 @@
                   @click="run(report.ico)"
                   :disabled="loading"
                   class="px-6 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 active:bg-emerald-800 disabled:opacity-50 transition-colors"
-                  x-text="loading ? 'Hledám…' : 'Vykresli vazby'"
+                  x-text="loading ? 'Hledám…' : 'Rozkrýt holding → do mapy'"
                 ></button>
                 <!-- Inline spinner — visual cue že běží na pozadí -->
                 <span x-show="loading" x-cloak class="inline-flex items-center gap-1 text-xs text-purple-700 dark:text-purple-300">
@@ -2248,13 +2248,17 @@
                 <span x-show="error" x-cloak class="text-xs text-rose-700 dark:text-rose-400" x-text="error"></span>
               </div>
 
-              <!-- Řádek 2: volby (checkbox + advanced toggle) -->
+              <p class="text-xs text-slate-500 dark:text-slate-400">Najde mateřskou firmu a dceřinky, přidá je do Mapy propojení a vykreslí.</p>
+
+              <!-- Řádek 2: volby (advanced toggle). Historický režim se NEnastavuje
+                   tady — je jeden, v Mapě propojení (segment). Tady jen indikátor. -->
               <div class="flex items-center gap-4 flex-wrap text-sm">
-                <label class="inline-flex items-center gap-1.5 cursor-pointer hover:text-slate-900 dark:hover:text-slate-100"
-                       title="Najde i dceřinky propojené historickými statutáry (např. bývalý jednatel matky byl jednatelem dceřinky 2008–2014). Synced s checkboxem v Mapě propojení.">
-                  <input type="checkbox" x-model="$store.history.enabled" class="rounded h-3.5 w-3.5" />
-                  <span>Hledat i historické vazby</span>
-                </label>
+                <span class="inline-flex items-center gap-1.5 text-slate-500 dark:text-slate-400"
+                      title="Historický režim přepínáš jednotně v Mapě propojení — platí i pro rozkrytí holdingu.">
+                  <span x-show="$store.history.enabled" class="text-emerald-700 dark:text-emerald-300">✓ zahrnuje historické vazby</span>
+                  <span x-show="!$store.history.enabled">jen aktuální vazby</span>
+                  <a href="#graph" class="underline hover:text-slate-700 dark:hover:text-slate-200">(přepnout v Mapě)</a>
+                </span>
                 <button
                   type="button"
                   @click="showAdvanced = !showAdvanced"
@@ -2288,7 +2292,7 @@
                   <div class="text-3xl mb-2">🔍</div>
                   <h5 class="font-semibold mb-1 text-sm">Žádné dceřinky nenalezeny</h5>
                   <p class="text-xs text-slate-600 dark:text-slate-400 mb-3">
-                    Buď firma žádné nemá, nebo ještě nejsou v naší databázi. Drip harvest jich přidává ~480/den — zkus znovu za týden, nebo zaškrtni „Hledat i historické vazby" pro širší vyhledávání.
+                    Buď firma žádné nemá, nebo ještě nejsou v naší databázi. Drip harvest jich přidává ~480/den — zkus znovu za týden, nebo v Mapě propojení přepni na „+ historické" pro širší vyhledávání.
                   </p>
                   <button type="button" @click="run(report.ico)" :disabled="loading" class="px-3 py-1.5 border dark:border-slate-600 rounded-lg text-xs hover:bg-slate-50 dark:hover:bg-slate-700 disabled:opacity-50">↻ Zkusit znovu</button>
                 </div>
@@ -2738,24 +2742,29 @@
             class="w-full px-3 py-2 border dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100 rounded-lg font-mono text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none"
           ></textarea>
           <p class="text-xs text-slate-500 dark:text-slate-400">Příklad: 26185610, 46967851, 46900411, 27435148</p>
+          <!-- Historický režim — JEDEN zdroj pravdy (segment). Platí pro mapu
+               i pro „Rozkrýt holding" v profilu (sdílený $store.history). -->
           <div class="flex gap-3 items-center flex-wrap">
-            <!-- includeHistorical checkbox přesunut do Profil → Rozkrýt holding.
-                 Mapa propojení dědí flag z holding discovery přes seed event;
-                 lokální toggle pro ruční zadání IČO ponechán. -->
-            <label class="flex items-center gap-2 text-sm" title="Zahrne historické vazby v render grafu">
-              <input type="checkbox" x-model="$store.history.enabled" class="rounded" />
-              Včetně historických členů
-              <template x-if="result && $store.history.enabled !== (result.includeHistorical === true)">
-                <span class="text-xs text-amber-700 dark:text-amber-400">↻ klikni Vykreslit pro aktualizaci</span>
-              </template>
-            </label>
+            <div class="inline-flex rounded-lg border dark:border-slate-600 overflow-hidden text-sm"
+                 title="Započítá i bývalé (ukončené) statutáry a vazby, ne jen aktuální. Platí pro celou mapu i rozkrytí holdingu.">
+              <button type="button" @click="$store.history.enabled = false"
+                :class="!$store.history.enabled ? 'bg-emerald-600 text-white' : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700'"
+                class="px-3 py-1.5">Jen aktuální</button>
+              <button type="button" @click="$store.history.enabled = true"
+                :class="$store.history.enabled ? 'bg-emerald-600 text-white' : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700'"
+                class="px-3 py-1.5 border-l dark:border-slate-600">+ historické</button>
+            </div>
             <button
               type="submit"
               class="px-6 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 disabled:opacity-50"
               :disabled="loading"
-              x-text="loading ? 'Stavím graf…' : 'Vykresli členy'"
+              x-text="loading ? 'Stavím graf…' : 'Vykreslit mapu propojení'"
             ></button>
+            <template x-if="result && $store.history.enabled !== (result.includeHistorical === true)">
+              <span class="text-xs text-amber-700 dark:text-amber-400">↻ Klikni „Vykreslit mapu" pro aktualizaci</span>
+            </template>
           </div>
+          <p class="text-xs text-slate-500 dark:text-slate-400 mt-1.5">Najde osoby sedící ve více firmách ze sady a propojí je. Sadu naplníš ručně (IČO výše) nebo z profilu přes „Rozkrýt holding".</p>
         </form>
 
         <template x-if="error && (error.includes('At least') || error.includes('alespoň'))">
@@ -2950,7 +2959,7 @@
                     </h3>
                     <p class="text-xs text-amber-800 dark:text-amber-300 mt-1">
                       ARES VR pro tyto historiky neeviduje DOB, takže nelze 100% ověřit, zda je to ten samý člověk.
-                      Projdi seznam, odškrtni ty, kteří nejsou stejná osoba, a klikni „Vykresli s vybranými" — graf
+                      Projdi seznam, odškrtni ty, kteří nejsou stejná osoba, a klikni „Přepočítat s vybranými" — graf
                       přidá firmy zaškrtnutých kandidátů.
                     </p>
                   </div>
@@ -3006,7 +3015,7 @@
                     :disabled="loading"
                     class="px-4 py-2 bg-emerald-600 text-white rounded-lg text-sm hover:bg-emerald-700 disabled:opacity-50 transition-colors"
                   >
-                    Vykresli s vybranými (<span x-text="activeCandidateCount()"></span>)
+                    Přepočítat s vybranými (<span x-text="activeCandidateCount()"></span>)
                   </button>
                   <span class="text-xs text-amber-700 dark:text-amber-400">
                     Default: vše zaškrtnuté. Odškrtni ty, kteří NEJSOU ten samý člověk.
@@ -3036,6 +3045,14 @@
               <p x-show="renderMode === 'interactive'" class="text-xs text-slate-500 dark:text-slate-400 mt-2">
                 Drag = posun · scroll = zoom. Layout: cose force-directed.
               </p>
+              <!-- Legenda typů uzlů/hran (barvy ladí s Cytoscape styly) -->
+              <div x-show="renderMode === 'interactive'" class="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-slate-600 dark:text-slate-400 mt-2 pt-2 border-t dark:border-slate-700">
+                <span class="font-medium text-slate-500 dark:text-slate-400">Legenda:</span>
+                <span class="inline-flex items-center gap-1"><span class="inline-block w-3 h-3 rounded-sm bg-emerald-600"></span> firma</span>
+                <span class="inline-flex items-center gap-1"><span class="inline-block w-3 h-3 rounded-sm bg-blue-500"></span> osoba</span>
+                <span class="inline-flex items-center gap-1"><span class="inline-block w-3 h-3 rounded-sm bg-amber-500"></span> sdílená osoba (ve více firmách)</span>
+                <span class="inline-flex items-center gap-1"><span class="inline-block w-4 border-t-2 border-slate-400"></span> členství</span>
+              </div>
             </div>
           </div>
         </template>
