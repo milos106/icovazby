@@ -745,11 +745,14 @@ function graphSection() {
         }
       }
 
+      // Uzly PŘED hranami — robustnost při re-renderu (žádné forward-reference
+      // hrany na ještě nepřidané uzly; edge má `source`, node ne).
+      elements.sort((a, b) => (a.data.source ? 1 : 0) - (b.data.source ? 1 : 0));
       const isDark = document.documentElement.classList.contains("dark");
       this.cy = window.cytoscape({
         container,
         elements,
-        layout: { name: "cose", animate: false, nodeRepulsion: 8000, idealEdgeLength: 100, padding: 30 },
+        layout: { name: "cose", animate: false, fit: true, nodeRepulsion: 8000, idealEdgeLength: 100, padding: 30 },
         style: [
           {
             selector: "node[type='firma']",

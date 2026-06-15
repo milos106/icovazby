@@ -3024,18 +3024,7 @@
               </div>
             </template>
 
-            <!-- Mermaid / Cytoscape toggle -->
-            <div class="flex items-center gap-3 mb-2">
-              <span class="text-xs text-slate-500 dark:text-slate-400">Zobrazení:</span>
-              <button type="button" @click="renderMode = 'mermaid'" :class="renderMode === 'mermaid' ? 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 border-emerald-200' : 'border-slate-300 text-slate-600'" class="px-3 py-1 border rounded-lg text-xs">
-                📐 Mermaid (statické)
-              </button>
-              <button type="button" @click="renderMode = 'interactive'; $nextTick(() => renderCytoscape())" :class="renderMode === 'interactive' ? 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 border-emerald-200' : 'border-slate-300 text-slate-600'" class="px-3 py-1 border rounded-lg text-xs">
-                🎯 Interaktivní (Cytoscape)
-              </button>
-            </div>
             <div class="border dark:border-slate-700 rounded-xl p-4 bg-white dark:bg-slate-900">
-              <div x-show="renderMode === 'mermaid'" class="mermaid" x-html="mermaidSvg"></div>
               <!-- Prominentní výzva: klik na uzel firmy → profil (drill-down). -->
               <div x-show="renderMode === 'interactive'" class="flex items-center gap-2 text-sm px-3 py-2 mb-3 rounded-lg border border-emerald-200 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-900/20 text-emerald-800 dark:text-emerald-200">
                 <span class="shrink-0">👆</span>
