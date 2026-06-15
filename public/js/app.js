@@ -710,6 +710,7 @@ function graphSection() {
           }
           return key;
         };
+        const seenEdge = new Set();
         const addEdges = (list, suffix, includeOwner) => {
           for (const p of list || []) {
             const pid = addPerson(p);
@@ -719,7 +720,10 @@ function graphSection() {
               if (isOwner && this.graphLayer === "persons") continue;
               if (!isOwner && this.graphLayer === "ownership") continue;
               personUsed.add(pid);
-              const data = { id: pid + "-" + m.ico + (isOwner ? "-own" : "") + suffix, source: pid, target: "F-" + m.ico, label: m.funkce || "" };
+              const id = pid + "-" + m.ico + (isOwner ? "-own" : "") + suffix;
+              if (seenEdge.has(id)) continue; // dedup: vícenásobná členství k téže firmě = jedna hrana
+              seenEdge.add(id);
+              const data = { id, source: pid, target: "F-" + m.ico, label: m.funkce || "" };
               if (isOwner) data.type = "ownership";
               else if (suffix) data.shared = true;
               elements.push({ data });
