@@ -10,6 +10,7 @@
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
+import { randomBytes } from "node:crypto";
 import fastifyRateLimit from "@fastify/rate-limit";
 import fastifyStatic from "@fastify/static";
 import Fastify, { type FastifyReply, type FastifyRequest } from "fastify";
@@ -428,6 +429,46 @@ app.get("/api/dd/:ico", async (req: FastifyRequest, reply) => {
     sendError(reply, e);
   }
 });
+
+// ─── Fáze D: uložit / sdílet vyšetřovací plátno ────────────────────────────────
+// POST uloží JSON stav grafu → vrátí krátké id; GET ho načte; /v/:id servíruje
+// SPA (frontend si stav dotáhne přes /api/investigations/:id a obnoví plátno).
+app.post("/api/investigations", async (req: FastifyRequest, reply) => {
+  try {
+    const body = req.body as { state?: unknown } | undefined;
+    if (!body || typeof body.state !== "object" || body.state === null) {
+      return reply.status(400).send({ error: "Chybí state." });
+    }
+    const json = JSON.stringify(body.state);
+    if (json.length > 100_000) {
+      return reply.status(413).send({ error: "Stav vyšetřování je příliš velký." });
+    }
+    const { dbSaveInvestigation } = await import("./persons_index/db.js");
+    const id = randomBytes(6).toString("base64url"); // ~8 znaků, URL-safe
+    dbSaveInvestigation(id, body.state);
+    return { id };
+  } catch (e) {
+    sendError(reply, e);
+  }
+});
+
+app.get("/api/investigations/:id", async (req: FastifyRequest, reply) => {
+  try {
+    const { id } = req.params as { id: string };
+    if (!/^[A-Za-z0-9_-]{1,32}$/.test(id)) {
+      return reply.status(400).send({ error: "Neplatné ID." });
+    }
+    const { dbLoadInvestigation } = await import("./persons_index/db.js");
+    const inv = dbLoadInvestigation(id);
+    if (!inv) return reply.status(404).send({ error: "Vyšetřování nenalezeno." });
+    return { state: inv.state, createdAt: inv.createdAt };
+  } catch (e) {
+    sendError(reply, e);
+  }
+});
+
+// Read-only sdílené plátno — servíruje stejné SPA, frontend pozná /v/:id v cestě.
+app.get("/v/:id", serveIndex);
 
 // ─── Timeline — chronologická historie firmy ─────────────────────────────────
 app.get("/api/timeline/:ico", async (req: FastifyRequest, reply) => {

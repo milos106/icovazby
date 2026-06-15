@@ -8,6 +8,7 @@ const STORAGE_RECENT = "icovazby:recent";
 const STORAGE_BOOKMARKS = "icovazby:bookmarks";
 const STORAGE_DD_COLLAPSE = "icovazby:dd-collapsed";
 const STORAGE_SECTIONS = "icovazby:sections-hidden";
+const STORAGE_INVESTIGATIONS = "icovazby:investigations"; // D+e — seznam „mých" uložených vyšetřování (link + label v prohlížeči)
 
 // Sekce, které lze v Nastavení skrýt. Profil zůstává vždy viditelný.
 // Klíče slouží zároveň jako section id v DOM a key v localStorage.
@@ -202,6 +203,26 @@ document.addEventListener("alpine:init", () => {
       this.save();
     },
   });
+
+  // Návrh B — „Další registry a zdroje": jeden store pro celý accordion v profilu.
+  window.Alpine.store("dalsiRegistry", { open: false });
+});
+
+// Návrh B — klik v levém menu na blok uvnitř „Další registry" → otevři accordion
+// a doscrolluj na cílovou kartu (jinak by anchor mířil na skrytý prvek).
+const DALSI_REGISTRY_IDS = ["dd-ai-summary", "dd-vr", "dd-ubo", "dd-dotace", "dd-smlouvy", "dd-adis", "dd-isir", "dd-jerrs", "dd-sankce", "dd-zivno", "dd-timeline", "dd-upv", "dd-ds", "dd-katastr"];
+document.addEventListener("click", (e) => {
+  const a = e.target.closest && e.target.closest('a[href^="#dd-"]');
+  if (!a) return;
+  const id = a.getAttribute("href").slice(1);
+  if (!DALSI_REGISTRY_IDS.includes(id)) return;
+  e.preventDefault();
+  const store = window.Alpine && window.Alpine.store("dalsiRegistry");
+  if (store) store.open = true;
+  setTimeout(() => {
+    const el = document.getElementById(id);
+    if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+  }, 80);
 });
 
 const STORAGE_HS_TOKEN = "icovazby:hs-token";
@@ -593,7 +614,24 @@ function graphSection() {
     // (unikátní per name; pokud má více seed firem, vše bere). Hodnota = boolean.
     // Default ON — uživatel odškrtává ty, kteří nejsou ten samý člověk.
     tentativeSelections: {},
+    /** Fáze D — uložit/sdílet plátno. shareUrl = vygenerovaný /v/<id> odkaz;
+     *  shared = true když je plátno načtené ze sdíleného odkazu (read-only). */
+    shareUrl: "",
+    shareCopied: false,
+    saving: false,
+    shared: false,
+    /** D+e — „knihovna": seznam uložených vyšetřování (link+label v localStorage). */
+    savedInvestigations: [],
+    libOpen: false,
     init() {
+      this.loadSavedInvestigations();
+      // Fáze D — sdílené vyšetřování: /v/<id> → dotáhni stav a obnov plátno.
+      const invMatch = location.pathname.match(/^\/v\/([A-Za-z0-9_-]{1,32})$/);
+      if (invMatch) {
+        this.shared = true;
+        this.loadInvestigation(invMatch[1]);
+        return;
+      }
       const url = readUrl();
       if (url.icos) {
         this.raw = url.icos.split(",").join("\n");
@@ -677,7 +715,7 @@ function graphSection() {
         } else {
           this.tentativeSelections = {};
         }
-        updateUrl({ icos: icos.join(",") });
+        if (!this.shared) updateUrl({ icos: icos.join(",") });
         if (this.result.mermaid && window.__mermaid) {
           const id = "mer-" + Date.now();
           try {
@@ -697,6 +735,142 @@ function graphSection() {
       } finally {
         this.loading = false;
       }
+    },
+    /** Fáze D — serializovatelný stav plátna (minimum pro rekonstrukci). */
+    captureState() {
+      return {
+        v: 1,
+        icos: this.parseIcos(this.raw),
+        egoPersons: this.egoPersons,
+        primaryKey: this.primaryKey,
+        graphLayer: this.graphLayer,
+        intersectMode: this.intersectMode,
+        renderMode: this.renderMode,
+        includeHistorical: !!(window.Alpine?.store("history")?.enabled),
+      };
+    },
+    /** Fáze D — ulož plátno na server → vygeneruj read-only odkaz /v/<id>. */
+    async saveInvestigation() {
+      const icos = this.parseIcos(this.raw);
+      if (icos.length < 1) {
+        this.error = "Není co uložit — nejdřív vykresli mapu.";
+        return;
+      }
+      this.saving = true;
+      this.error = "";
+      try {
+        const r = await jsonFetch("/api/investigations", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ state: this.captureState() }),
+        });
+        this.shareUrl = `${location.origin}/v/${r.id}`;
+        // D+e — zapamatuj si ho do „knihovny" (localStorage), ať jde znovu otevřít bez linku.
+        this.recordSavedInvestigation(r.id, icos);
+        this.libOpen = true; // auto-rozbal knihovnu, ať je po uložení vidět
+        try {
+          await navigator.clipboard.writeText(this.shareUrl);
+          this.shareCopied = true;
+          setTimeout(() => { this.shareCopied = false; }, 3000);
+        } catch (_) { /* clipboard nemusí být dostupný — odkaz se ukáže i tak */ }
+      } catch (e) {
+        this.error = "Uložení vyšetřování selhalo: " + e.message;
+      } finally {
+        this.saving = false;
+      }
+    },
+    /** D+e — knihovna uložených vyšetřování (localStorage). */
+    loadSavedInvestigations() {
+      try {
+        const raw = localStorage.getItem(STORAGE_INVESTIGATIONS);
+        this.savedInvestigations = raw ? JSON.parse(raw) : [];
+      } catch { this.savedInvestigations = []; }
+    },
+    persistSavedInvestigations() {
+      try { localStorage.setItem(STORAGE_INVESTIGATIONS, JSON.stringify(this.savedInvestigations)); } catch { /* private mode */ }
+    },
+    recordSavedInvestigation(id, icos) {
+      const label = (this.egoPersons || []).map((e) => e.label).join(", ")
+        || `${(icos || []).length} subjektů`;
+      // dedup dle id, nový nahoru, drž max 50
+      this.savedInvestigations = this.savedInvestigations.filter((x) => x.id !== id);
+      this.savedInvestigations.unshift({
+        id,
+        url: `${location.origin}/v/${id}`,
+        label,
+        count: (icos || []).length,
+        savedAt: new Date().toISOString(),
+      });
+      this.savedInvestigations = this.savedInvestigations.slice(0, 50);
+      this.persistSavedInvestigations();
+    },
+    openInvestigation(inv) {
+      window.location.href = inv.url;
+    },
+    removeSavedInvestigation(id) {
+      this.savedInvestigations = this.savedInvestigations.filter((x) => x.id !== id);
+      this.persistSavedInvestigations();
+    },
+    /** Fáze D — načti sdílené plátno z /v/<id> a obnov stav. */
+    async loadInvestigation(id) {
+      try {
+        const resp = await jsonFetch(`/api/investigations/${encodeURIComponent(id)}`);
+        const st = resp.state || resp || {};
+        if (Array.isArray(st.icos)) this.raw = st.icos.join("\n");
+        this.egoPersons = Array.isArray(st.egoPersons) ? st.egoPersons : [];
+        this.primaryKey = st.primaryKey ?? null;
+        this.graphLayer = st.graphLayer || "both";
+        this.intersectMode = !!st.intersectMode;
+        this.renderMode = st.renderMode || "interactive";
+        const h = window.Alpine?.store("history");
+        if (h) h.enabled = !!st.includeHistorical;
+        await this.run();
+      } catch (e) {
+        this.error = "Sdílené vyšetřování se nepodařilo načíst: " + e.message;
+      }
+    },
+    /** Fáze D (D+c) — export aktuálního plátna do PDF: cy.png() → tisknutelná
+     *  stránka v novém tabu (window.print → uložit jako PDF). Stejný princip
+     *  jako PDF prověrka. Fallback: stáhne PNG když popup blokován. */
+    exportCanvasImage() {
+      if (!this.cy) {
+        this.error = "Není co exportovat — mapa není vykreslená.";
+        return;
+      }
+      let png;
+      try {
+        png = this.cy.png({ full: true, bg: "#ffffff", scale: 2 });
+      } catch (e) {
+        this.error = "Export plátna selhal: " + e.message;
+        return;
+      }
+      const esc = (s) => String(s).replace(/[&<>]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" }[c]));
+      const subjects = (this.egoPersons || []).map((e) => esc(e.label)).join(", ") || "—";
+      const dateStr = new Date().toLocaleDateString("cs-CZ", { day: "numeric", month: "long", year: "numeric" });
+      const w = window.open("", "_blank");
+      if (!w) {
+        const a = document.createElement("a");
+        a.href = png;
+        a.download = `platno-${Date.now()}.png`;
+        a.click();
+        return;
+      }
+      w.document.write(
+        '<!doctype html><html lang="cs"><head><meta charset="utf-8">' +
+        "<title>Vyšetřovací plátno — icovazby.cz</title>" +
+        "<style>@page{size:A4 landscape;margin:12mm}" +
+        "body{font-family:system-ui,-apple-system,sans-serif;margin:0;padding:16px;color:#0f172a}" +
+        "h1{font-size:18px;margin:0 0 4px}.meta{font-size:12px;color:#475569;margin-bottom:12px}" +
+        "img{max-width:100%;height:auto;border:1px solid #e2e8f0;border-radius:6px}" +
+        ".foot{margin-top:10px;font-size:10px;color:#94a3b8}</style></head><body>" +
+        "<h1>Mapa propojení — vyšetřovací plátno</h1>" +
+        '<div class="meta">Subjekty: <strong>' + subjects + "</strong> · " + dateStr + " · icovazby.cz</div>" +
+        '<img src="' + png + '" alt="graf vazeb">' +
+        '<div class="foot">Vygenerováno z icovazby.cz · data z veřejných registrů ČR a EU</div>' +
+        "<scr" + "ipt>window.onload=function(){setTimeout(function(){window.print()},300)}</scr" + "ipt>" +
+        "</body></html>",
+      );
+      w.document.close();
     },
     /** Cytoscape rendering — interaktivní force graph. */
     renderCytoscape() {

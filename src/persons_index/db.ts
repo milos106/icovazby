@@ -171,6 +171,16 @@ function initSchema(d: DbType): void {
       found INTEGER NOT NULL,  -- 1 = nalezeno, 0 = not found
       checked_at INTEGER NOT NULL
     );
+
+    -- Fáze D: uložená vyšetřovací plátna (sdílení read-only odkazem /v/<id>).
+    -- state = JSON serializovaného stavu grafu (icos, egoPersons, primaryKey,
+    -- graphLayer, intersectMode, includeHistorical). Malé bloby, bez TTL zatím.
+    CREATE TABLE IF NOT EXISTS investigations (
+      id TEXT PRIMARY KEY,
+      state TEXT NOT NULL,
+      created_at INTEGER NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS idx_investigations_created ON investigations(created_at DESC);
   `);
 }
 
@@ -236,6 +246,29 @@ export function dbListSubjects(): Array<{ ico: string; obchodniJmeno: string | n
     seen_at: number;
   }>;
   return rows.map((r) => ({ ico: r.ico, obchodniJmeno: r.obchodni_jmeno, seenAt: r.seen_at }));
+}
+
+// ─── Investigations (Fáze D — uložená vyšetřovací plátna) ──────────────────────
+
+export function dbSaveInvestigation(id: string, state: unknown): void {
+  const d = getDb();
+  d.prepare(`
+    INSERT INTO investigations (id, state, created_at) VALUES (?, ?, ?)
+    ON CONFLICT(id) DO UPDATE SET state = excluded.state, created_at = excluded.created_at
+  `).run(id, JSON.stringify(state), Date.now());
+}
+
+export function dbLoadInvestigation(id: string): { state: unknown; createdAt: number } | null {
+  const d = getDb();
+  const row = d.prepare(`SELECT state, created_at FROM investigations WHERE id = ?`).get(id) as
+    | { state: string; created_at: number }
+    | undefined;
+  if (!row) return null;
+  try {
+    return { state: JSON.parse(row.state), createdAt: row.created_at };
+  } catch {
+    return null;
+  }
 }
 
 // ─── Persons (s DOB) ──────────────────────────────────────────────────────────

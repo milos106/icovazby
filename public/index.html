@@ -884,7 +884,155 @@
                 </template>
               </div>
 
-              <div id="dd-vr" x-show="$store.sections.visible('dd-vr')" :data-collapsed="!$store.ddCollapse.isExpanded('dd-vr')" class="dd-card border border-slate-200/80 dark:border-slate-700 rounded-xl p-5 shadow-sm hover:shadow-md transition-shadow md:col-span-2 scroll-mt-32" x-data="ddVrLoader()" x-init="load(report.ico)">
+            <!-- ─── Anotace / poznámky per firma (localStorage) ─── -->
+            <div
+              id="dd-notes"
+              x-show="$store.sections.visible('dd-notes')"
+              :data-collapsed="!$store.ddCollapse.isExpanded('dd-notes')"
+              class="dd-card border border-slate-200/80 dark:border-slate-700 rounded-xl p-5 shadow-sm hover:shadow-md transition-shadow md:col-span-2 scroll-mt-32"
+              x-data="ddNotesCard()"
+              x-init="load(report.ico)"
+            >
+              <h4 class="dd-card-header text-base font-semibold mb-3 cursor-pointer select-none flex items-center gap-2" @click="$store.ddCollapse.toggle('dd-notes')">
+                <span class="dd-card-chevron text-slate-400" x-text="$store.ddCollapse.isExpanded('dd-notes') ? '▾' : '▸'"></span>
+                📝 Moje poznámky
+                <template x-if="hasContent">
+                  <span class="text-xs font-normal text-emerald-600">●</span>
+                </template>
+              </h4>
+              <div class="dd-card-body" x-show="$store.ddCollapse.isExpanded('dd-notes')">
+                <textarea
+                  x-model="note"
+                  @input.debounce.500ms="save(report.ico)"
+                  placeholder="Vlož poznámku pro tuto firmu (jen v tvém prohlížeči)"
+                  rows="3"
+                  class="w-full px-3 py-2 border dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500 outline-none"
+                ></textarea>
+                <div class="mt-3 flex items-center gap-2 flex-wrap">
+                  <span class="text-xs text-slate-500 dark:text-slate-400">Tagy:</span>
+                  <template x-for="t in availableTags" :key="t.key">
+                    <button
+                      type="button"
+                      @click="toggleTag(t.key, report.ico)"
+                      :class="tags.includes(t.key) ? t.activeClass : 'border-slate-300 dark:border-slate-600 text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-700'"
+                      class="px-2 py-1 border rounded-full text-xs transition-colors"
+                      x-text="t.label"
+                    ></button>
+                  </template>
+                </div>
+                <p class="text-xs text-slate-400 mt-2" x-show="lastSaved" x-text="'Uloženo ' + lastSaved + '.'"></p>
+              </div>
+            </div>
+
+              <!-- Návrh B — „Další registry a zdroje": store-driven accordion. Klik v levém
+                   menu na blok uvnitř ho otevře + doscrolluje (app.js listener). -->
+              <div class="md:col-span-2">
+                <button type="button" @click="$store.dalsiRegistry.open = !$store.dalsiRegistry.open"
+                  class="w-full flex items-center justify-between gap-2 px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60 hover:bg-slate-100 dark:hover:bg-slate-700/60 text-left transition-colors">
+                  <span class="font-semibold text-sm flex items-center gap-2 flex-wrap">
+                    <span class="text-slate-400" x-text="$store.dalsiRegistry.open ? '▾' : '▸'"></span>
+                    📂 Další registry a zdroje
+                    <span class="font-normal text-slate-500 dark:text-slate-400 hidden sm:inline">— AI souhrn · VR · UBO · dotace · zakázky · DPH · insolvence · ČNB · sankce · živnosti · časová osa · známky · datovka · katastr</span>
+                  </span>
+                  <span class="text-xs text-slate-400 shrink-0" x-text="$store.dalsiRegistry.open ? 'sbalit' : 'rozbalit'"></span>
+                </button>
+              </div>
+
+            <!-- ─── AI souhrn (Claude Haiku 4.5) — BYO API klíč ─── -->
+            <!-- Skryto pro public visitora bez vlastního Anthropic klíče.
+                 User si klíč nastaví v Settings popoveru → karta se odemkne.
+                 Fáze 1 monetizace: 0 Kč náklad pro tebe (user platí). -->
+            <div
+              id="dd-ai-summary"
+              x-show="$store.sections.visible('dd-ai-summary') && $store.dalsiRegistry.open"
+              :data-collapsed="!$store.ddCollapse.isExpanded('dd-ai-summary')"
+              class="dd-card border border-emerald-200/80 dark:border-emerald-700 rounded-xl p-5 shadow-sm hover:shadow-md transition-shadow md:col-span-2 scroll-mt-32 bg-emerald-50/50 dark:bg-emerald-900/10"
+              x-data="ddAiSummaryCard()"
+            >
+              <h4 class="dd-card-header text-base font-semibold mb-3 cursor-pointer select-none flex items-center gap-2" @click="$store.ddCollapse.toggle('dd-ai-summary')">
+                <span class="dd-card-chevron text-slate-400" x-text="$store.ddCollapse.isExpanded('dd-ai-summary') ? '▾' : '▸'"></span>
+                🤖 AI souhrn pro klienta
+                <template x-if="data">
+                  <span class="text-[10px] px-1.5 py-0.5 rounded-full border border-emerald-300 text-emerald-700 dark:text-emerald-300">
+                    důvěra <span x-text="(data.confidence * 100).toFixed(0)"></span>%
+                  </span>
+                </template>
+              </h4>
+              <div class="dd-card-body text-sm space-y-3" x-show="$store.ddCollapse.isExpanded('dd-ai-summary')">
+                <template x-if="!data && !loading && !error">
+                  <div>
+                    <p class="text-slate-600 dark:text-slate-400 mb-3">Claude Haiku 4.5 přečte všechna DD data o firmě a vygeneruje stručný analytický souhrn pro klienta — exec summary, red flags, doporučení.</p>
+                    <button @click="generate(report.ico)" class="px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 inline-flex items-center gap-2 transition-colors">
+                      <span>🤖</span> Generovat AI souhrn
+                    </button>
+                    <p class="text-xs text-slate-500 mt-2">Výsledek se cachuje 7 dní. Cena ~18 hal za prověrku (interní).</p>
+                  </div>
+                </template>
+                <template x-if="loading">
+                  <p class="text-slate-500"><span class="animate-pulse">🤖</span> Claude analyzuje firmu… (typicky 5–10 s)</p>
+                </template>
+                <template x-if="error">
+                  <p class="text-rose-600 dark:text-rose-400" x-text="error"></p>
+                </template>
+                <template x-if="data">
+                  <div class="space-y-4">
+                    <div class="bg-white dark:bg-slate-800 rounded-lg p-3 border dark:border-slate-700">
+                      <p class="text-xs font-semibold text-slate-500 mb-1">SOUHRN</p>
+                      <p class="leading-relaxed" x-text="data.summary"></p>
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      <div class="bg-rose-50 dark:bg-rose-900/20 rounded-lg p-3 border border-rose-200 dark:border-rose-800">
+                        <p class="text-xs font-semibold text-rose-700 dark:text-rose-300 mb-2">🔴 RIZIKA</p>
+                        <template x-if="data.risks.length === 0">
+                          <p class="text-xs text-slate-500">Žádná identifikovaná rizika.</p>
+                        </template>
+                        <ul class="space-y-1 text-xs">
+                          <template x-for="r in data.risks">
+                            <li class="flex gap-1.5"><span class="text-rose-500">•</span><span x-text="r"></span></li>
+                          </template>
+                        </ul>
+                      </div>
+                      <div class="bg-emerald-50 dark:bg-emerald-900/20 rounded-lg p-3 border border-emerald-200 dark:border-emerald-800">
+                        <p class="text-xs font-semibold text-emerald-700 dark:text-emerald-300 mb-2">🟢 POZITIVA</p>
+                        <template x-if="data.strengths.length === 0">
+                          <p class="text-xs text-slate-500">Žádné identifikované pozitivní signály.</p>
+                        </template>
+                        <ul class="space-y-1 text-xs">
+                          <template x-for="s in data.strengths">
+                            <li class="flex gap-1.5"><span class="text-emerald-500">•</span><span x-text="s"></span></li>
+                          </template>
+                        </ul>
+                      </div>
+                    </div>
+                    <div class="bg-slate-100 dark:bg-slate-800 rounded-lg p-3 border dark:border-slate-700">
+                      <p class="text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">DOPORUČENÍ</p>
+                      <p class="text-sm" x-text="data.recommendation"></p>
+                    </div>
+                    <div class="flex items-center gap-2 text-xs text-slate-500 pt-2 border-t dark:border-slate-700">
+                      <button @click="generate(report.ico, true)" class="underline hover:text-emerald-700">↻ Regenerovat</button>
+                      <span>·</span>
+                      <span x-text="'Model: ' + data.model"></span>
+                      <span>·</span>
+                      <span title="AI souhrn je informativní — nikdy nenahrazuje právní DD ani AML/KYC povinnosti.">⚠️ Informativní jen</span>
+                    </div>
+                    <!-- Disclaimer pro LLM knowledge cutoff problém: AGROFERT příklad
+                         Babiš byl premiér do 12/2017, návrat 11/2025 — Haiku 4.5 cutoff
+                         ~začátek 2025 neví o návratu. PEP info z HS osoby ground truth,
+                         ale ostatní fakta (soudní kauzy, ekonomika 2025) mohou být stale. -->
+                    <div class="mt-2 p-3 bg-amber-50 dark:bg-amber-900/20 rounded-lg border border-amber-200 dark:border-amber-800 text-xs text-amber-900 dark:text-amber-200">
+                      <p class="font-semibold mb-1">⚠️ Pozor na zastaralé informace</p>
+                      <p class="leading-relaxed">
+                        AI souhrn může obsahovat zastaralé fakty z trénovacích dat (knowledge cutoff modelu typicky leden 2025).
+                        Pro <strong>aktuální politické funkce / PEP status</strong> používáme realtime data z Hlídače státu (sekce hsOsoby v kontextu).
+                        Pro ostatní fakta (kauzy, ekonomika, sankce po cutoffu) <strong>ověř u primárního zdroje</strong> — ARES, OR, ISIR, EU CFSP.
+                      </p>
+                    </div>
+                  </div>
+                </template>
+              </div>
+            </div>
+
+              <div id="dd-vr" x-show="$store.sections.visible('dd-vr') && $store.dalsiRegistry.open" :data-collapsed="!$store.ddCollapse.isExpanded('dd-vr')" class="dd-card border border-slate-200/80 dark:border-slate-700 rounded-xl p-5 shadow-sm hover:shadow-md transition-shadow md:col-span-2 scroll-mt-32" x-data="ddVrLoader()" x-init="load(report.ico)">
                 <div class="dd-card-header flex items-baseline justify-between gap-2 mb-2 flex-wrap cursor-pointer select-none" @click="$store.ddCollapse.toggle('dd-vr')">
                   <h4 class="font-bold flex items-center gap-2">
                     <span class="text-slate-400 w-3 inline-block chevron">▶</span>
@@ -1078,7 +1226,7 @@
                 </template>
               </div>
 
-              <div id="dd-ubo" x-show="$store.sections.visible('dd-ubo')" :data-collapsed="!$store.ddCollapse.isExpanded('dd-ubo')" class="dd-card border border-slate-200/80 dark:border-slate-700 rounded-xl p-5 shadow-sm hover:shadow-md transition-shadow md:col-span-2 scroll-mt-32" x-data="ddUboLoader()" x-init="load(report.ico)">
+              <div id="dd-ubo" x-show="$store.sections.visible('dd-ubo') && $store.dalsiRegistry.open" :data-collapsed="!$store.ddCollapse.isExpanded('dd-ubo')" class="dd-card border border-slate-200/80 dark:border-slate-700 rounded-xl p-5 shadow-sm hover:shadow-md transition-shadow md:col-span-2 scroll-mt-32" x-data="ddUboLoader()" x-init="load(report.ico)">
                 <div class="dd-card-header flex items-baseline justify-between gap-2 mb-2 flex-wrap cursor-pointer select-none" @click="$store.ddCollapse.toggle('dd-ubo')">
                   <h4 class="font-bold flex items-center gap-2">
                     <span class="text-slate-400 w-3 inline-block chevron">▶</span>
@@ -1203,7 +1351,7 @@
                 </p>
               </div>
 
-              <div id="dd-dotace" x-show="$store.sections.visible('dd-dotace')" :data-collapsed="!$store.ddCollapse.isExpanded('dd-dotace')" class="dd-card border border-slate-200/80 dark:border-slate-700 rounded-xl p-5 shadow-sm hover:shadow-md transition-shadow md:col-span-2 scroll-mt-32" x-data="ddDotaceLoader()" x-init="load(report.ico)">
+              <div id="dd-dotace" x-show="$store.sections.visible('dd-dotace') && $store.dalsiRegistry.open" :data-collapsed="!$store.ddCollapse.isExpanded('dd-dotace')" class="dd-card border border-slate-200/80 dark:border-slate-700 rounded-xl p-5 shadow-sm hover:shadow-md transition-shadow md:col-span-2 scroll-mt-32" x-data="ddDotaceLoader()" x-init="load(report.ico)">
                 <div class="dd-card-header flex items-baseline justify-between gap-2 mb-2 flex-wrap cursor-pointer select-none" @click="$store.ddCollapse.toggle('dd-dotace')">
                   <h4 class="font-bold flex items-center gap-2">
                     <span class="text-slate-400 w-3 inline-block chevron">▶</span>
@@ -1352,7 +1500,7 @@
                 </p>
               </div>
 
-              <div id="dd-smlouvy" x-show="$store.sections.visible('dd-smlouvy')" :data-collapsed="!$store.ddCollapse.isExpanded('dd-smlouvy')" class="dd-card border border-slate-200/80 dark:border-slate-700 rounded-xl p-5 shadow-sm hover:shadow-md transition-shadow md:col-span-2 scroll-mt-32" x-data="ddSmlouvyLoader()" x-init="load(report.ico)">
+              <div id="dd-smlouvy" x-show="$store.sections.visible('dd-smlouvy') && $store.dalsiRegistry.open" :data-collapsed="!$store.ddCollapse.isExpanded('dd-smlouvy')" class="dd-card border border-slate-200/80 dark:border-slate-700 rounded-xl p-5 shadow-sm hover:shadow-md transition-shadow md:col-span-2 scroll-mt-32" x-data="ddSmlouvyLoader()" x-init="load(report.ico)">
                 <div class="dd-card-header flex items-baseline justify-between gap-2 mb-2 flex-wrap cursor-pointer select-none" @click="$store.ddCollapse.toggle('dd-smlouvy')">
                   <h4 class="font-bold flex items-center gap-2">
                     <span class="text-slate-400 w-3 inline-block chevron">▶</span>
@@ -1478,7 +1626,7 @@
                 </p>
               </div>
 
-              <div id="dd-adis" x-show="$store.sections.visible('dd-adis')" :data-collapsed="!$store.ddCollapse.isExpanded('dd-adis')" class="dd-card border border-slate-200/80 dark:border-slate-700 rounded-xl p-5 shadow-sm hover:shadow-md transition-shadow scroll-mt-32" x-data="ddAdisLoader()" x-init="load(report.ico)">
+              <div id="dd-adis" x-show="$store.sections.visible('dd-adis') && $store.dalsiRegistry.open" :data-collapsed="!$store.ddCollapse.isExpanded('dd-adis')" class="dd-card border border-slate-200/80 dark:border-slate-700 rounded-xl p-5 shadow-sm hover:shadow-md transition-shadow scroll-mt-32" x-data="ddAdisLoader()" x-init="load(report.ico)">
                 <h4 class="dd-card-header font-bold mb-2 flex items-center justify-between gap-2 cursor-pointer select-none" @click="$store.ddCollapse.toggle('dd-adis')">
                   <span class="flex items-center gap-2">
                     <span class="text-slate-400 w-3 inline-block chevron">▶</span>
@@ -1550,7 +1698,7 @@
                 </p>
               </div>
 
-              <div id="dd-isir" x-show="$store.sections.visible('dd-isir')" :data-collapsed="!$store.ddCollapse.isExpanded('dd-isir')" class="dd-card border border-slate-200/80 dark:border-slate-700 rounded-xl p-5 shadow-sm hover:shadow-md transition-shadow scroll-mt-32" x-data="ddIsirLoader()" x-init="load(report.ico)">
+              <div id="dd-isir" x-show="$store.sections.visible('dd-isir') && $store.dalsiRegistry.open" :data-collapsed="!$store.ddCollapse.isExpanded('dd-isir')" class="dd-card border border-slate-200/80 dark:border-slate-700 rounded-xl p-5 shadow-sm hover:shadow-md transition-shadow scroll-mt-32" x-data="ddIsirLoader()" x-init="load(report.ico)">
                 <h4 class="dd-card-header font-bold mb-2 flex items-center justify-between gap-2 cursor-pointer select-none" @click="$store.ddCollapse.toggle('dd-isir')">
                   <span class="flex items-center gap-2">
                     <span class="text-slate-400 w-3 inline-block chevron">▶</span>
@@ -1678,7 +1826,7 @@
 
               <div
                 id="dd-jerrs"
-                x-show="$store.sections.visible('dd-jerrs')"
+                x-show="$store.sections.visible('dd-jerrs') && $store.dalsiRegistry.open"
                 :data-collapsed="!$store.ddCollapse.isExpanded('dd-jerrs')"
                 class="dd-card border border-slate-200/80 dark:border-slate-700 rounded-xl p-5 shadow-sm hover:shadow-md transition-shadow scroll-mt-32"
                 x-data="ddJerrsLoader()"
@@ -1757,7 +1905,7 @@
 
               <div
                 id="dd-sankce"
-                x-show="$store.sections.visible('dd-sankce')"
+                x-show="$store.sections.visible('dd-sankce') && $store.dalsiRegistry.open"
                 :data-collapsed="!$store.ddCollapse.isExpanded('dd-sankce')"
                 class="dd-card border border-slate-200/80 dark:border-slate-700 rounded-xl p-5 shadow-sm hover:shadow-md transition-shadow scroll-mt-32"
                 x-data="ddEuSanctionsLoader()"
@@ -1854,7 +2002,7 @@
 
             <!-- Trade licenses as part of DD (we already have the data) -->
             <template x-if="report.trade_licenses && report.trade_licenses.total > 0">
-              <div id="dd-zivno" x-show="$store.sections.visible('dd-zivno')" :data-collapsed="!$store.ddCollapse.isExpanded('dd-zivno')" class="dd-card border border-slate-200/80 dark:border-slate-700 rounded-xl p-5 shadow-sm hover:shadow-md transition-shadow scroll-mt-32">
+              <div id="dd-zivno" x-show="$store.sections.visible('dd-zivno') && $store.dalsiRegistry.open" :data-collapsed="!$store.ddCollapse.isExpanded('dd-zivno')" class="dd-card border border-slate-200/80 dark:border-slate-700 rounded-xl p-5 shadow-sm hover:shadow-md transition-shadow scroll-mt-32">
                 <h4 class="dd-card-header font-bold mb-2 flex items-center justify-between gap-2 cursor-pointer select-none" @click="$store.ddCollapse.toggle('dd-zivno')">
                   <span class="flex items-center gap-2">
                     <span class="text-slate-400 w-3 inline-block chevron">▶</span>
@@ -1884,144 +2032,10 @@
               </div>
             </template>
 
-            <!-- ─── AI souhrn (Claude Haiku 4.5) — BYO API klíč ─── -->
-            <!-- Skryto pro public visitora bez vlastního Anthropic klíče.
-                 User si klíč nastaví v Settings popoveru → karta se odemkne.
-                 Fáze 1 monetizace: 0 Kč náklad pro tebe (user platí). -->
-            <div
-              id="dd-ai-summary"
-              x-show="$store.sections.visible('dd-ai-summary') && $store.aiAccess.enabled()"
-              :data-collapsed="!$store.ddCollapse.isExpanded('dd-ai-summary')"
-              class="dd-card border border-emerald-200/80 dark:border-emerald-700 rounded-xl p-5 shadow-sm hover:shadow-md transition-shadow md:col-span-2 scroll-mt-32 bg-emerald-50/50 dark:bg-emerald-900/10"
-              x-data="ddAiSummaryCard()"
-            >
-              <h4 class="dd-card-header text-base font-semibold mb-3 cursor-pointer select-none flex items-center gap-2" @click="$store.ddCollapse.toggle('dd-ai-summary')">
-                <span class="dd-card-chevron text-slate-400" x-text="$store.ddCollapse.isExpanded('dd-ai-summary') ? '▾' : '▸'"></span>
-                🤖 AI souhrn pro klienta
-                <template x-if="data">
-                  <span class="text-[10px] px-1.5 py-0.5 rounded-full border border-emerald-300 text-emerald-700 dark:text-emerald-300">
-                    důvěra <span x-text="(data.confidence * 100).toFixed(0)"></span>%
-                  </span>
-                </template>
-              </h4>
-              <div class="dd-card-body text-sm space-y-3" x-show="$store.ddCollapse.isExpanded('dd-ai-summary')">
-                <template x-if="!data && !loading && !error">
-                  <div>
-                    <p class="text-slate-600 dark:text-slate-400 mb-3">Claude Haiku 4.5 přečte všechna DD data o firmě a vygeneruje stručný analytický souhrn pro klienta — exec summary, red flags, doporučení.</p>
-                    <button @click="generate(report.ico)" class="px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 inline-flex items-center gap-2 transition-colors">
-                      <span>🤖</span> Generovat AI souhrn
-                    </button>
-                    <p class="text-xs text-slate-500 mt-2">Výsledek se cachuje 7 dní. Cena ~18 hal za prověrku (interní).</p>
-                  </div>
-                </template>
-                <template x-if="loading">
-                  <p class="text-slate-500"><span class="animate-pulse">🤖</span> Claude analyzuje firmu… (typicky 5–10 s)</p>
-                </template>
-                <template x-if="error">
-                  <p class="text-rose-600 dark:text-rose-400" x-text="error"></p>
-                </template>
-                <template x-if="data">
-                  <div class="space-y-4">
-                    <div class="bg-white dark:bg-slate-800 rounded-lg p-3 border dark:border-slate-700">
-                      <p class="text-xs font-semibold text-slate-500 mb-1">SOUHRN</p>
-                      <p class="leading-relaxed" x-text="data.summary"></p>
-                    </div>
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
-                      <div class="bg-rose-50 dark:bg-rose-900/20 rounded-lg p-3 border border-rose-200 dark:border-rose-800">
-                        <p class="text-xs font-semibold text-rose-700 dark:text-rose-300 mb-2">🔴 RIZIKA</p>
-                        <template x-if="data.risks.length === 0">
-                          <p class="text-xs text-slate-500">Žádná identifikovaná rizika.</p>
-                        </template>
-                        <ul class="space-y-1 text-xs">
-                          <template x-for="r in data.risks">
-                            <li class="flex gap-1.5"><span class="text-rose-500">•</span><span x-text="r"></span></li>
-                          </template>
-                        </ul>
-                      </div>
-                      <div class="bg-emerald-50 dark:bg-emerald-900/20 rounded-lg p-3 border border-emerald-200 dark:border-emerald-800">
-                        <p class="text-xs font-semibold text-emerald-700 dark:text-emerald-300 mb-2">🟢 POZITIVA</p>
-                        <template x-if="data.strengths.length === 0">
-                          <p class="text-xs text-slate-500">Žádné identifikované pozitivní signály.</p>
-                        </template>
-                        <ul class="space-y-1 text-xs">
-                          <template x-for="s in data.strengths">
-                            <li class="flex gap-1.5"><span class="text-emerald-500">•</span><span x-text="s"></span></li>
-                          </template>
-                        </ul>
-                      </div>
-                    </div>
-                    <div class="bg-slate-100 dark:bg-slate-800 rounded-lg p-3 border dark:border-slate-700">
-                      <p class="text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">DOPORUČENÍ</p>
-                      <p class="text-sm" x-text="data.recommendation"></p>
-                    </div>
-                    <div class="flex items-center gap-2 text-xs text-slate-500 pt-2 border-t dark:border-slate-700">
-                      <button @click="generate(report.ico, true)" class="underline hover:text-emerald-700">↻ Regenerovat</button>
-                      <span>·</span>
-                      <span x-text="'Model: ' + data.model"></span>
-                      <span>·</span>
-                      <span title="AI souhrn je informativní — nikdy nenahrazuje právní DD ani AML/KYC povinnosti.">⚠️ Informativní jen</span>
-                    </div>
-                    <!-- Disclaimer pro LLM knowledge cutoff problém: AGROFERT příklad
-                         Babiš byl premiér do 12/2017, návrat 11/2025 — Haiku 4.5 cutoff
-                         ~začátek 2025 neví o návratu. PEP info z HS osoby ground truth,
-                         ale ostatní fakta (soudní kauzy, ekonomika 2025) mohou být stale. -->
-                    <div class="mt-2 p-3 bg-amber-50 dark:bg-amber-900/20 rounded-lg border border-amber-200 dark:border-amber-800 text-xs text-amber-900 dark:text-amber-200">
-                      <p class="font-semibold mb-1">⚠️ Pozor na zastaralé informace</p>
-                      <p class="leading-relaxed">
-                        AI souhrn může obsahovat zastaralé fakty z trénovacích dat (knowledge cutoff modelu typicky leden 2025).
-                        Pro <strong>aktuální politické funkce / PEP status</strong> používáme realtime data z Hlídače státu (sekce hsOsoby v kontextu).
-                        Pro ostatní fakta (kauzy, ekonomika, sankce po cutoffu) <strong>ověř u primárního zdroje</strong> — ARES, OR, ISIR, EU CFSP.
-                      </p>
-                    </div>
-                  </div>
-                </template>
-              </div>
-            </div>
-
-            <!-- ─── Anotace / poznámky per firma (localStorage) ─── -->
-            <div
-              id="dd-notes"
-              x-show="$store.sections.visible('dd-notes')"
-              :data-collapsed="!$store.ddCollapse.isExpanded('dd-notes')"
-              class="dd-card border border-slate-200/80 dark:border-slate-700 rounded-xl p-5 shadow-sm hover:shadow-md transition-shadow md:col-span-2 scroll-mt-32"
-              x-data="ddNotesCard()"
-              x-init="load(report.ico)"
-            >
-              <h4 class="dd-card-header text-base font-semibold mb-3 cursor-pointer select-none flex items-center gap-2" @click="$store.ddCollapse.toggle('dd-notes')">
-                <span class="dd-card-chevron text-slate-400" x-text="$store.ddCollapse.isExpanded('dd-notes') ? '▾' : '▸'"></span>
-                📝 Moje poznámky
-                <template x-if="hasContent">
-                  <span class="text-xs font-normal text-emerald-600">●</span>
-                </template>
-              </h4>
-              <div class="dd-card-body" x-show="$store.ddCollapse.isExpanded('dd-notes')">
-                <textarea
-                  x-model="note"
-                  @input.debounce.500ms="save(report.ico)"
-                  placeholder="Vlož poznámku pro tuto firmu (jen v tvém prohlížeči)"
-                  rows="3"
-                  class="w-full px-3 py-2 border dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500 outline-none"
-                ></textarea>
-                <div class="mt-3 flex items-center gap-2 flex-wrap">
-                  <span class="text-xs text-slate-500 dark:text-slate-400">Tagy:</span>
-                  <template x-for="t in availableTags" :key="t.key">
-                    <button
-                      type="button"
-                      @click="toggleTag(t.key, report.ico)"
-                      :class="tags.includes(t.key) ? t.activeClass : 'border-slate-300 dark:border-slate-600 text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-700'"
-                      class="px-2 py-1 border rounded-full text-xs transition-colors"
-                      x-text="t.label"
-                    ></button>
-                  </template>
-                </div>
-                <p class="text-xs text-slate-400 mt-2" x-show="lastSaved" x-text="'Uloženo ' + lastSaved + '.'"></p>
-              </div>
-            </div>
-
             <!-- ─── Časová osa firmy ─── -->
             <div
               id="dd-timeline"
-              x-show="$store.sections.visible('dd-timeline')"
+              x-show="$store.sections.visible('dd-timeline') && $store.dalsiRegistry.open"
               :data-collapsed="!$store.ddCollapse.isExpanded('dd-timeline')"
               class="dd-card border border-slate-200/80 dark:border-slate-700 rounded-xl p-5 shadow-sm hover:shadow-md transition-shadow md:col-span-2 scroll-mt-32"
               x-data="ddTimelineLoader()"
@@ -2069,7 +2083,7 @@
             <!-- ─── Ochranné známky (ÚPV otevřená data ST.96) ─── -->
             <div
               id="dd-upv"
-              x-show="$store.sections.visible('dd-upv')"
+              x-show="$store.sections.visible('dd-upv') && $store.dalsiRegistry.open"
               :data-collapsed="!$store.ddCollapse.isExpanded('dd-upv')"
               class="dd-card border border-slate-200/80 dark:border-slate-700 rounded-xl p-5 shadow-sm hover:shadow-md transition-shadow scroll-mt-32"
               x-data="ddUpvCard()"
@@ -2145,7 +2159,7 @@
             <!-- ─── Datová schránka — auto-fetch ID schránky z mojedatovaschranka.cz ─── -->
             <div
               id="dd-ds"
-              x-show="$store.sections.visible('dd-ds')"
+              x-show="$store.sections.visible('dd-ds') && $store.dalsiRegistry.open"
               :data-collapsed="!$store.ddCollapse.isExpanded('dd-ds')"
               class="dd-card border border-slate-200/80 dark:border-slate-700 rounded-xl p-5 shadow-sm hover:shadow-md transition-shadow scroll-mt-32"
               x-data="ddDatovaSchrankaCard()"
@@ -2216,7 +2230,7 @@
             <!-- ─── Katastr nemovitostí (placeholder, vyžaduje VDP) ─── -->
             <div
               id="dd-katastr"
-              x-show="$store.sections.visible('dd-katastr')"
+              x-show="$store.sections.visible('dd-katastr') && $store.dalsiRegistry.open"
               :data-collapsed="!$store.ddCollapse.isExpanded('dd-katastr')"
               class="dd-card border border-amber-200/80 dark:border-amber-700 rounded-xl p-5 shadow-sm hover:shadow-md transition-shadow md:col-span-2 scroll-mt-32 bg-amber-50/50 dark:bg-amber-900/10"
             >
@@ -2760,7 +2774,7 @@
             </button>
           </div>
         </details>
-        <form @submit.prevent="run()" class="space-y-2">
+        <form @submit.prevent="run()" class="space-y-2" x-show="!shared">
           <textarea
             x-model="raw"
             rows="3"
@@ -2792,6 +2806,30 @@
           </div>
           <p class="text-xs text-slate-500 dark:text-slate-400 mt-1.5">Najde osoby sedící ve více firmách ze sady a propojí je. Sadu naplníš ručně (IČO výše) nebo z profilu přes „Rozkrýt holding".</p>
         </form>
+
+        <!-- D+e — knihovna uložených vyšetřování (link+label v prohlížeči). -->
+        <div id="saved-investigations" x-show="!shared && savedInvestigations.length > 0" class="mt-3 border dark:border-slate-700 rounded-lg scroll-mt-32">
+          <button type="button" @click="libOpen = !libOpen"
+            class="w-full flex items-center justify-between gap-2 px-3 py-2 text-sm text-left hover:bg-slate-50 dark:hover:bg-slate-700/40 rounded-lg">
+            <span class="font-medium flex items-center gap-2">
+              <span class="text-slate-400" x-text="libOpen ? '▾' : '▸'"></span>
+              📑 Moje uložená vyšetřování
+              <span class="text-xs font-normal text-slate-500 dark:text-slate-400" x-text="'(' + savedInvestigations.length + ')'"></span>
+            </span>
+          </button>
+          <ul x-show="libOpen" x-transition class="px-3 pb-3 space-y-1.5">
+            <template x-for="inv in savedInvestigations" :key="inv.id">
+              <li class="flex items-center gap-2 text-sm border-t dark:border-slate-700/60 pt-1.5">
+                <button type="button" @click="openInvestigation(inv)" class="flex-1 text-left truncate text-emerald-700 dark:text-emerald-400 hover:underline" :title="inv.label">
+                  <span x-text="inv.label"></span>
+                  <span class="text-xs text-slate-400" x-text="'· ' + new Date(inv.savedAt).toLocaleDateString('cs-CZ')"></span>
+                </button>
+                <button type="button" @click="navigator.clipboard.writeText(inv.url)" class="text-xs text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 shrink-0" title="Kopírovat odkaz">🔗</button>
+                <button type="button" @click="removeSavedInvestigation(inv.id)" class="text-xs text-slate-400 hover:text-rose-600 shrink-0" title="Odebrat ze seznamu">✕</button>
+              </li>
+            </template>
+          </ul>
+        </div>
 
         <template x-if="error && (error.includes('At least') || error.includes('alespoň'))">
           <div class="mt-4 text-center py-6 px-4 border border-dashed border-amber-300 dark:border-amber-700 rounded-lg bg-amber-50/30 dark:bg-amber-900/10">
@@ -3051,6 +3089,11 @@
             </template>
 
             <div class="border dark:border-slate-700 rounded-xl p-4 bg-white dark:bg-slate-900">
+              <!-- Fáze D — banner sdíleného (read-only) vyšetřování. -->
+              <div x-show="shared" class="flex items-center gap-2 text-sm px-3 py-2 mb-3 rounded-lg border border-indigo-200 dark:border-indigo-800 bg-indigo-50 dark:bg-indigo-900/20 text-indigo-800 dark:text-indigo-200">
+                <span class="shrink-0">🔗</span>
+                <span>Prohlížíš <strong>sdílené vyšetřování</strong>. Můžeš v mapě navigovat; uložené je tak, jak ho autor poslal.</span>
+              </div>
               <!-- Prominentní výzva: klik na uzel firmy → profil (drill-down). -->
               <div x-show="renderMode === 'interactive'" class="flex items-center gap-2 text-sm px-3 py-2 mb-3 rounded-lg border border-emerald-200 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-900/20 text-emerald-800 dark:text-emerald-200">
                 <span class="shrink-0">👆</span>
@@ -3075,10 +3118,10 @@
                     class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full border cursor-pointer"
                     title="Klik = zvýraznit tuto osobu (primární, indigo) · klik znovu = zrušit">
                     🎯 <strong x-text="ego.label"></strong>
-                    <button type="button" @click.stop="expandEgo(ego.key, ego.label, ego.dob)" :disabled="loading || fullKeys.includes(ego.key)"
+                    <button type="button" x-show="!shared" @click.stop="expandEgo(ego.key, ego.label, ego.dob)" :disabled="loading || fullKeys.includes(ego.key)"
                       class="ml-1 disabled:opacity-40 disabled:cursor-not-allowed hover:opacity-70"
                       :title="fullKeys.includes(ego.key) ? 'Tato osoba je v grafu už celá' : 'Přidat další firmy této osoby (odhalí skryté vazby)'">➕</button>
-                    <button type="button" @click.stop="removeEgo(ego.key)" class="font-bold hover:opacity-70" title="Odebrat ze subjektů">✕</button>
+                    <button type="button" x-show="!shared" @click.stop="removeEgo(ego.key)" class="font-bold hover:opacity-70" title="Odebrat ze subjektů">✕</button>
                   </span>
                 </template>
                 <button type="button" x-show="egoPersons.length > 1" @click="intersectMode = !intersectMode; applyFocus()"
@@ -3100,6 +3143,29 @@
                 <span class="inline-flex items-center gap-1"><span class="inline-block w-3 h-3 rounded-sm bg-amber-500"></span> sdílená osoba (ve více firmách)</span>
                 <span class="inline-flex items-center gap-1"><span class="inline-block w-4 border-t-2 border-slate-400"></span> členství</span>
                 <span class="inline-flex items-center gap-1"><span class="inline-block w-4 border-t-2 border-orange-500"></span> vlastnictví (vlastník→firma)</span>
+              </div>
+
+              <!-- Fáze D — uložit / sdílet plátno (D+a) + export do PDF (D+c). -->
+              <div x-show="renderMode === 'interactive' && result" class="flex flex-wrap items-center gap-2 text-xs mt-3 pt-3 border-t dark:border-slate-700">
+                <button type="button" x-show="!shared" @click="saveInvestigation()" :disabled="saving"
+                  class="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-50"
+                  x-text="saving ? 'Ukládám…' : '💾 Uložit / sdílet vyšetřování'"></button>
+                <button type="button" @click="exportCanvasImage()"
+                  class="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg border border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700">📄 Export plátna (PDF)</button>
+                <template x-if="shareUrl">
+                  <span class="inline-flex items-center gap-2 flex-wrap">
+                    <input type="text" readonly :value="shareUrl" @focus="$event.target.select()"
+                      class="px-2 py-1 w-64 max-w-full rounded border dark:border-slate-600 dark:bg-slate-900 text-slate-700 dark:text-slate-200 font-mono" />
+                    <button type="button"
+                      @click="navigator.clipboard.writeText(shareUrl); shareCopied=true; setTimeout(()=>shareCopied=false,2000)"
+                      class="underline text-emerald-700 dark:text-emerald-400"
+                      x-text="shareCopied ? '✓ zkopírováno' : 'kopírovat odkaz'"></button>
+                  </span>
+                </template>
+                <template x-if="shareUrl">
+                  <button type="button" @click="libOpen = true; $nextTick(() => document.getElementById('saved-investigations') && document.getElementById('saved-investigations').scrollIntoView({ behavior: 'smooth', block: 'center' }))"
+                    class="inline-flex items-center gap-1 text-emerald-700 dark:text-emerald-400 underline shrink-0">✓ uloženo · 📑 zobrazit knihovnu</button>
+                </template>
               </div>
             </div>
           </div>
