@@ -829,6 +829,13 @@ function graphSection() {
         this.error = "Sdílené vyšetřování se nepodařilo načíst: " + e.message;
       }
     },
+    /** Fáze D — ze sdíleného (read-only) /v/<id> přejdi do editace: odemkne
+     *  vstup, chipy i Uložit (uloží se jako NOVÉ vyšetřování). Odebere /v/ z URL. */
+    continueEditing() {
+      this.shared = false;
+      const icos = this.parseIcos(this.raw);
+      window.history.replaceState(null, "", icos.length ? `/?icos=${icos.join(",")}` : "/");
+    },
     /** Fáze D (D+c) — export aktuálního plátna do PDF: cy.png() → tisknutelná
      *  stránka v novém tabu (window.print → uložit jako PDF). Stejný princip
      *  jako PDF prověrka. Fallback: stáhne PNG když popup blokován. */
