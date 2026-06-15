@@ -205,6 +205,23 @@
       footer a { color: rgb(4 120 87); }       /* emerald-700 */
       .dark footer a { color: rgb(52 211 153); } /* emerald-400 */
     </style>
+    <!-- Umami analytics (self-hosted, bez cookies). Dev a prod oddělené dle hostname; localhost se netrackuje. -->
+    <script>
+      (function () {
+        var ids = {
+          "icovazby.cz": "fae564b9-662d-4783-8958-0b489058a6a7",
+          "www.icovazby.cz": "fae564b9-662d-4783-8958-0b489058a6a7",
+          "dev.icovazby.cz": "a1e4e3b5-1188-450b-b7b6-9b3dd086492d",
+        };
+        var id = ids[location.hostname];
+        if (!id) return;
+        var s = document.createElement("script");
+        s.async = true;
+        s.src = "https://stats.icovazby.cz/script.js";
+        s.setAttribute("data-website-id", id);
+        document.head.appendChild(s);
+      })();
+    </script>
   </head>
   <body class="bg-[#F2FAF5] dark:bg-slate-900 text-slate-900 dark:text-slate-100 min-h-screen flex flex-col transition-colors">
     <header class="bg-white dark:bg-slate-800 border-b dark:border-slate-700 sticky top-0 z-30" x-data="historyBar()" x-init="init()">
