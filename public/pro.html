@@ -488,7 +488,7 @@ flowchart TB
 
     AGR["Agregační vrstva<br/>icovazby.cz<br/>(paralelní fetch · cache · normalizace)"]
     RISK["Risk skóre<br/>0–100"]
-    GRAPH["Mapa propojení<br/>vlastnictví + osoby"]
+    GRAPH["Mapa propojení<br/>vyšetřovací plátno"]
     AI["AI souhrn<br/>Claude / Gemini"]
     EXP["Exporty<br/>PDF · ZIP · CSV<br/>Fakturoid · iDoklad"]
     YOU(("Vy"))
@@ -570,7 +570,7 @@ flowchart TB
           <div class="flex items-start gap-4 mb-4">
             <div class="feature-icon text-2xl">🗺️</div>
             <div>
-              <h3 class="text-2xl font-bold">Mapa propojení a Rozkrytí holdingu</h3>
+              <h3 class="text-2xl font-bold">Mapa propojení &mdash; vyšetřovací plátno</h3>
               <p class="text-slate-600 dark:text-slate-400">Vidíte celý ekosystém, ne jen samotnou firmu</p>
             </div>
           </div>
@@ -580,7 +580,13 @@ flowchart TB
             holdingu a <em>reverse discovery</em> (kdo vlastní cílovou firmu shora). Graf má <strong>dvě přepínatelné
             vrstvy</strong> &mdash; 🏢&nbsp;<strong>vlastnictví</strong> (kdo koho vlastní, včetně fyzických společníků
             a akcionářů) a 👥&nbsp;<strong>osoby</strong> (sdílení statutáři napříč firmami). Klik na firmu otevře její
-            profil, klik na osobu zaměří jen její vztahy.
+            profil, klik na osobu ji přidá jako <strong>subjekt</strong> a zaměří její vztahy.
+          </p>
+          <p class="mb-5 text-slate-700 dark:text-slate-300">
+            Mapa není jen obrázek &mdash; je to <strong>vyšetřovací plátno</strong>. Můžete na ně postavit
+            <strong>víc subjektů naráz</strong> (osob i firem), rozbalovat je do hloubky a nechat aplikaci
+            <strong>najít skryté vazby mezi nimi</strong>. To je rozdíl mezi &bdquo;tady je strom firmy&ldquo;
+            a &bdquo;ukaž mi, jestli spolu tihle dva lidé nějak souvisí&ldquo;.
           </p>
 
           <div class="rounded-xl bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 p-4 sm:p-6">
@@ -618,6 +624,35 @@ flowchart LR
             <div class="rounded-lg border border-slate-200 dark:border-slate-700 p-3">
               <div class="font-semibold mb-1">⏰ Včetně historie</div>
               <div class="text-xs text-slate-500 dark:text-slate-400">Zapnutím historie uvidíte i bývalé jednatele &mdash; klíčové pro M&A DD.</div>
+            </div>
+          </div>
+
+          <!-- Vyšetřovací plátno -->
+          <div class="mt-6 text-xs uppercase tracking-wider text-slate-500 dark:text-slate-400 font-semibold">Vyšetřovací plátno &mdash; co s mapou umíte</div>
+          <div class="mt-3 grid sm:grid-cols-2 lg:grid-cols-3 gap-3 text-sm">
+            <div class="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-4">
+              <div class="font-semibold mb-1">👥 Víc subjektů naráz</div>
+              <div class="text-xs text-slate-600 dark:text-slate-400">Přidejte na plátno víc osob/firem současně. Každý subjekt má svůj &bdquo;chip&ldquo; &mdash; mapa drží jejich okolí pohromadě.</div>
+            </div>
+            <div class="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-4">
+              <div class="font-semibold mb-1">🌐 Ego-graf osoby</div>
+              <div class="text-xs text-slate-600 dark:text-slate-400">Jeden klik vykreslí <em>všechny</em> firmy dané osoby z celého indexu &mdash; i ty, které se statutárem cílové firmy přímo nesouvisí.</div>
+            </div>
+            <div class="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-4">
+              <div class="font-semibold mb-1">➕ Přidat do mapy</div>
+              <div class="text-xs text-slate-600 dark:text-slate-400">Narazíte na zajímavou osobu v profilu? Přidáte ji k už rozkreslené mapě a hned vidíte, jestli se s ní někde protíná.</div>
+            </div>
+            <div class="rounded-xl border border-amber-200 dark:border-amber-800 bg-amber-50/50 dark:bg-amber-900/20 p-4">
+              <div class="font-semibold text-amber-700 dark:text-amber-300 mb-1">🔗 Detekce vazby mezi subjekty</div>
+              <div class="text-xs text-slate-600 dark:text-slate-400">Máte-li na plátně 2+ subjekty, aplikace sama zvýrazní <strong>sdílené firmy</strong> a <strong>můstkové osoby</strong> &mdash; a napíše, přes co jsou propojeni.</div>
+            </div>
+            <div class="rounded-xl border border-indigo-200 dark:border-indigo-800 bg-indigo-50/50 dark:bg-indigo-900/20 p-4">
+              <div class="font-semibold text-indigo-700 dark:text-indigo-300 mb-1">🎯 Primární subjekt</div>
+              <div class="text-xs text-slate-600 dark:text-slate-400">Klik na chip subjekt zvýrazní (prsten) &mdash; udržíte fokus na jednom hráči, aniž byste ztratili kontext ostatních.</div>
+            </div>
+            <div class="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-4">
+              <div class="font-semibold mb-1">∩ Režim průniku (AND)</div>
+              <div class="text-xs text-slate-600 dark:text-slate-400">Přepnete plátno na &bdquo;jen společné&ldquo; &mdash; zůstanou pouze firmy, které všechny subjekty <strong>sdílejí</strong>. Okamžitá odpověď na &bdquo;co mají společného?&ldquo;.</div>
             </div>
           </div>
         </div>
@@ -942,7 +977,8 @@ flowchart TB
           <ul class="space-y-2 text-sm">
             <li class="flex gap-2"><span class="text-emerald-600 dark:text-emerald-400">→</span><span>11 datových zdrojů s denní obnovou cache</span></li>
             <li class="flex gap-2"><span class="text-emerald-600 dark:text-emerald-400">→</span><span>Risk skóre s transparentními faktory</span></li>
-            <li class="flex gap-2"><span class="text-emerald-600 dark:text-emerald-400">→</span><span>Mapa propojení (statická + interaktivní)</span></li>
+            <li class="flex gap-2"><span class="text-emerald-600 dark:text-emerald-400">→</span><span>Mapa propojení (statická + interaktivní) &mdash; dvouvrstvá (vlastnictví + osoby)</span></li>
+            <li class="flex gap-2"><span class="text-emerald-600 dark:text-emerald-400">→</span><span>Vyšetřovací plátno &mdash; víc subjektů, ego-graf, přidat do mapy, detekce vazby, primární subjekt, AND průnik</span></li>
             <li class="flex gap-2"><span class="text-emerald-600 dark:text-emerald-400">→</span><span>Auto-rozkrytí holdingu pro a.s. s 5+ statutáři</span></li>
             <li class="flex gap-2"><span class="text-emerald-600 dark:text-emerald-400">→</span><span>Možní jmenovci &mdash; výběr checkboxem</span></li>
             <li class="flex gap-2"><span class="text-emerald-600 dark:text-emerald-400">→</span><span>AI souhrn s BYO klíčem (Claude + Gemini)</span></li>
