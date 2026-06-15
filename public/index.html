@@ -2575,9 +2575,9 @@
                   @click="openAllInMap()"
                   :disabled="resolvedIcoCount() < 2"
                   class="text-sm px-3 py-1.5 bg-emerald-600 text-white rounded hover:bg-emerald-700 disabled:opacity-50 font-semibold"
-                  :title="resolvedIcoCount() < 2 ? 'Potřeba alespoň 2 vyřešené IČO' : 'Otevře Mapu propojení s ' + resolvedIcoCount() + ' IČO'"
+                  :title="resolvedIcoCount() < 2 ? 'Potřeba alespoň 2 vyřešené IČO' : 'Otevře Mapu propojení s ' + resolvedIcoCount() + ' firmami a zvýrazní (zaměří) tuto osobu'"
                 >
-                  🌐 Otevřít všechny v Mapě propojení (<span x-text="resolvedIcoCount()"></span>)
+                  🌐 Ego-graf osoby — vše do mapy (<span x-text="resolvedIcoCount()"></span>)
                 </button>
 
                 <!-- Copy do clipboardu pro paste mimo aplikaci. -->

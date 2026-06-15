@@ -573,6 +573,8 @@ function graphSection() {
     /** Fáze B — fokus na osobu: id uzlu osoby (null = bez fokusu) + label do chipu. */
     focusedPersonKey: null,
     focusedPersonLabel: "",
+    /** Fáze C — osoba k zaměření po příštím renderu (z „Vazby osoby" ego-grafu). */
+    pendingFocusPerson: null,
     /** Cytoscape instance — odkaz pro relayout / destroy. */
     cy: null,
     // Selection map pro „Možné jmenovce" (tentativeCandidates). Key = jmeno|prijmeni
@@ -595,6 +597,12 @@ function graphSection() {
             /* ignore */
           }
         }
+      });
+      // Fáze C — „Vazby osoby" pošle ego-graf: zapamatuj osobu k zaměření,
+      // aplikuje se na konci příštího renderCytoscape (po seedu + run).
+      window.addEventListener("ares-focus-person", (e) => {
+        const d = e.detail || {};
+        if (d.datumNarozeni) this.pendingFocusPerson = { jmeno: d.jmeno || "", datumNarozeni: d.datumNarozeni };
       });
     },
     parseIcos(raw) {
@@ -694,6 +702,7 @@ function graphSection() {
               data: {
                 id: key,
                 label: p.jmeno,
+                datumNarozeni: p.datumNarozeni || "",
                 type: p.isLegalEntity ? "legalPerson" : "person",
                 shared: p.memberships && p.memberships.length > 1,
               },
@@ -858,8 +867,10 @@ function graphSection() {
       });
       this.cy.on("mouseover", "node[type='person'], node[type='legalPerson']", () => { container.style.cursor = "pointer"; });
       this.cy.on("mouseout", "node[type='person'], node[type='legalPerson']", () => { container.style.cursor = "default"; });
-      // Znovu-aplikuj fokus po re-renderu (přepnutí vrstev nezruší zaměření).
-      this.applyFocus();
+      // Fáze C: čeká-li osoba k zaměření (ego-graf), zaměř ji; jinak
+      // znovu-aplikuj stávající fokus (přepnutí vrstev zaměření nezruší).
+      if (this.pendingFocusPerson) this.applyPendingFocus();
+      else this.applyFocus();
     },
     /** Fáze B — fokus na osobu: ztlumí vše kromě osoby, jejích hran a firem
      *  na druhém konci. Druhý klik na tutéž osobu fokus zruší (toggle). */
@@ -881,6 +892,27 @@ function graphSection() {
       if (!node || node.empty()) { this.focusedPersonKey = null; this.focusedPersonLabel = ""; return; }
       const keep = node.union(node.connectedEdges()).union(node.connectedEdges().connectedNodes());
       this.cy.elements().not(keep).addClass("faded");
+    },
+    /** Fáze C — zaměří osobu z ego-grafu. Hledá uzel podle data narození
+     *  (spolehlivý klíč) + příjmení, protože display label se může lišit. */
+    applyPendingFocus() {
+      const fp = this.pendingFocusPerson;
+      this.pendingFocusPerson = null;
+      if (!fp || !this.cy) { this.applyFocus(); return; }
+      const surname = (fp.jmeno || "").trim().split(/\s+/).pop().toLowerCase();
+      let match = null;
+      this.cy.nodes("[type='person'], [type='legalPerson']").forEach((n) => {
+        if (match) return;
+        if (n.data("datumNarozeni") === fp.datumNarozeni &&
+            (!surname || (n.data("label") || "").toLowerCase().includes(surname))) {
+          match = n;
+        }
+      });
+      if (match) {
+        this.focusedPersonKey = match.id();
+        this.focusedPersonLabel = match.data("label") || "";
+      }
+      this.applyFocus();
     },
     /** Unique key pro tentative kandidáta — pro Alpine x-model binding. */
     candidateKey(c) {
@@ -1051,7 +1083,17 @@ function personVazbySection() {
     openAllInMap() {
       const icos = this.allResolvedIcos();
       if (icos.length < 2) return;
+      // Ego-graf (Fáze C): všechny firmy osoby do mapy + auto-fokus na osobu.
+      // Zapni historický režim, ať se osoba s ukončenými rolemi v mapě ukáže
+      // (jinak by ji current-only graf vynechal a fokus by nesedl).
+      const hist = window.Alpine?.store("history");
+      if (hist && this.form.includeHistorical) hist.enabled = true;
+      window.dispatchEvent(new CustomEvent("ares-focus-person", {
+        detail: { jmeno: this.form.jmeno, datumNarozeni: this.form.datumNarozeni },
+      }));
+      window.Alpine?.store("sections")?.setVisible("graph", true);
       window.dispatchEvent(new CustomEvent("ares-seed-graph", { detail: { icos } }));
+      requestAnimationFrame(() => document.querySelector("#graph")?.scrollIntoView({ behavior: "smooth" }));
     },
     copiedNotice: "",
     async copyIcosToClipboard() {
