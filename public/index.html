@@ -248,13 +248,14 @@
           class="hidden sm:inline-flex items-center gap-1 text-[11px] uppercase tracking-wider px-2.5 py-1 rounded-full border border-emerald-300 dark:border-emerald-700 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-50 dark:hover:bg-emerald-900/30 transition-colors font-semibold"
           title="Pro koho je tato aplikace — kdo z ní těží"
         >Pro koho ⓘ</a>
+        <!-- Pořadí menu = pořadí bloků v DOM: profil → graph → address → saved → bulk → compare -->
         <nav class="hidden md:flex gap-4 text-sm text-slate-600 dark:text-slate-400">
           <a href="#profil" class="hover:text-slate-900 dark:hover:text-white">Profil firmy</a>
           <a x-show="$store.sections.visible('graph')" href="#graph" class="hover:text-slate-900 dark:hover:text-white">Mapa propojení</a>
           <a x-show="$store.sections.visible('address')" href="#address" class="hover:text-slate-900 dark:hover:text-white">Podle adresy</a>
-          <a x-show="$store.sections.visible('compare')" href="#compare" class="hover:text-slate-900 dark:hover:text-white">Porovnat</a>
+          <a x-show="$store.sections.visible('saved')" href="#saved" class="hover:text-slate-900 dark:hover:text-white">Vyhledávání</a>
           <a x-show="$store.sections.visible('bulk')" href="#bulk" class="hover:text-slate-900 dark:hover:text-white">Více firem</a>
-          <a x-show="$store.sections.visible('saved')" href="#saved" class="hover:text-slate-900 dark:hover:text-white">Uložené</a>
+          <a x-show="$store.sections.visible('compare')" href="#compare" class="hover:text-slate-900 dark:hover:text-white">Porovnat</a>
         </nav>
         <!-- Nastavení + Historie: napevno na 2. řádek pod logo (w-full = vždy se zalomí,
              ať menu nahoře roste jak chce — tlačítka neposkakují). -->
