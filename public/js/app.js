@@ -632,7 +632,9 @@ function graphSection() {
         const id = invMatch[1];
         // Vlastní záznam (je v MÉ knihovně) → otevři normálně k editaci (Uložit i
         // ostatní tlačítka jako v běžném režimu). Jen CIZÍ přijatý odkaz → read-only.
-        this.shared = !this.savedInvestigations.some((x) => x.id === id);
+        const own = this.savedInvestigations.find((x) => x.id === id);
+        this.shared = !own;
+        if (own) this.investigationName = own.label; // předvyplň pole názvem uloženého
         this.loadInvestigation(id);
         return;
       }
