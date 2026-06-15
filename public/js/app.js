@@ -576,6 +576,9 @@ function graphSection() {
     egoPersons: [],
     /** C+c — textový výrok o vazbě mezi subjekty (sdílené firmy / mosty). */
     connectionMsg: "",
+    /** AND — režim „jen společné firmy" (průnik): skryje vše kromě subjektů
+     *  a firem, kde sedí ≥2 subjekty. Ostré hledání přímých vazeb. */
+    intersectMode: false,
     /** Fáze C — osoba k zaměření po příštím renderu (z „Vazby osoby" ego-grafu). */
     pendingFocusPerson: null,
     /** Osoby, jejichž VŠECHNY firmy už jsou v grafu (ego/rozbalené) → „Rozbalit"
@@ -878,6 +881,11 @@ function graphSection() {
             selector: ".overlap",
             style: { "border-width": 5, "border-color": isDark ? "#fbbf24" : "#d97706" },
           },
+          {
+            // AND — průnik: prvek mimo společné firmy úplně schován.
+            selector: ".intersect-off",
+            style: { "display": "none" },
+          },
         ],
       });
       // Click na firmu = otevři její profil v search.
@@ -965,6 +973,24 @@ function graphSection() {
       if (keep.length === 0) return; // všichni subjekti skrytí v této vrstvě
       this.cy.elements().not(keep).addClass("faded");
       if (egoNodes.length >= 2) this.detectConnections(egoNodes);
+      this.applyIntersect();
+    },
+    /** AND — průnik: nech jen subjekty + společné firmy (overlap firma) a hrany
+     *  mezi nimi; zbytek schovej. Ostrá odpověď „kde sedí oba/všichni". */
+    applyIntersect() {
+      if (!this.cy) return;
+      this.cy.elements().removeClass("intersect-off");
+      if (!this.intersectMode || this.egoPersons.length < 2) return;
+      const egoIds = new Set(this.egoPersons.map((e) => e.key));
+      const vis = new Set();
+      this.cy.nodes().forEach((n) => {
+        if (egoIds.has(n.id())) vis.add(n.id());
+        else if (n.hasClass("overlap") && n.data("type") === "firma") vis.add(n.id());
+      });
+      this.cy.nodes().forEach((n) => { if (!vis.has(n.id())) n.addClass("intersect-off"); });
+      this.cy.edges().forEach((e) => {
+        if (!vis.has(e.source().id()) || !vis.has(e.target().id())) e.addClass("intersect-off");
+      });
     },
     /** C+c — overlap + textová detekce vazby mezi ≥2 subjekty. Sdílené firmy
      *  a mostové osoby dostanou třídu .overlap; sestaví výrok do connectionMsg. */
