@@ -950,6 +950,51 @@ function graphSection() {
       }
       this.applyFocus();
     },
+    /** C+a — rozbalit zaměřenou osobu: přidá její DALŠÍ firmy do grafu
+     *  (z persons/vazby) a překreslí. Roste vyšetřovací plátno + odhalí
+     *  skryté vazby přes spolu-statutáry. Po překreslení osobu zase zaměří. */
+    async expandFocusedPerson() {
+      if (!this.focusedPersonKey) return;
+      const dob = this.focusedPersonKey.split("|")[1] || "";
+      const jmeno = this.focusedPersonLabel || "";
+      if (!dob || !jmeno) return;
+      this.loading = true;
+      this.error = "";
+      try {
+        const data = await jsonFetch("/api/persons/vazby", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({
+            jmeno,
+            datumNarozeni: dob,
+            includeHistorical: Alpine.store("history").enabled,
+            resolveIco: true,
+          }),
+        });
+        const newIcos = [...new Set((data.vazby || [])
+          .filter((v) => v.resolvedIco && v.ambiguousMatchCount <= 1)
+          .map((v) => v.resolvedIco))];
+        const set = new Set(this.parseIcos(this.raw));
+        const MAX = 50;
+        let added = 0;
+        for (const ico of newIcos) {
+          if (set.size >= MAX) break;
+          if (!set.has(ico)) { set.add(ico); added++; }
+        }
+        if (added === 0) {
+          this.error = "Žádné nové firmy této osoby k přidání (nebo už jsou v grafu).";
+          return;
+        }
+        this.pendingFocusPerson = { jmeno, datumNarozeni: dob }; // po renderu zase zaměřit
+        this.raw = [...set].join("\n");
+        await this.run();
+        if (set.size >= MAX) this.error = "Dosažen limit 50 firem v grafu — rozbaluj cíleně.";
+      } catch (e) {
+        this.error = "Rozbalení osoby selhalo: " + e.message;
+      } finally {
+        this.loading = false;
+      }
+    },
     /** Unique key pro tentative kandidáta — pro Alpine x-model binding. */
     candidateKey(c) {
       return `${c.jmeno}|${c.prijmeni}`.toLowerCase();

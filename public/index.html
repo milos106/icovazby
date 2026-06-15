@@ -3045,6 +3045,11 @@
                   🎯 Zaměřeno: <strong x-text="focusedPersonLabel"></strong>
                   <button type="button" @click="clearFocus()" class="ml-1 font-bold hover:text-emerald-950 dark:hover:text-white" title="Zrušit fokus">✕</button>
                 </span>
+                <button type="button" @click="expandFocusedPerson()" :disabled="loading"
+                  class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full border border-emerald-300 dark:border-emerald-700 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-50 dark:hover:bg-emerald-900/30 disabled:opacity-50"
+                  title="Přidá další firmy této osoby do grafu — odhalí skryté vazby přes spolu-statutáry">
+                  <span x-text="loading ? 'Rozbaluji…' : '➕ Rozbalit osobu'"></span>
+                </button>
               </div>
               <div x-show="renderMode === 'interactive'" id="cytoscape-container" class="w-full h-[60vh] min-h-[400px] max-h-[600px]"></div>
               <p x-show="renderMode === 'interactive'" class="text-xs text-slate-500 dark:text-slate-400 mt-2">
