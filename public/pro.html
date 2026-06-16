@@ -176,9 +176,12 @@
             <div class="text-xs text-slate-500 dark:text-slate-400">Pro každého, kdo prověřuje firmy</div>
           </div>
         </a>
-        <a href="/" class="px-4 py-2 bg-emerald-600 text-white rounded-lg text-sm font-semibold hover:bg-emerald-700 transition-colors">
-          Vyzkoušet zdarma →
-        </a>
+        <div class="flex items-center gap-2">
+          <a href="/pro_detail.html" class="px-3 py-2 border border-emerald-300 dark:border-emerald-700 text-emerald-700 dark:text-emerald-300 rounded-lg text-sm font-semibold hover:bg-emerald-50 dark:hover:bg-emerald-900/30 transition-colors">📖 Příručka</a>
+          <a href="/" class="px-4 py-2 bg-emerald-600 text-white rounded-lg text-sm font-semibold hover:bg-emerald-700 transition-colors">
+            Vyzkoušet zdarma →
+          </a>
+        </div>
       </div>
     </header>
 
@@ -206,6 +209,9 @@
           </a>
           <a href="#funkce" class="px-6 py-3 border border-slate-300 dark:border-slate-700 rounded-xl font-semibold hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
             Co všechno umí
+          </a>
+          <a href="/pro_detail.html" class="px-6 py-3 border border-emerald-300 dark:border-emerald-700 text-emerald-700 dark:text-emerald-300 rounded-xl font-semibold hover:bg-emerald-50 dark:hover:bg-emerald-900/30 transition-colors">
+            📖 Detailní příručka funkcí
           </a>
         </div>
 
@@ -996,6 +1002,8 @@ flowchart TB
             <li class="flex gap-2"><span class="text-emerald-600 dark:text-emerald-400">→</span><span>Risk skóre s transparentními faktory</span></li>
             <li class="flex gap-2"><span class="text-emerald-600 dark:text-emerald-400">→</span><span>Mapa propojení (statická + interaktivní) &mdash; dvouvrstvá (vlastnictví + osoby)</span></li>
             <li class="flex gap-2"><span class="text-emerald-600 dark:text-emerald-400">→</span><span>Vyšetřovací plátno &mdash; víc subjektů, ego-graf, přidat do mapy, detekce vazby, primární subjekt, AND průnik</span></li>
+            <li class="flex gap-2"><span class="text-emerald-600 dark:text-emerald-400">→</span><span>Uložit / sdílet vyšetřování &mdash; read-only odkaz <code class="text-xs">/v/&lt;id&gt;</code>, PDF export plátna, knihovna uložených (s názvem a časem)</span></li>
+            <li class="flex gap-2"><span class="text-emerald-600 dark:text-emerald-400">→</span><span>Vlastní HS token (BYO) + nabídka při naražení na limit · persistentní cache šetřící kvótu</span></li>
             <li class="flex gap-2"><span class="text-emerald-600 dark:text-emerald-400">→</span><span>Auto-rozkrytí holdingu pro a.s. s 5+ statutáři</span></li>
             <li class="flex gap-2"><span class="text-emerald-600 dark:text-emerald-400">→</span><span>Možní jmenovci &mdash; výběr checkboxem</span></li>
             <li class="flex gap-2"><span class="text-emerald-600 dark:text-emerald-400">→</span><span>AI souhrn s BYO klíčem (Claude + Gemini)</span></li>

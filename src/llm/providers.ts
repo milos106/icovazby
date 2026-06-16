@@ -62,7 +62,8 @@ async function generateAnthropic(opts: LlmGenerateOpts): Promise<string> {
 async function generateGoogle(opts: LlmGenerateOpts): Promise<string> {
   // Gemini REST API — žádný SDK install potřeba.
   // Doc: https://ai.google.dev/api/rest/v1beta/models/generateContent
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(opts.model)}:generateContent?key=${encodeURIComponent(opts.apiKey)}`;
+  // #9: klíč v hlavičce x-goog-api-key (ne v query stringu — ten končí v access logách Googlu).
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(opts.model)}:generateContent`;
   const body = {
     system_instruction: { parts: [{ text: opts.systemPrompt }] },
     contents: [{ role: "user", parts: [{ text: opts.userMessage }] }],
@@ -76,7 +77,7 @@ async function generateGoogle(opts: LlmGenerateOpts): Promise<string> {
   };
   const res = await fetch(url, {
     method: "POST",
-    headers: { "content-type": "application/json" },
+    headers: { "content-type": "application/json", "x-goog-api-key": opts.apiKey },
     body: JSON.stringify(body),
   });
   if (!res.ok) {

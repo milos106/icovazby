@@ -1,0 +1,403 @@
+<!doctype html>
+<html lang="cs">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>IČO vazby — detailní příručka: co která funkce dělá a co z dat vyčteš</title>
+    <meta name="description" content="Podrobné vysvětlení každé funkce: co dělá, jaké situace mohou nastat a jak číst data — red flags i zelené signály při prověrce firmy." />
+    <script>
+      (function () {
+        try {
+          var saved = localStorage.getItem("icovazby:theme");
+          var prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+          if (saved === "dark" || (saved !== "light" && prefersDark)) {
+            document.documentElement.classList.add("dark");
+          }
+        } catch (e) {}
+      })();
+    </script>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            fontFamily: {
+              sans: ['Inter', 'ui-sans-serif', 'system-ui', '-apple-system', 'BlinkMacSystemFont', 'sans-serif'],
+              mono: ['JetBrains Mono', 'ui-monospace', 'monospace'],
+            },
+            letterSpacing: { tightest: '-0.04em' },
+          },
+        },
+      };
+    </script>
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <style>
+      html, body { font-feature-settings: "cv11", "ss01", "cv02"; text-rendering: optimizeLegibility; -webkit-font-smoothing: antialiased; }
+      html:not(.dark) .bg-white { background-color: #FAFFFC; }
+      .gradient-text { background: linear-gradient(135deg, #059669 0%, #047857 40%, #0f766e 100%); -webkit-background-clip: text; background-clip: text; color: transparent; }
+      .dark .gradient-text { background: linear-gradient(135deg, #34d399 0%, #6ee7b7 40%, #5eead4 100%); -webkit-background-clip: text; background-clip: text; }
+      .hero-bg { background: radial-gradient(ellipse at 20% 0%, rgba(16,185,129,0.10), transparent 50%), radial-gradient(ellipse at 80% 30%, rgba(20,184,166,0.08), transparent 50%); }
+      .dark .hero-bg { background: radial-gradient(ellipse at 20% 0%, rgba(16,185,129,0.18), transparent 50%), radial-gradient(ellipse at 80% 30%, rgba(20,184,166,0.12), transparent 50%); }
+      .card-shadow { box-shadow: 0 1px 3px rgba(0,0,0,0.04), 0 8px 24px -8px rgba(15,23,42,0.06); }
+      .dark .card-shadow { box-shadow: 0 1px 3px rgba(0,0,0,0.3), 0 8px 24px -8px rgba(0,0,0,0.4); }
+      .toc a { transition: color 150ms ease, padding-left 150ms ease; }
+      .toc a:hover { padding-left: 4px; color: #047857; }
+      .dark .toc a:hover { color: #34d399; }
+      .fn { scroll-margin-top: 5rem; }
+      .flag-red { border-left: 3px solid #f43f5e; }
+      .flag-green { border-left: 3px solid #10b981; }
+      .flag-amber { border-left: 3px solid #f59e0b; }
+      @media print { .no-print { display: none !important; } body { background:white !important; color:black !important; } section { break-inside: avoid; } }
+    </style>
+    <!-- Umami analytics (self-hosted, bez cookies). -->
+    <script>
+      (function () {
+        var ids = { "icovazby.cz": "fae564b9-662d-4783-8958-0b489058a6a7", "www.icovazby.cz": "fae564b9-662d-4783-8958-0b489058a6a7", "dev.icovazby.cz": "a1e4e3b5-1188-450b-b7b6-9b3dd086492d" };
+        var id = ids[location.hostname]; if (!id) return;
+        var s = document.createElement("script"); s.async = true; s.src = "https://stats.icovazby.cz/script.js"; s.setAttribute("data-website-id", id);
+        document.head.appendChild(s);
+      })();
+    </script>
+  </head>
+  <body class="bg-[#F2FAF5] dark:bg-slate-900 text-slate-900 dark:text-slate-100 font-sans">
+
+    <!-- Header -->
+    <header class="sticky top-0 z-30 bg-white/85 dark:bg-slate-900/85 backdrop-blur border-b border-slate-200 dark:border-slate-800 no-print">
+      <div class="max-w-6xl mx-auto px-5 py-3 flex items-center justify-between gap-3">
+        <a href="/" class="flex items-center gap-3 hover:opacity-80 transition-opacity">
+          <svg width="36" height="36" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg" class="shrink-0">
+            <path d="M 32 18 L 14 46" stroke="#10b981" stroke-width="3.5" stroke-linecap="round" fill="none"/>
+            <path d="M 32 18 L 32 46" stroke="#10b981" stroke-width="3.5" stroke-linecap="round" fill="none"/>
+            <path d="M 32 18 L 50 46" stroke="#10b981" stroke-width="3.5" stroke-linecap="round" fill="none"/>
+            <rect x="6" y="42" width="16" height="16" rx="3" fill="#10b981"/>
+            <rect x="24" y="42" width="16" height="16" rx="3" fill="#10b981"/>
+            <rect x="42" y="42" width="16" height="16" rx="3" fill="#10b981"/>
+            <circle cx="32" cy="18" r="11" fill="#065f46"/>
+            <circle cx="32" cy="18" r="7" fill="#34d399"/>
+          </svg>
+          <div>
+            <div class="font-bold text-lg leading-tight gradient-text">IČO vazby</div>
+            <div class="text-xs text-slate-500 dark:text-slate-400">Detailní příručka funkcí</div>
+          </div>
+        </a>
+        <div class="flex items-center gap-2">
+          <a href="/pro.html" class="hidden sm:inline-flex px-3 py-2 border border-slate-300 dark:border-slate-700 rounded-lg text-sm font-semibold hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">← Přehled</a>
+          <a href="/" class="px-4 py-2 bg-emerald-600 text-white rounded-lg text-sm font-semibold hover:bg-emerald-700 transition-colors">Otevřít aplikaci →</a>
+        </div>
+      </div>
+    </header>
+
+    <!-- Hero -->
+    <section class="hero-bg">
+      <div class="max-w-6xl mx-auto px-5 pt-14 pb-12">
+        <div class="inline-flex items-center gap-2 px-3 py-1 mb-5 rounded-full bg-emerald-50 dark:bg-emerald-900/30 border border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-300 text-xs font-semibold">
+          📖 Příručka · co která funkce dělá &amp; co z dat vyčteš
+        </div>
+        <h1 class="text-3xl sm:text-4xl lg:text-5xl font-extrabold tracking-tightest leading-tight max-w-4xl">
+          Každá funkce do hloubky — <span class="gradient-text">situace a jak číst data</span>
+        </h1>
+        <p class="mt-5 text-lg text-slate-600 dark:text-slate-300 max-w-3xl">
+          U každé funkce najdeš tři věci: <strong>co dělá</strong>, <strong>jaké situace mohou nastat</strong> a <strong>co z dat vyčteš</strong> &mdash; konkrétní red flags 🔴 i zelené signály 🟢. Tohle je detailní doplněk k <a href="/pro.html" class="underline text-emerald-700 dark:text-emerald-400">přehledové stránce</a>.
+        </p>
+        <div class="mt-6 p-4 rounded-xl border border-amber-200 dark:border-amber-800 bg-amber-50/60 dark:bg-amber-900/20 text-sm max-w-3xl">
+          <strong class="text-amber-700 dark:text-amber-300">Důležité:</strong>
+          <span class="text-slate-700 dark:text-slate-300">Aplikace agreguje veřejná data a pomáhá je číst &mdash; <strong>neposkytuje právní ani daňové poradenství</strong>. Žádný jednotlivý signál není verdikt; rozhodnutí činíš ty, ideálně s ověřením u primárního zdroje.</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- TOC -->
+    <nav class="max-w-6xl mx-auto px-5 py-6 border-y border-slate-200 dark:border-slate-800 toc no-print">
+      <div class="text-xs uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-3 font-semibold">Obsah</div>
+      <ol class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-x-4 gap-y-1 text-sm">
+        <li><a href="#vyhledani" class="block py-1 text-slate-700 dark:text-slate-300">1 · Vyhledání &amp; identifikace</a></li>
+        <li><a href="#risk" class="block py-1 text-slate-700 dark:text-slate-300">2 · Risk skóre 0–100</a></li>
+        <li><a href="#statutari" class="block py-1 text-slate-700 dark:text-slate-300">3 · Statutáři + historie</a></li>
+        <li><a href="#ubo" class="block py-1 text-slate-700 dark:text-slate-300">4 · Skuteční majitelé (UBO)</a></li>
+        <li><a href="#mapa" class="block py-1 text-slate-700 dark:text-slate-300">5 · Mapa / vyšetřovací plátno</a></li>
+        <li><a href="#jmenovci" class="block py-1 text-slate-700 dark:text-slate-300">6 · Možní jmenovci</a></li>
+        <li><a href="#holding" class="block py-1 text-slate-700 dark:text-slate-300">7 · Rozkrytí holdingu</a></li>
+        <li><a href="#adresa" class="block py-1 text-slate-700 dark:text-slate-300">8 · Hledání podle adresy</a></li>
+        <li><a href="#dph" class="block py-1 text-slate-700 dark:text-slate-300">9 · DPH / ADIS</a></li>
+        <li><a href="#isir" class="block py-1 text-slate-700 dark:text-slate-300">10 · Insolvence (ISIR)</a></li>
+        <li><a href="#sankce" class="block py-1 text-slate-700 dark:text-slate-300">11 · EU sankce</a></li>
+        <li><a href="#dotace" class="block py-1 text-slate-700 dark:text-slate-300">12 · Dotace &amp; zakázky</a></li>
+        <li><a href="#jerrs" class="block py-1 text-slate-700 dark:text-slate-300">13 · ČNB JERRS</a></li>
+        <li><a href="#ds" class="block py-1 text-slate-700 dark:text-slate-300">14 · Datová schránka</a></li>
+        <li><a href="#osa" class="block py-1 text-slate-700 dark:text-slate-300">15 · Časová osa</a></li>
+        <li><a href="#ai" class="block py-1 text-slate-700 dark:text-slate-300">16 · AI souhrn</a></li>
+        <li><a href="#ulozit" class="block py-1 text-slate-700 dark:text-slate-300">17 · Uložit / sdílet plátno</a></li>
+        <li><a href="#exporty" class="block py-1 text-slate-700 dark:text-slate-300">18 · Exporty &amp; integrace</a></li>
+        <li><a href="#token" class="block py-1 text-slate-700 dark:text-slate-300">19 · Vlastní HS token</a></li>
+        <li><a href="#limity" class="block py-1 text-slate-700 dark:text-slate-300">20 · Limity &amp; co NEumí</a></li>
+      </ol>
+    </nav>
+
+    <main class="max-w-4xl mx-auto px-5 py-12 space-y-14">
+
+      <!-- 1 -->
+      <section id="vyhledani" class="fn">
+        <h2 class="text-2xl font-bold tracking-tight mb-3"><span class="gradient-text">1.</span> Vyhledání a identifikace firmy <span class="text-sm font-normal text-slate-500">(ARES)</span></h2>
+        <p class="text-slate-700 dark:text-slate-300 mb-4">Zadáš <strong>IČO</strong> nebo <strong>název firmy</strong>. Aplikace přes ARES (MFČR) najde subjekt a zobrazí jádro identity: IČO, DIČ, sídlo, právní forma, předmět podnikání, datum vzniku/zániku.</p>
+        <div class="space-y-2 text-sm">
+          <div class="flag-amber pl-3 py-1"><strong>Situace:</strong> zadáš název a vyjede víc firem stejného jména → vybíráš podle IČO/sídla.</div>
+          <div class="flag-red pl-3 py-1"><strong>🔴 Vyčteš:</strong> firma <em>vznikla před týdnem</em> a hned fakturuje velké částky · <em>datum zániku</em> vyplněné (firma už neexistuje / v likvidaci).</div>
+          <div class="flag-green pl-3 py-1"><strong>🟢 Vyčteš:</strong> stabilní firma s dlouhou historií, jasným předmětem podnikání a reálným sídlem.</div>
+        </div>
+      </section>
+
+      <!-- 2 -->
+      <section id="risk" class="fn">
+        <h2 class="text-2xl font-bold tracking-tight mb-3"><span class="gradient-text">2.</span> Risk skóre 0–100</h2>
+        <p class="text-slate-700 dark:text-slate-300 mb-4">Jedno číslo, které sečte všechna negativa z 11 zdrojů do zelené / žluté / červené pilulky. Faktory jsou <strong>transparentní</strong> — kliknutím se rozbalí, co se na skóre podílelo a kolik to ubralo.</p>
+        <div class="grid sm:grid-cols-2 gap-2 text-xs mb-4">
+          <div class="rounded-lg border border-rose-200 dark:border-rose-800 bg-rose-50 dark:bg-rose-900/20 p-2.5">−50 EU sankce</div>
+          <div class="rounded-lg border border-rose-200 dark:border-rose-800 bg-rose-50 dark:bg-rose-900/20 p-2.5">−30 Insolvence</div>
+          <div class="rounded-lg border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-900/20 p-2.5">−20 Nespolehlivý plátce DPH</div>
+          <div class="rounded-lg border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-900/20 p-2.5">−10 Virtuální sídlo</div>
+        </div>
+        <div class="space-y-2 text-sm">
+          <div class="flag-amber pl-3 py-1"><strong>Situace:</strong> skóre je červené → rozbal faktory a podívej se, <em>čím</em> to je (jedna stará insolvence ≠ aktivní sankce).</div>
+          <div class="flag-red pl-3 py-1"><strong>🔴 Vyčteš:</strong> skóre &lt; 40 obvykle znamená aspoň jedno tvrdé negativum (sankce / insolvence / nespolehlivý plátce).</div>
+          <div class="flag-green pl-3 py-1"><strong>🟢 Vyčteš:</strong> 80–100 = žádné registrované problémy. <em>Nepleť si s „bezpečné" &mdash; znamená to jen „nic v registrech".</em></div>
+        </div>
+      </section>
+
+      <!-- 3 -->
+      <section id="statutari" class="fn">
+        <h2 class="text-2xl font-bold tracking-tight mb-3"><span class="gradient-text">3.</span> Statutární orgány + historie změn <span class="text-sm font-normal text-slate-500">(Veřejný rejstřík)</span></h2>
+        <p class="text-slate-700 dark:text-slate-300 mb-4">Jednatelé, členové představenstva, prokuristé, společníci a akcionáři &mdash; <strong>aktuální i historičtí, až 30 let zpět</strong>. Kliknutím na jméno otevřeš „Vazby osoby" (kde všude ten člověk sedí).</p>
+        <div class="space-y-2 text-sm">
+          <div class="flag-amber pl-3 py-1"><strong>Situace:</strong> historický statutář <em>nemá u sebe datum narození</em> → VR ho u starých zápisů neeviduje → viz <a href="#jmenovci" class="underline">Možní jmenovci</a>.</div>
+          <div class="flag-red pl-3 py-1"><strong>🔴 Vyčteš:</strong> <em>rychlá výměna jednatelů</em> (3× za rok) · jednatel, který byl v jiné firmě před její insolvencí · nastrčená „bílá koně" osoba.</div>
+          <div class="flag-green pl-3 py-1"><strong>🟢 Vyčteš:</strong> stejný majitel/jednatel řadu let, konzistentní struktura.</div>
+        </div>
+      </section>
+
+      <!-- 4 -->
+      <section id="ubo" class="fn">
+        <h2 class="text-2xl font-bold tracking-tight mb-3"><span class="gradient-text">4.</span> Skuteční majitelé — UBO <span class="text-sm font-normal text-slate-500">(Hlídač státu)</span></h2>
+        <p class="text-slate-700 dark:text-slate-300 mb-4">Kdo firmu <strong>doopravdy ovládá</strong> (Beneficial Owner) &mdash; člověk na konci řetězce, ne jen formální jednatel. S podíly a strukturou ovládání.</p>
+        <div class="space-y-2 text-sm">
+          <div class="flag-amber pl-3 py-1"><strong>Situace:</strong> jednatel je „nastrčená" osoba, ale UBO ukáže skutečného vlastníka výš v holdingu nebo v zahraničí.</div>
+          <div class="flag-red pl-3 py-1"><strong>🔴 Vyčteš:</strong> skutečný majitel je <em>PEP (politicky exponovaná osoba)</em> · vlastník přes <em>kyperskou / offshore</em> strukturu · UBO nezveřejněno (samo o sobě varování pro AML/KYC).</div>
+          <div class="flag-green pl-3 py-1"><strong>🟢 Vyčteš:</strong> skutečný majitel = tentýž člověk jako jednatel, transparentní vlastnictví.</div>
+        </div>
+      </section>
+
+      <!-- 5 -->
+      <section id="mapa" class="fn">
+        <h2 class="text-2xl font-bold tracking-tight mb-3"><span class="gradient-text">5.</span> Mapa propojení — vyšetřovací plátno</h2>
+        <p class="text-slate-700 dark:text-slate-300 mb-4">Interaktivní graf vazeb mezi firmami a osobami. Má <strong>dvě vrstvy</strong> (🏢 vlastnictví · 👥 osoby) a chová se jako <strong>vyšetřovací plátno</strong> — můžeš na něj postavit víc subjektů a hledat, jak spolu souvisí.</p>
+        <div class="rounded-xl border border-slate-200 dark:border-slate-700 p-4 mb-4 text-sm space-y-2 bg-white dark:bg-slate-800">
+          <div><strong>👥 Víc subjektů naráz</strong> — přidáš víc osob/firem, každá má svůj „chip".</div>
+          <div><strong>🌐 Ego-graf osoby</strong> — jeden klik vykreslí <em>všechny</em> firmy dané osoby z indexu.</div>
+          <div><strong>➕ Přidat do mapy</strong> — přidáš osobu k už rozkreslené mapě.</div>
+          <div><strong>🔗 Detekce vazby</strong> — u 2+ subjektů aplikace sama zvýrazní <em>sdílené firmy a můstkové osoby</em> a napíše, přes co jsou propojeni.</div>
+          <div><strong>🎯 Primární subjekt</strong> — klik na chip zvýrazní jednoho hráče bez ztráty kontextu.</div>
+          <div><strong>∩ Režim průniku (AND)</strong> — zůstanou jen firmy, které všechny subjekty <em>sdílejí</em>.</div>
+        </div>
+        <div class="space-y-2 text-sm">
+          <div class="flag-amber pl-3 py-1"><strong>Situace:</strong> přepneš na vrstvu „Vlastnictví" a osoba zmizí → správně, ta vrstva ukazuje jen firma→firma a fyzické společníky/akcionáře, ne statutáře.</div>
+          <div class="flag-red pl-3 py-1"><strong>🔴 Vyčteš:</strong> dva „nezávislé" subjekty sdílí stejnou osobu nebo firmu → skrytá vazba (střet zájmů, propojené nabídky ve veřejné zakázce, kruhové vlastnictví).</div>
+          <div class="flag-green pl-3 py-1"><strong>🟢 Vyčteš:</strong> subjekty spolu nijak nesouvisí (žádný překryv) — banner „Subjekty nepropojeny".</div>
+        </div>
+      </section>
+
+      <!-- 6 -->
+      <section id="jmenovci" class="fn">
+        <h2 class="text-2xl font-bold tracking-tight mb-3"><span class="gradient-text">6.</span> Možní jmenovci — shoda jmen bez data narození</h2>
+        <p class="text-slate-700 dark:text-slate-300 mb-4">Když je v firmě <strong>historický statutář bez data narození</strong> (VR ho u starých zápisů neeviduje), nejde 100% ověřit, kdo to je. Místo falešné „87% shody" ti aplikace ukáže <strong>důkaz a ty rozhodneš</strong> zaškrtnutím ANO/NE.</p>
+        <div class="rounded-xl border border-slate-200 dark:border-slate-700 p-4 mb-4 text-sm bg-white dark:bg-slate-800">
+          Řádek = ten statutář bez DOB + <strong>jiná firma v indexu, kde sedí někdo se stejným jménem</strong> (důkaz). Zaškrtneš = „je to ten samý" → jeho další firmy se přidají do grafu.
+          <div class="mt-2 grid sm:grid-cols-3 gap-2 text-xs">
+            <div class="rounded border border-emerald-200 dark:border-emerald-800 p-2">📎 <strong>sdílený holding</strong> — kandidátova firma je dceřinkou téže matky</div>
+            <div class="rounded border border-emerald-200 dark:border-emerald-800 p-2">📦 <strong>vše v inventory</strong> — všechny jeho firmy už známe</div>
+            <div class="rounded border border-emerald-200 dark:border-emerald-800 p-2">🔢 <strong>více firem</strong> — sedí ve víc firmách = spíš pravý jmenovec</div>
+          </div>
+        </div>
+        <div class="space-y-2 text-sm">
+          <div class="flag-amber pl-3 py-1"><strong>Situace:</strong> u jména je jen jedna firma → náš index zatím zná jen jednu jeho další firmu (není to seznam všech firem v ČR). Po každém „Přepočítat s vybranými" se mohou objevit další jmenovci.</div>
+          <div class="flag-red pl-3 py-1"><strong>🔴 Pozor:</strong> zaškrtávej jen ty, o kterých věříš, že jsou <em>ten samý člověk</em> — jinak přitáhneš nesouvisející firmy a graf nafoukneš falešnými vazbami.</div>
+        </div>
+      </section>
+
+      <!-- 7 -->
+      <section id="holding" class="fn">
+        <h2 class="text-2xl font-bold tracking-tight mb-3"><span class="gradient-text">7.</span> Rozkrytí holdingu</h2>
+        <p class="text-slate-700 dark:text-slate-300 mb-4">U firem se statutáry tlačítko <strong>„Rozkrýt holding"</strong> projde vlastnickou strukturu nahoru (kdo firmu vlastní) i dolů (dceřinky) a celé to nasype do Mapy propojení. U a.s. s 5+ statutáři se spouští automaticky.</p>
+        <div class="space-y-2 text-sm">
+          <div class="flag-red pl-3 py-1"><strong>🔴 Vyčteš:</strong> firma kupujícího je součástí holdingu s <em>desítkami s.r.o., z nichž několik je v insolvenci</em> · řetězec vede k zahraničnímu vlastníkovi.</div>
+          <div class="flag-green pl-3 py-1"><strong>🟢 Vyčteš:</strong> jednoduchá struktura, jediný vlastník, žádné skryté patro.</div>
+        </div>
+      </section>
+
+      <!-- 8 -->
+      <section id="adresa" class="fn">
+        <h2 class="text-2xl font-bold tracking-tight mb-3"><span class="gradient-text">8.</span> Hledání podle adresy — virtuální sídla</h2>
+        <p class="text-slate-700 dark:text-slate-300 mb-4">Zadáš adresu a uvidíš, <strong>kolik firem na ní sídlí</strong>. Spousta firem na jedné adrese = virtuální sídlo / „úložiště" schránkových firem.</p>
+        <div class="space-y-2 text-sm">
+          <div class="flag-red pl-3 py-1"><strong>🔴 Vyčteš:</strong> na adrese sídlí <em>desítky až stovky firem</em> → virtuální kancelář, red flag pro AML i pro reálnost firmy (promítá se do risk skóre jako −10).</div>
+          <div class="flag-green pl-3 py-1"><strong>🟢 Vyčteš:</strong> firma sídlí na adrese sama / s pár dalšími → reálné sídlo.</div>
+        </div>
+      </section>
+
+      <!-- 9 -->
+      <section id="dph" class="fn">
+        <h2 class="text-2xl font-bold tracking-tight mb-3"><span class="gradient-text">9.</span> DPH — plátce, nespolehlivý plátce, bankovní účty <span class="text-sm font-normal text-slate-500">(ADIS)</span></h2>
+        <p class="text-slate-700 dark:text-slate-300 mb-4">Status plátce DPH, příznak <strong>nespolehlivý plátce</strong> a <strong>oficiálně oznámené bankovní účty</strong> z Finanční správy. Klíčové před zaplacením faktury.</p>
+        <div class="space-y-2 text-sm">
+          <div class="flag-red pl-3 py-1"><strong>🔴 Vyčteš (kritické pro účetní):</strong> bankovní účet na faktuře <em>NENÍ</em> v seznamu oznámených účtů → riziko <strong>ručení za nezaplacenou DPH</strong> dodavatele (§ 109 ZDPH). Plať na zveřejněný účet, nebo si počkej na opravu.</div>
+          <div class="flag-red pl-3 py-1"><strong>🔴 Vyčteš:</strong> <em>nespolehlivý plátce</em> → ručíš za jeho DPH automaticky.</div>
+          <div class="flag-green pl-3 py-1"><strong>🟢 Vyčteš:</strong> spolehlivý plátce, účet na faktuře = oznámený účet.</div>
+        </div>
+      </section>
+
+      <!-- 10 -->
+      <section id="isir" class="fn">
+        <h2 class="text-2xl font-bold tracking-tight mb-3"><span class="gradient-text">10.</span> Insolvence <span class="text-sm font-normal text-slate-500">(ISIR / justice.cz)</span></h2>
+        <p class="text-slate-700 dark:text-slate-300 mb-4">Aktivní i historická insolvenční řízení z úplného feedu (ne jen vzorek).</p>
+        <div class="space-y-2 text-sm">
+          <div class="flag-red pl-3 py-1"><strong>🔴 Vyčteš:</strong> <em>aktivní insolvence</em> (−30 v risk skóre) · firma nebo její statutář byl v insolvenci v minulosti (vzorec chování).</div>
+          <div class="flag-amber pl-3 py-1"><strong>Situace:</strong> stará uzavřená insolvence ≠ aktuální problém, ale stojí za pozornost u statutáře, který se objevuje u víc padlých firem.</div>
+        </div>
+      </section>
+
+      <!-- 11 -->
+      <section id="sankce" class="fn">
+        <h2 class="text-2xl font-bold tracking-tight mb-3"><span class="gradient-text">11.</span> EU sankce</h2>
+        <p class="text-slate-700 dark:text-slate-300 mb-4">Přímý oficiální feed sankčních seznamů EU (Financial Sanctions Files). Screening podle jména subjektu i osob.</p>
+        <div class="space-y-2 text-sm">
+          <div class="flag-red pl-3 py-1"><strong>🔴 Vyčteš:</strong> subjekt nebo osoba na sankčním seznamu (−50, nejtvrdší faktor) → <strong>obchod je obvykle nezákonný</strong>, nepokračuj bez právního posouzení.</div>
+          <div class="flag-amber pl-3 py-1"><strong>Situace:</strong> shoda jen podle jména → ověř, že jde o tutéž osobu (datum narození, země).</div>
+        </div>
+      </section>
+
+      <!-- 12 -->
+      <section id="dotace" class="fn">
+        <h2 class="text-2xl font-bold tracking-tight mb-3"><span class="gradient-text">12.</span> Dotace a veřejné zakázky <span class="text-sm font-normal text-slate-500">(Hlídač státu + CEDR)</span></h2>
+        <p class="text-slate-700 dark:text-slate-300 mb-4">Přijaté dotace a vyhrané veřejné zakázky &mdash; signál ekonomické aktivity i případných politických vazeb.</p>
+        <div class="space-y-2 text-sm">
+          <div class="flag-amber pl-3 py-1"><strong>Vyčteš:</strong> firma žije převážně z veřejných peněz · spojení s konkrétními úřady; v kombinaci s Mapou propojení odhalíš provázané uchazeče.</div>
+          <div class="flag-green pl-3 py-1"><strong>🟢 Vyčteš:</strong> doložená historie reálných zakázek = ekonomicky aktivní firma.</div>
+        </div>
+      </section>
+
+      <!-- 13 -->
+      <section id="jerrs" class="fn">
+        <h2 class="text-2xl font-bold tracking-tight mb-3"><span class="gradient-text">13.</span> ČNB JERRS — regulované subjekty</h2>
+        <p class="text-slate-700 dark:text-slate-300 mb-4">Je-li firma regulovaný finanční subjekt (banka, pojišťovna, investiční zprostředkovatel, OCP, MFI…), uvidíš její registraci u ČNB.</p>
+        <div class="space-y-2 text-sm">
+          <div class="flag-green pl-3 py-1"><strong>🟢 Vyčteš:</strong> firma má platnou licenci ČNB pro činnost, kterou nabízí.</div>
+          <div class="flag-red pl-3 py-1"><strong>🔴 Vyčteš:</strong> firma se tváří jako finanční instituce, ale v JERRS <em>není</em> → možný neoprávněný výkon činnosti.</div>
+        </div>
+      </section>
+
+      <!-- 14 -->
+      <section id="ds" class="fn">
+        <h2 class="text-2xl font-bold tracking-tight mb-3"><span class="gradient-text">14.</span> Datová schránka</h2>
+        <p class="text-slate-700 dark:text-slate-300 mb-4">ID datové schránky pro elektronickou komunikaci (pro právnické osoby veřejné dle § 14a zák. 300/2008). Jeden klik = zkopíruješ ID.</p>
+        <div class="space-y-2 text-sm">
+          <div class="flag-amber pl-3 py-1"><strong>Situace:</strong> ID nenalezeno → OSVČ/FO byly od 1.2.2024 hromadně vymazány ze seznamu, nebo subjekt schránku nemá. <em>Experimentální funkce</em> &mdash; při změně zdroje ověř ručně.</div>
+        </div>
+      </section>
+
+      <!-- 15 -->
+      <section id="osa" class="fn">
+        <h2 class="text-2xl font-bold tracking-tight mb-3"><span class="gradient-text">15.</span> Časová osa firmy</h2>
+        <p class="text-slate-700 dark:text-slate-300 mb-4">Chronologie klíčových událostí: vznik, změny jednatelů, změny sídla a DIČ, registrace známek, insolvence &mdash; příběh firmy v čase.</p>
+        <div class="space-y-2 text-sm">
+          <div class="flag-red pl-3 py-1"><strong>🔴 Vyčteš:</strong> shluk změn v krátkém období (výměna majitele + změna sídla + nový účet) těsně před transakcí.</div>
+          <div class="flag-green pl-3 py-1"><strong>🟢 Vyčteš:</strong> klidná, postupná historie bez náhlých zvratů.</div>
+        </div>
+      </section>
+
+      <!-- 16 -->
+      <section id="ai" class="fn">
+        <h2 class="text-2xl font-bold tracking-tight mb-3"><span class="gradient-text">16.</span> AI souhrn pro klienta <span class="text-sm font-normal text-slate-500">(volitelné, BYO klíč)</span></h2>
+        <p class="text-slate-700 dark:text-slate-300 mb-4">Volitelně nechá <strong>Claude</strong> nebo <strong>Gemini</strong> přečíst všechna DD data a napsat 3–5 vět: souhrn, rizika, pozitiva, doporučení + skóre důvěry. Užitečné na rychlý e-mail klientovi.</p>
+        <div class="space-y-2 text-sm">
+          <div class="flag-amber pl-3 py-1"><strong>Jak funguje:</strong> vlastní API klíč (BYO) vložíš v ⚙️ Nastavení &mdash; klíč zůstává <strong>jen ve tvém prohlížeči</strong>, my za tebe neplatíme nic (~18 hal/souhrn). Bez klíče karta ukáže výzvu „vlož klíč".</div>
+          <div class="flag-red pl-3 py-1"><strong>🔴 Pozor na zastaralost:</strong> model má knowledge cutoff (~leden 2025) → PEP/politické funkce bereme realtime z Hlídače státu, ostatní fakta <strong>vždy ověř u primárního zdroje</strong>. AI souhrn je informativní, ne verdikt.</div>
+        </div>
+      </section>
+
+      <!-- 17 -->
+      <section id="ulozit" class="fn">
+        <h2 class="text-2xl font-bold tracking-tight mb-3"><span class="gradient-text">17.</span> Uložit / sdílet vyšetřovací plátno</h2>
+        <p class="text-slate-700 dark:text-slate-300 mb-4">Postavené plátno (subjekty, vrstvy, fokus) můžeš <strong>uložit</strong> pod vlastním názvem → vznikne krátký <strong>read-only odkaz</strong> <code class="text-xs">/v/&lt;id&gt;</code>, který pošleš kolegovi nebo klientovi. Nebo ho <strong>exportuješ do PDF</strong> do spisu.</p>
+        <div class="space-y-2 text-sm">
+          <div class="flag-amber pl-3 py-1"><strong>Knihovna „Moje uložená vyšetřování":</strong> seznam pod grafem (per zařízení, v prohlížeči) s názvem a datem/časem. Klik = znovu načteš.</div>
+          <div class="flag-amber pl-3 py-1"><strong>Vlastní vs. cizí odkaz:</strong> tvoje uložené plátno se otevře <em>editovatelné</em>. Odkaz, který ti někdo <em>poslal</em>, se otevře v <strong>režimu prohlížení (read-only)</strong> s amber bannerem &mdash; tlačítkem „Pokračovat v editaci" z něj uděláš vlastní kopii.</div>
+        </div>
+      </section>
+
+      <!-- 18 -->
+      <section id="exporty" class="fn">
+        <h2 class="text-2xl font-bold tracking-tight mb-3"><span class="gradient-text">18.</span> Exporty a integrace</h2>
+        <div class="grid sm:grid-cols-2 gap-3 text-sm">
+          <div class="rounded-xl border border-slate-200 dark:border-slate-700 p-3 bg-white dark:bg-slate-800"><strong>📄 PDF prověrka</strong> — formátovaná příloha do spisu, s razítkem zdroje a data.</div>
+          <div class="rounded-xl border border-slate-200 dark:border-slate-700 p-3 bg-white dark:bg-slate-800"><strong>📦 ZIP (bulk)</strong> — nahraješ CSV s IČy → ZIP s PDF prověrkami všech firem.</div>
+          <div class="rounded-xl border border-slate-200 dark:border-slate-700 p-3 bg-white dark:bg-slate-800"><strong>💼 Fakturoid · iDoklad · Pohoda</strong> — firemní údaje + bankovní účet do nové faktury jedním klikem.</div>
+          <div class="rounded-xl border border-slate-200 dark:border-slate-700 p-3 bg-white dark:bg-slate-800"><strong>🧩 Embed widget</strong> — kartu firmy s aktuálními daty vložíš na svůj web jedním řádkem JS.</div>
+        </div>
+      </section>
+
+      <!-- 19 -->
+      <section id="token" class="fn">
+        <h2 class="text-2xl font-bold tracking-tight mb-3"><span class="gradient-text">19.</span> Vlastní HS token — když narazíš na limit</h2>
+        <p class="text-slate-700 dark:text-slate-300 mb-4">Část dat (UBO, dotace, zakázky, insolvence) jede přes <strong>Hlídač státu</strong>, který má rate limit <strong>per token</strong>. Všichni anonymní návštěvníci sdílí jeden token aplikace.</p>
+        <div class="space-y-2 text-sm">
+          <div class="flag-amber pl-3 py-1"><strong>Situace:</strong> když sdílený token narazí na limit, objeví se <strong>amber banner</strong> s nabídkou vložit <em>vlastní HS token</em> (zdarma na hlidacstatu.cz). Pak máš <strong>vlastní kvótu</strong> a nečerpáš sdílený limit.</div>
+          <div class="flag-green pl-3 py-1"><strong>🟢 Bonus:</strong> klíč zůstává jen v tvém prohlížeči (posílá se přes HTTPS, neukládáme ho). Data jsou navíc cachovaná, takže opakované dotazy na stejnou firmu limit nečerpají.</div>
+        </div>
+      </section>
+
+      <!-- 20 -->
+      <section id="limity" class="fn">
+        <h2 class="text-2xl font-bold tracking-tight mb-3"><span class="gradient-text">20.</span> Limity a co aplikace NEumí</h2>
+        <p class="text-slate-700 dark:text-slate-300 mb-4">Aby nedošlo k falešnému pocitu jistoty:</p>
+        <ul class="space-y-2 text-sm text-slate-700 dark:text-slate-300 list-disc pl-5">
+          <li><strong>Není to verdikt.</strong> Aplikace ukazuje, <em>co je ve veřejných registrech</em>. „Čisté" skóre neznamená „bezpečné" — jen „nic registrovaného".</li>
+          <li><strong>Účetní závěrky</strong> (rozvahy, výsledovky) zatím nesbíráme — odkazujeme na Sbírku listin na justice.cz.</li>
+          <li><strong>Katastr nemovitostí</strong> — ČÚZK nemá free API pro „co vlastní firma X"; plánováno po monetizaci (placené VDP).</li>
+          <li><strong>Historie bez data narození</strong> — VR u starých statutářů DOB neeviduje → proto „Možní jmenovci" a tvé rozhodnutí.</li>
+          <li><strong>Náš index není kompletní rejstřík ČR</strong> — zná jen nakrawlované firmy; roste postupně (i ručním doplněním přes „Vím o jiné firmě").</li>
+          <li><strong>Vždy ověř u primárního zdroje</strong> u zásadních rozhodnutí (ARES, OR, ISIR, ADIS). Každý údaj má v UI uvedený zdroj a datum.</li>
+        </ul>
+      </section>
+
+      <div class="rounded-2xl border border-emerald-200 dark:border-emerald-800 bg-emerald-50/40 dark:bg-emerald-900/10 p-6 text-center">
+        <p class="text-slate-700 dark:text-slate-300 mb-4">Tohle byla detailní příručka. Přehledovou prezentaci najdeš na <a href="/pro.html" class="underline text-emerald-700 dark:text-emerald-400">pro.html</a>.</p>
+        <a href="/" class="inline-block px-6 py-3 bg-emerald-600 text-white rounded-xl font-semibold hover:bg-emerald-700 transition-colors card-shadow">Vyzkoušet na vlastním IČO →</a>
+      </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-slate-900 text-slate-400 py-10 px-5 text-sm no-print">
+      <div class="max-w-6xl mx-auto">
+        <div class="flex flex-wrap items-center justify-between gap-4 mb-4">
+          <div>
+            <div class="text-white font-semibold">IČO vazby</div>
+            <div class="text-xs">Provozovatel: SimpleSolar s.r.o., IČO 07315520</div>
+          </div>
+          <div class="flex gap-4 text-xs">
+            <a href="/" class="hover:text-emerald-400">Aplikace</a>
+            <a href="/pro.html" class="hover:text-emerald-400">Přehled</a>
+            <a href="/privacy.html" class="hover:text-emerald-400">GDPR</a>
+            <a href="/terms.html" class="hover:text-emerald-400">Podmínky</a>
+            <a href="https://github.com/milos106/icovazby" class="hover:text-emerald-400">Zdrojový kód (AGPL)</a>
+          </div>
+        </div>
+        <div class="text-xs text-slate-500 border-t border-slate-800 pt-4">
+          Veškerá data pochází z oficiálních veřejných registrů ČR a EU. Aplikace neposkytuje právní ani daňové poradenství — rozhodnutí na základě prověrky činí uživatel sám.
+        </div>
+      </div>
+    </footer>
+
+  </body>
+</html>

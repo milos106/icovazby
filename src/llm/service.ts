@@ -252,7 +252,7 @@ export class LlmNotConfiguredError extends Error {
 export async function generateAiSummary(
   client: AresClient,
   ico: string,
-  options?: { force?: boolean; userApiKey?: string; provider?: LlmProvider; model?: string },
+  options?: { force?: boolean; userApiKey?: string; provider?: LlmProvider; model?: string; allowServerKey?: boolean },
 ): Promise<AiSummary> {
   if (!options?.force) {
     const cached = getCached(ico);
@@ -264,11 +264,13 @@ export async function generateAiSummary(
   const provider: LlmProvider = options?.provider ?? DEFAULT_PROVIDER;
   const model = options?.model ?? DEFAULT_MODEL;
 
-  // Priority: per-request user API key (BYO) > env admin key (fallback pro
-  // testování). Fáze 1 monetizace: server-side env je zachovaný jen pro
-  // admina, public visitor bez vlastního klíče v UI nesmí vidět tlačítko
-  // takže k tomuto fallbacku se nedostane.
-  const apiKey = options?.userApiKey?.trim() || process.env.ANTHROPIC_API_KEY?.trim();
+  // BEZPEČNOST (#2): per-request BYO klíč je povinný pro veřejné requesty.
+  // Env ANTHROPIC_API_KEY se použije JEN když volající explicitně povolí
+  // (allowServerKey = admin), jinak by anonym mohl skriptovat /api/llm/summary
+  // a čerpat placený kredit provozovatele.
+  const apiKey =
+    options?.userApiKey?.trim() ||
+    (options?.allowServerKey ? process.env.ANTHROPIC_API_KEY?.trim() : undefined);
   if (!apiKey) throw new LlmNotConfiguredError();
 
   // 1. Sebraj data — DD + UBO + dotace + smlouvy + insolvence + ÚPV.

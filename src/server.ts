@@ -10,7 +10,7 @@
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
-import { randomBytes } from "node:crypto";
+import { randomBytes, timingSafeEqual } from "node:crypto";
 import fastifyRateLimit from "@fastify/rate-limit";
 import fastifyStatic from "@fastify/static";
 import Fastify, { type FastifyReply, type FastifyRequest } from "fastify";
@@ -86,16 +86,20 @@ const HOST = process.env.HOST ?? "127.0.0.1";
 
 const app = Fastify({
   logger: { level: process.env.LOG_LEVEL ?? "info" },
-  trustProxy: true,
+  // #1: NEdůvěřuj všem proxy. Node poslouchá jen na loopbacku → veškerý provoz
+  // jde přes Caddy (127.0.0.1). Caddy je nakonfigurovaný s Cloudflare
+  // trusted_proxies + client_ip_headers, takže X-Forwarded-For, který nám
+  // pošle, nese REÁLNOU klientskou IP (spoofnuté CF-Connecting-IP/XFF od
+  // přímého útočníka na origin Caddy zahodí). req.ip pak = skutečný klient.
+  trustProxy: process.env.TRUST_PROXY ?? "loopback",
 });
 
 await app.register(fastifyRateLimit, {
   max: parseEnvNumber(process.env.RATE_LIMIT_PER_MIN, 60),
   timeWindow: "1 minute",
-  keyGenerator: (req) =>
-    (req.headers["cf-connecting-ip"] as string) ||
-    (req.headers["x-forwarded-for"] as string)?.split(",")[0]?.trim() ||
-    req.ip,
+  // #1: jen req.ip (důvěryhodně spočtené z X-Forwarded-For od Caddy na loopbacku).
+  // Klientem zaslané hlavičky už NEčteme — daly se podvrhnout a obejít limit.
+  keyGenerator: (req) => req.ip,
   errorResponseBuilder: (_req, ctx) => ({
     statusCode: 429,
     error: "RATE_LIMITED",
@@ -131,6 +135,21 @@ const serveIndex = async (req: FastifyRequest, reply: FastifyReply) => {
 app.get("/", serveIndex);
 app.get("/index.html", serveIndex);
 
+// #8: časově konstantní porovnání admin tokenu (proti timing útoku).
+function adminTokenOk(provided: string | undefined | null): boolean {
+  const expected = process.env.ADMIN_TOKEN?.trim();
+  if (!expected || !provided) return false;
+  const a = Buffer.from(provided);
+  const b = Buffer.from(expected);
+  return a.length === b.length && timingSafeEqual(a, b);
+}
+// #5: CSV buňka odolná proti formula-injection (Excel/Sheets vyhodnotí =,+,-,@,tab).
+function csvCell(v: unknown): string {
+  let s = String(v ?? "");
+  if (/^[=+\-@\t\r]/.test(s)) s = "'" + s;
+  return `"${s.replace(/"/g, '""')}"`;
+}
+
 // Per-request HS token: pokud klient pošle hlavičku X-Hlidac-Token,
 // uložíme ji do AsyncLocalStorage. hlidacstatu/client.getToken() pak ji
 // použije přednostně před env tokenem. Tím se rozdělí rate limit na
@@ -139,7 +158,9 @@ app.get("/index.html", serveIndex);
 app.addHook("onRequest", async (req) => {
   const raw = req.headers["x-hlidac-token"];
   const token = typeof raw === "string" ? raw.trim() : Array.isArray(raw) ? raw[0]?.trim() : "";
-  if (token) hsTokenContext.enterWith(token);
+  // #3: VŽDY nastav store (i prázdný) — jinak by token usera A bez clearu přetekl
+  // do následujícího requestu usera B (enterWith footgun na sdíleném kontextu).
+  hsTokenContext.enterWith(token || undefined);
 });
 
 // R16: audit log pro AML compliance. Logujeme DD lookupy + holding discovery
@@ -153,11 +174,7 @@ app.addHook("onRequest", async (req) => {
   if (!m) return;
   const action = m[1];
   const targetIco = m[2] ?? null;
-  const ip =
-    (req.headers["cf-connecting-ip"] as string) ||
-    (req.headers["x-forwarded-for"] as string)?.split(",")[0]?.trim() ||
-    req.ip ||
-    null;
+  const ip = req.ip || null; // #1: req.ip je teď důvěryhodný (loopback trust + Caddy/CF)
   const userAgent = (req.headers["user-agent"] as string) ?? null;
   try {
     dbAudit({
@@ -252,7 +269,7 @@ app.get("/api/audit-log", async (req: FastifyRequest, reply) => {
     return reply.status(503).send({ error: "ADMIN_NOT_CONFIGURED", message: "ADMIN_TOKEN není nastaven v .env." });
   }
   const provided = (req.headers["x-admin-token"] as string)?.trim();
-  if (provided !== adminToken) {
+  if (!adminTokenOk(provided)) {
     return reply.status(401).send({ error: "UNAUTHORIZED" });
   }
   const sinceParam = (req.query as { since?: string }).since;
@@ -265,12 +282,12 @@ app.get("/api/audit-log", async (req: FastifyRequest, reply) => {
     header,
     ...rows.map((r) =>
       [
-        r.id,
-        new Date(r.ts).toISOString(),
-        r.ip ?? "",
-        r.action,
-        r.target_ico ?? "",
-        `"${(r.user_agent ?? "").replace(/"/g, '""')}"`,
+        csvCell(r.id),
+        csvCell(new Date(r.ts).toISOString()),
+        csvCell(r.ip ?? ""),
+        csvCell(r.action),
+        csvCell(r.target_ico ?? ""),
+        csvCell(r.user_agent ?? ""),
       ].join(","),
     ),
   ].join("\n");
@@ -433,19 +450,38 @@ app.get("/api/dd/:ico", async (req: FastifyRequest, reply) => {
 // ─── Fáze D: uložit / sdílet vyšetřovací plátno ────────────────────────────────
 // POST uloží JSON stav grafu → vrátí krátké id; GET ho načte; /v/:id servíruje
 // SPA (frontend si stav dotáhne přes /api/investigations/:id a obnoví plátno).
+// #7: whitelist schéma stavu plátna — ukládáme JEN známá pole (.strict() odmítne
+// cokoli navíc), ne libovolný user JSON → obrana proti junk/future stored-XSS.
+const investigationStateSchema = z
+  .object({
+    v: z.number().int().optional(),
+    icos: z.array(z.string().max(20)).max(50).optional(),
+    egoPersons: z
+      .array(z.object({ key: z.string().max(300), label: z.string().max(300), dob: z.string().max(20).optional() }).strict())
+      .max(60)
+      .optional(),
+    primaryKey: z.string().max(300).nullable().optional(),
+    graphLayer: z.enum(["both", "persons", "ownership"]).optional(),
+    intersectMode: z.boolean().optional(),
+    renderMode: z.enum(["interactive", "mermaid"]).optional(),
+    includeHistorical: z.boolean().optional(),
+  })
+  .strict();
+
 app.post("/api/investigations", async (req: FastifyRequest, reply) => {
   try {
     const body = req.body as { state?: unknown } | undefined;
-    if (!body || typeof body.state !== "object" || body.state === null) {
-      return reply.status(400).send({ error: "Chybí state." });
+    const parsed = investigationStateSchema.safeParse(body?.state);
+    if (!parsed.success) {
+      return reply.status(400).send({ error: "Neplatný stav vyšetřování." });
     }
-    const json = JSON.stringify(body.state);
+    const json = JSON.stringify(parsed.data);
     if (json.length > 100_000) {
       return reply.status(413).send({ error: "Stav vyšetřování je příliš velký." });
     }
     const { dbSaveInvestigation } = await import("./persons_index/db.js");
     const id = randomBytes(6).toString("base64url"); // ~8 znaků, URL-safe
-    dbSaveInvestigation(id, body.state);
+    dbSaveInvestigation(id, parsed.data);
     return { id };
   } catch (e) {
     sendError(reply, e);
@@ -548,7 +584,9 @@ app.post("/api/llm/summary/:ico", async (req: FastifyRequest, reply) => {
     const userApiKey = headerStr("x-llm-key") || headerStr("x-anthropic-key");
     const provider = (headerStr("x-llm-provider") || "anthropic") as "anthropic" | "google";
     const model = headerStr("x-llm-model") || undefined;
-    const result = await generateAiSummary(client, ico, { force, userApiKey, provider, model });
+    // #2: env klíč jen pro admina; veřejný request bez BYO klíče dostane „nakonfiguruj klíč".
+    const allowServerKey = adminTokenOk(headerStr("x-admin-token"));
+    const result = await generateAiSummary(client, ico, { force, userApiKey, provider, model, allowServerKey });
     reply.send(result);
   } catch (e) {
     sendError(reply, e);
@@ -880,6 +918,22 @@ try {
   logStartupBanner();
   void warmup();
   startScheduler(client);
+
+  // #6: úklid expirovaných řádků (response_cache + staré investigations) při
+  // startu a pak každých 6 h, ať úložiště neroste donekonečna.
+  void (async () => {
+    try {
+      const { dbEvictExpired } = await import("./persons_index/db.js");
+      const run = () => {
+        try {
+          const r = dbEvictExpired();
+          if (r.responseCache || r.investigations) app.log.info(`evict: -${r.responseCache} cache, -${r.investigations} investigations`);
+        } catch (e) { app.log.warn({ err: e }, "evict failed"); }
+      };
+      run();
+      setInterval(run, 6 * 60 * 60 * 1000).unref();
+    } catch { /* ignore */ }
+  })();
 
   // Pre-seed lokálního subjects inventory s top českými firmami — bez tohoto
   // by `agrofer` nenašel Agrofert na čerstvé instanci (lokální fallback je

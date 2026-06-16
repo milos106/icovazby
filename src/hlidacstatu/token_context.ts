@@ -19,4 +19,5 @@
 
 import { AsyncLocalStorage } from "node:async_hooks";
 
-export const hsTokenContext = new AsyncLocalStorage<string>();
+// string | undefined — undefined = per-request explicitní vyčištění (anti-bleed, #3).
+export const hsTokenContext = new AsyncLocalStorage<string | undefined>();

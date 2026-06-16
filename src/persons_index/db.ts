@@ -292,6 +292,16 @@ export function dbSetResponseCache(key: string, payload: unknown): void {
   `).run(key, JSON.stringify(payload), Date.now());
 }
 
+// #6: úklid proti neomezenému růstu úložiště. response_cache > 48 h (TTL je 24 h,
+// dáváme rezervu), investigations > 365 dní (sdílené odkazy mají žít dlouho).
+export function dbEvictExpired(): { responseCache: number; investigations: number } {
+  const d = getDb();
+  const now = Date.now();
+  const rc = d.prepare(`DELETE FROM response_cache WHERE fetched_at < ?`).run(now - 48 * 60 * 60 * 1000);
+  const inv = d.prepare(`DELETE FROM investigations WHERE created_at < ?`).run(now - 365 * 24 * 60 * 60 * 1000);
+  return { responseCache: rc.changes, investigations: inv.changes };
+}
+
 export function dbLoadInvestigation(id: string): { state: unknown; createdAt: number } | null {
   const d = getDb();
   const row = d.prepare(`SELECT state, created_at FROM investigations WHERE id = ?`).get(id) as
