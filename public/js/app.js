@@ -1482,15 +1482,17 @@ function personVazbySection() {
     init() {
       window.addEventListener("ares-open-person-vazby", (e) => {
         const { jmeno, datumNarozeni } = e.detail || {};
-        if (!jmeno || !datumNarozeni) return;
+        if (!jmeno) return;
+        // Předvyplň jméno VŽDY; datum narození jen když ho máme. U OSVČ (z mapy)
+        // DOB nemáme → necháme uživatele doplnit a sám spustit. Auto-run jen když
+        // máme oboje (klik na statutára s DOB). Samotné hledání DOB stejně
+        // vyžaduje (run() guard) — LIA zůstává splněna.
         this.form.jmeno = jmeno;
-        this.form.datumNarozeni = datumNarozeni;
+        this.form.datumNarozeni = datumNarozeni || "";
         window.Alpine?.store("sections")?.setVisible("osoby", true);
-        // Necháme Alpine rerenderovat než scrollneme.
-        Promise.resolve().then(() => {
-          /* scroll removed */
-          this.run();
-        });
+        if (datumNarozeni) {
+          Promise.resolve().then(() => { this.run(); });
+        }
       });
     },
     close() {

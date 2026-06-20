@@ -1193,6 +1193,18 @@
                (scrolluje s celým pravým panelem). -->
           <div :class="graphFull ? 'fixed top-0 left-0 bottom-0 z-[70] w-80 max-w-[85vw] overflow-y-auto p-3 space-y-2 bg-slate-50 dark:bg-ink-900 border-r border-slate-200 dark:border-ink-700 shadow-2xl' : 'space-y-2'">
 
+            <!-- OSVČ / fyzická osoba — mapa nemá co zobrazit (entita není ve VR).
+                 Místo prázdna nabídneme „Vazby osoby". report/isFyzickaOsoba/
+                 openPerson se dědí z rodičovského v2App scope (Alpine). -->
+            <template x-if="report && isFyzickaOsoba(report) && !result && !loading">
+              <div class="rounded-lg border border-amber-500/40 bg-amber-500/10 p-2.5 text-[11px] text-amber-800 dark:text-amber-200 space-y-2">
+                <p>👤 <strong x-text="report.obchodniJmeno"></strong> je <strong>fyzická osoba podnikající (OSVČ)</strong> — není ve Veřejném rejstříku, takže nemá statutáře ani vlastnickou strukturu k vykreslení do mapy.</p>
+                <button type="button" @click="openPerson(report.obchodniJmeno, '')"
+                  class="w-full px-3 py-1.5 rounded-md bg-emerald-500 text-ink-950 text-[11px] font-semibold hover:bg-emerald-400">🔗 Hledat vazby této osoby →</button>
+                <p class="text-[10px] text-amber-700/80 dark:text-amber-300/70 leading-snug">Otevře „Vazby osoby" s předvyplněným jménem — doplň <strong>datum narození</strong> pro nalezení firem, kde osoba figuruje jako statutář / majitel.</p>
+              </div>
+            </template>
+
             <!-- 1) Ruční vstup IČO + Vykreslit -->
             <form @submit.prevent="run()" x-show="!shared" class="space-y-1.5">
               <textarea x-model="raw" rows="3" placeholder="1–50 IČO (jedno = ego-graf firmy; více = hledání propojení)"

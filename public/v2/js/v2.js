@@ -444,6 +444,16 @@
         });
       },
 
+      // Fyzická osoba / OSVČ? (právní formy 100/101/105/107/108…) — taková entita
+      // NENÍ ve VR, nemá statutáře ani vlastnictví → mapa propojení by byla prázdná.
+      // Místo prázdna nabídneme „Vazby osoby" (firmy, kde osoba figuruje jinde).
+      isFyzickaOsoba: function (report) {
+        var pf = String((report && report.identification && report.identification.pravniForma) || "");
+        if (["100", "101", "102", "105", "107", "108", "109"].indexOf(pf) >= 0) return true;
+        var n = parseInt(pf, 10);
+        return Number.isFinite(n) && n >= 100 && n < 111;
+      },
+
       focusTool: function (id) {
         this.palette = false;
         if (id === "graph") {
