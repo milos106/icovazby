@@ -141,9 +141,22 @@ app.get("/index.html", serveIndex);
 
 // `/v2` — workspace varianta UI (varianta C). Aditivní, nedotýká se `/`.
 // Mirror serveIndex: vlastní handler protože fastify-static má index:false.
+// V2 HTML předrenderováno při startu + replace {{VERSION}} → PKG_VERSION
+// (stejně jako INDEX_HTML). DŮVOD: v2 skripty (/js/app.js, /v2/js/v2.js) musí
+// nést ?v={{VERSION}} cache-buster — jinak prohlížeč drží STAROU cachovanou
+// app.js po deployi (statika má long max-age) a v2 běží na zastaralém kódu.
+const V2_HTML = (() => {
+  try {
+    return readFileSync(join(PUBLIC_DIR, "v2", "index.html"), "utf8")
+      .replaceAll("{{VERSION}}", PKG_VERSION);
+  } catch {
+    return "";
+  }
+})();
 const serveV2 = async (_req: FastifyRequest, reply: FastifyReply) => {
   reply.header("cache-control", "no-store, must-revalidate");
-  return reply.sendFile("v2/index.html");
+  reply.type("text/html; charset=utf-8");
+  return reply.send(V2_HTML);
 };
 app.get("/v2", serveV2);
 
