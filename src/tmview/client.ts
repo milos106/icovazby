@@ -84,6 +84,19 @@ export interface TmViewSearchResponse {
 }
 
 /**
+ * Bezpečný parse JSON odpovědi — TMView (tmdn.org) může při výpadku/údržbě
+ * vrátit HTTP 200 s HTML; holé .json() by hodilo neošetřený SyntaxError → 500.
+ */
+async function tmViewJson<T>(r: { text(): Promise<string> }): Promise<T> {
+  const text = await r.text();
+  try {
+    return JSON.parse(text) as T;
+  } catch {
+    throw new Error("TMView vrátil neočekávanou odpověď (ne-JSON) — pravděpodobně výpadek.");
+  }
+}
+
+/**
  * Volá `POST /tmview/api/search/results?translate=true` s payloadem
  * shodným s tím, co posílá frontend (Network tab DevTools).
  */
@@ -147,8 +160,8 @@ export async function searchTrademarks(opts: {
       body: JSON.stringify(body),
     });
     if (!retry.ok) throw new Error(`TMView search retry: HTTP ${retry.status}`);
-    return await retry.json();
+    return await tmViewJson<TmViewSearchResponse>(retry);
   }
   if (!res.ok) throw new Error(`TMView search: HTTP ${res.status}`);
-  return await res.json();
+  return await tmViewJson<TmViewSearchResponse>(res);
 }

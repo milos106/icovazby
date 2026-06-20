@@ -13,27 +13,27 @@ const STORAGE_INVESTIGATIONS = "icovazby:investigations"; // D+e — seznam „m
 // Sekce, které lze v Nastavení skrýt. Profil zůstává vždy viditelný.
 // Klíče slouží zároveň jako section id v DOM a key v localStorage.
 const SECTION_DEFS = [
-  { key: "dd-ai-summary", label: "🤖 AI souhrn (Claude)", group: "Profil firmy" },
   { key: "dd-notes", label: "📝 Moje poznámky", group: "Profil firmy" },
-  { key: "dd-timeline", label: "📜 Časová osa", group: "Profil firmy" },
-  { key: "dd-katastr", label: "🏠 Nemovitosti (Katastr, brzy)", group: "Profil firmy" },
-  { key: "dd-ds", label: "📬 Datová schránka", group: "Profil firmy" },
-  { key: "dd-upv", label: "™ Ochranné známky (ÚPV)", group: "Profil firmy" },
-  { key: "dd-vr", label: "⚖️ Veřejný rejstřík (OR)", group: "Profil firmy" },
-  { key: "dd-ubo", label: "👥 Skuteční majitelé (UBO)", group: "Profil firmy" },
-  { key: "dd-dotace", label: "💸 Dotace", group: "Profil firmy" },
-  { key: "dd-smlouvy", label: "💰 Veřejné zakázky", group: "Profil firmy" },
-  { key: "dd-adis", label: "🏦 DPH (ADIS)", group: "Profil firmy" },
-  { key: "dd-isir", label: "⚖️ Insolvence (ISIR)", group: "Profil firmy" },
-  { key: "dd-jerrs", label: "🏦 ČNB JERRS", group: "Profil firmy" },
-  { key: "dd-sankce", label: "🇪🇺 EU sankce", group: "Profil firmy" },
-  { key: "dd-zivno", label: "🏷️ Živnosti", group: "Profil firmy" },
+  { key: "dd-ai-summary", label: "🤖 AI souhrn (Claude)", group: "Profil firmy", dalsi: true },
+  { key: "dd-vr", label: "⚖️ Veřejný rejstřík (OR)", group: "Profil firmy", dalsi: true },
+  { key: "dd-ubo", label: "👥 Skuteční majitelé (UBO)", group: "Profil firmy", dalsi: true },
+  { key: "dd-dotace", label: "💸 Dotace", group: "Profil firmy", dalsi: true },
+  { key: "dd-smlouvy", label: "💰 Veřejné zakázky", group: "Profil firmy", dalsi: true },
+  { key: "dd-adis", label: "🏦 DPH (ADIS)", group: "Profil firmy", dalsi: true },
+  { key: "dd-isir", label: "⚖️ Insolvence (ISIR)", group: "Profil firmy", dalsi: true },
+  { key: "dd-jerrs", label: "🏦 ČNB JERRS", group: "Profil firmy", dalsi: true },
+  { key: "dd-sankce", label: "🇪🇺 EU sankce", group: "Profil firmy", dalsi: true },
+  { key: "dd-zivno", label: "🏷️ Živnosti", group: "Profil firmy", dalsi: true },
+  { key: "dd-timeline", label: "📜 Časová osa", group: "Profil firmy", dalsi: true },
+  { key: "dd-upv", label: "™ Ochranné známky (ÚPV)", group: "Profil firmy", dalsi: true },
+  { key: "dd-ds", label: "📬 Datová schránka", group: "Profil firmy", dalsi: true },
+  { key: "dd-katastr", label: "🏠 Nemovitosti (Katastr, brzy)", group: "Profil firmy", dalsi: true },
+  { key: "osoby", label: "🔗 Vazby osoby", group: "Sekce" },
   { key: "graph", label: "🌐 Mapa propojení", group: "Sekce" },
   { key: "address", label: "🏢 Hledat na adrese", group: "Sekce" },
-  { key: "osoby", label: "🔗 Vazby osoby", group: "Sekce" },
-  { key: "compare", label: "⚖️ Porovnat 2 firmy", group: "Sekce" },
-  { key: "bulk", label: "📋 Prověrka více firem", group: "Sekce" },
   { key: "saved", label: "📑 Uložená vyhledávání", group: "Sekce" },
+  { key: "bulk", label: "📋 Prověrka více firem", group: "Sekce" },
+  { key: "compare", label: "⚖️ Porovnat 2 firmy", group: "Sekce" },
 ];
 const RECENT_LIMIT = 10;
 
@@ -619,6 +619,9 @@ function graphSection() {
     fullKeys: [],
     /** Cytoscape instance — odkaz pro relayout / destroy. */
     cy: null,
+    /** R3 — IČO firmy, ke které je mapa „ukotvena". Při přepnutí na jinou
+     *  firmu (nový profil) se mapa vynuluje, ať nedrží předchozí subjekt. */
+    _lastReportIco: null,
     // Selection map pro „Možné jmenovce" (tentativeCandidates). Key = jmeno|prijmeni
     // (unikátní per name; pokud má více seed firem, vše bere). Hodnota = boolean.
     // Default ON — uživatel odškrtává ty, kteří nejsou ten samý člověk.
@@ -668,6 +671,22 @@ function graphSection() {
         const h = window.Alpine?.store("history"); if (h) h.enabled = true; // ať se osoba (i historicky) ukáže
         this.raw = [...set].join("\n");
         this.run();
+      });
+      // R3 — přepnutí na JINOU firmu (nový profil) vynuluje mapu propojení, ať
+      // nedrží předchozí subjekt (uživatel hlásil „mapa drží staré AGROFERT IČO,
+      // zadám SimpleSolar a mapa se nezmění"). Stejnou logiku má /v2 (resetGraph
+      // v v2.js) — tady čistíme přímo v graphSection, takže platí pro / i /v2;
+      // dvojí spuštění nevadí (obojí jen maže = idempotentní).
+      // Bezpečnostní brzdy: sdílené plátno nech být a probíhající MULTI-subjektové
+      // vyšetřování (≥2 IČO nebo ego-osoby) nemaž — jen ukotvení na jednu firmu.
+      window.addEventListener("ares-report-loaded", (e) => {
+        const ico = e.detail?.ico;
+        if (!ico || this.shared) return;
+        if (ico === this._lastReportIco) return;
+        const wasMulti = (this.egoPersons?.length || 0) > 0 || this.parseIcos(this.raw).length >= 2;
+        this._lastReportIco = ico;
+        if (wasMulti) return;
+        this.resetGraph();
       });
       // Fáze D — sdílené/uložené vyšetřování: /v/<id> → dotáhni stav a obnov plátno.
       const invMatch = location.pathname.match(/^\/v\/([A-Za-z0-9_-]{1,32})$/);
@@ -897,6 +916,24 @@ function graphSection() {
         "</body></html>",
       );
       w.document.close();
+    },
+    /** R3 — vynuluj mapu propojení (po přepnutí firmy). Zrcadlí v2 resetGraph:
+     *  zahodí cytoscape instanci i veškerý investigativní stav a vyprázdní
+     *  kontejner, aby z předchozí firmy nezůstal žádný uzel. */
+    resetGraph() {
+      this.result = null;
+      this.mermaidSvg = "";
+      this.error = "";
+      if (this.cy) { try { this.cy.destroy(); } catch { /* ignore */ } this.cy = null; }
+      this.egoPersons = [];
+      this.primaryKey = null;
+      this.connectionMsg = "";
+      this.intersectMode = false;
+      this.pendingFocusPerson = null;
+      this.fullKeys = [];
+      this.raw = "";
+      const c = document.getElementById("cytoscape-container");
+      if (c) c.innerHTML = "";
     },
     /** Cytoscape rendering — interaktivní force graph. */
     renderCytoscape() {
@@ -1359,8 +1396,19 @@ function graphSection() {
      *  ($store.history.enabled) sdíleného s Profilem. */
     async seed(icos) {
       if (!Array.isArray(icos) || icos.length < 1) return;
-      this.raw = icos.join("\n");
-      if (icos.length >= 2) await this.run();
+      // Když už na plátně probíhá vyšetřování (jsou SUBJEKTY), ego-graf další
+      // osoby SLUČ — přidej její firmy, nezahazuj předchozí subjekt (jinak by
+      // druhý „ego-graf do mapy" vymazal firmy prvního a po jeho odebrání by se
+      // nedaly vrátit — multi-subjekt + overlap se rozbije). Prázdné plátno
+      // (nová firma / holding seed) → nahraď.
+      if ((this.egoPersons?.length || 0) > 0) {
+        const set = new Set(this.parseIcos(this.raw));
+        for (const ico of icos) { if (set.size >= 50) break; set.add(ico); }
+        this.raw = [...set].join("\n");
+      } else {
+        this.raw = icos.join("\n");
+      }
+      if (this.parseIcos(this.raw).length >= 2) await this.run();
       else this.error = "Pro Mapu propojení potřebuješ alespoň 2 IČO.";
     },
     /**
@@ -1404,7 +1452,7 @@ function personVazbySection() {
         if (!jmeno || !datumNarozeni) return;
         this.form.jmeno = jmeno;
         this.form.datumNarozeni = datumNarozeni;
-        this.visible = true;
+        window.Alpine?.store("sections")?.setVisible("osoby", true);
         // Necháme Alpine rerenderovat než scrollneme.
         Promise.resolve().then(() => {
           /* scroll removed */
@@ -1413,7 +1461,7 @@ function personVazbySection() {
       });
     },
     close() {
-      this.visible = false;
+      window.Alpine?.store("sections")?.setVisible("osoby", false);
       this.result = null;
       this.selected = new Set();
     },

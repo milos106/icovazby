@@ -90,12 +90,19 @@ async function generateGoogle(opts: LlmGenerateOpts): Promise<string> {
     } catch { /* keep raw */ }
     throw new LlmApiError(`Google Gemini: ${msg}`, res.status);
   }
-  const json = (await res.json()) as {
+  const rawJson = await res.text();
+  let json: {
     candidates?: Array<{
       content?: { parts?: Array<{ text?: string }> };
       finishReason?: string;
     }>;
   };
+  try {
+    json = JSON.parse(rawJson) as typeof json;
+  } catch {
+    // Gemini může (vzácně) vrátit ne-JSON i s HTTP 200 — čistá chyba místo SyntaxError.
+    throw new LlmApiError("Google Gemini vrátil neočekávanou odpověď (ne-JSON).", res.status);
+  }
   const candidate = json.candidates?.[0];
   const text = candidate?.content?.parts?.[0]?.text;
   if (!text) throw new Error(`Google Gemini vrátil prázdnou odpověď (finishReason=${candidate?.finishReason ?? "?"}).`);

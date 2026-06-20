@@ -243,6 +243,16 @@
             <p class="hidden sm:block text-xs text-slate-500 dark:text-slate-400">Prověrka českých firem a jejich propojení</p>
           </div>
         </a>
+        <!-- Přepínač na nové zobrazení V2 (workspace). onclick přenese aktuální
+             PROFILOVÉ IČO do v2 (ne celý ?icos= seznam mapy), ať se otevře tatáž
+             firma. Zdroj: window.__aresLatestReport.ico (nastavuje ddSection),
+             fallback na URL ?ico= / první z ?icos=. Vanilla JS (mimo Alpine). -->
+        <a
+          href="/v2"
+          onclick="var q=new URLSearchParams(location.search);var i=(window.__aresLatestReport&&window.__aresLatestReport.ico)||q.get('ico')||(q.get('icos')||'').split(',')[0];this.href=i?'/v2?ico='+encodeURIComponent(i)+'&action=profil':'/v2'"
+          class="inline-flex items-center gap-1 text-[11px] uppercase tracking-wider px-2.5 py-1 rounded-full bg-emerald-600 text-white hover:bg-emerald-700 transition-colors font-semibold shadow-sm"
+          title="Otevřít nové zobrazení V2 (workspace) — tatáž firma, přehlednější rozložení"
+        >✨ Zobrazení V2 →</a>
         <a
           href="/pro.html"
           class="hidden sm:inline-flex items-center gap-1 text-[11px] uppercase tracking-wider px-2.5 py-1 rounded-full border border-emerald-300 dark:border-emerald-700 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-50 dark:hover:bg-emerald-900/30 transition-colors font-semibold"
@@ -424,6 +434,7 @@
                 <template x-for="group in ['Profil firmy','Sekce']" :key="group">
                   <div class="mb-3">
                     <p class="text-[10px] uppercase tracking-wide text-slate-400 dark:text-slate-500 mb-1" x-text="group"></p>
+                    <p x-show="group === 'Profil firmy'" class="text-[11px] text-slate-400 dark:text-slate-500 mb-1.5 leading-snug">ⓘ Bloky níže (kromě „Moje poznámky“) se v profilu zobrazují uvnitř „Další registry“.</p>
                     <ul class="space-y-1">
                       <template x-for="def in $store.sections.defs().filter(d => d.group === group)" :key="def.key">
                         <li>
@@ -2483,7 +2494,7 @@
         id="vazby"
         x-data="personVazbySection()"
         x-init="init()"
-        x-show="visible && $store.sections.visible('osoby')"
+        x-show="$store.sections.visible('osoby')"
         x-cloak
         class="bg-white dark:bg-slate-800 dark:border-slate-700 rounded-2xl shadow-sm border p-6"
       >
@@ -2556,7 +2567,7 @@
             <div class="border dark:border-slate-700 rounded p-3 bg-slate-50 dark:bg-slate-900/40">
               <p class="text-sm">
                 <span class="font-semibold" x-text="(result.person.titulPred ? result.person.titulPred + ' ' : '') + result.person.jmeno + ' ' + result.person.prijmeni + (result.person.titulPo ? ', ' + result.person.titulPo : '')"></span>
-                <span class="text-slate-500 dark:text-slate-400 text-xs ml-2">nar. <span x-text="result.person.narozeni"></span></span>
+                <!-- LIA záruka #2: datum narození se NEzobrazuje (model „potvrzuji, neobjevuji") -->
                 <a :href="result.person.profileUrl" target="_blank" rel="noopener" class="underline text-emerald-700 dark:text-emerald-400 ml-2 text-xs">🔗 Hlídač státu</a>
               </p>
             </div>

@@ -16,3 +16,6 @@ coverage/
 # Playwright
 test-results/
 playwright-report/
+
+# Scratch QA skripty/screenshoty (v2 redesign)
+_redesign/

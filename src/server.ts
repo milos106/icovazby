@@ -18,7 +18,7 @@ import { z } from "zod";
 import { AresClient } from "./ares/client.js";
 import { cached, cacheStats } from "./cache.js";
 import { AresError, toToolErrorPayload } from "./errors.js";
-import { HlidacStatuMissingTokenError, HlidacStatuRateLimitedError } from "./hlidacstatu/client.js";
+import { HlidacStatuMissingTokenError, HlidacStatuRateLimitedError, HlidacStatuUnavailableError } from "./hlidacstatu/client.js";
 import { VrAccessBlockedError } from "./justice_vr/client.js";
 import { LlmNotConfiguredError, generateAiSummary } from "./llm/service.js";
 import { LlmApiError } from "./llm/providers.js";
@@ -95,7 +95,11 @@ const app = Fastify({
 });
 
 await app.register(fastifyRateLimit, {
-  max: parseEnvNumber(process.env.RATE_LIMIT_PER_MIN, 60),
+  // 200/min/IP: jeden DD profil + graf + plné plátno snadno vystřelí 30-60 dotazů
+  // v dávce (risk engine + lazy karty + holding/cross-persons), takže 60 bylo pro
+  // legitimní power-user workflow moc málo. Scraping dál cení Cloudflare edge
+  // rate-limit + per-IP keying; tohle je sekundární backstop. Laditelné přes env.
+  max: parseEnvNumber(process.env.RATE_LIMIT_PER_MIN, 200),
   timeWindow: "1 minute",
   // #1: jen req.ip (důvěryhodně spočtené z X-Forwarded-For od Caddy na loopbacku).
   // Klientem zaslané hlavičky už NEčteme — daly se podvrhnout a obejít limit.
@@ -134,6 +138,14 @@ const serveIndex = async (req: FastifyRequest, reply: FastifyReply) => {
 };
 app.get("/", serveIndex);
 app.get("/index.html", serveIndex);
+
+// `/v2` — workspace varianta UI (varianta C). Aditivní, nedotýká se `/`.
+// Mirror serveIndex: vlastní handler protože fastify-static má index:false.
+const serveV2 = async (_req: FastifyRequest, reply: FastifyReply) => {
+  reply.header("cache-control", "no-store, must-revalidate");
+  return reply.sendFile("v2/index.html");
+};
+app.get("/v2", serveV2);
 
 // #8: časově konstantní porovnání admin tokenu (proti timing útoku).
 function adminTokenOk(provided: string | undefined | null): boolean {
@@ -248,6 +260,17 @@ function sendError(reply: FastifyReply, err: unknown): void {
       reason: "hs_rate_limited",
       message:
         "Vyčerpán denní limit požadavků na Hlídač státu. Zkus za chvíli, nebo si v Nastavení nastav vlastní token.",
+    });
+    return;
+  }
+  if (err instanceof HlidacStatuUnavailableError) {
+    // HS vrátil ne-JSON (HTML výpadek/údržba) nebo 4xx/5xx. 503 + čistá hláška,
+    // ať per-blok UI ukáže „dočasně nedostupné" + tlačítko Zkusit znovu místo
+    // generické „Interní chyba serveru" (500).
+    reply.status(503).send({
+      error: "HS_UNAVAILABLE",
+      message:
+        "Hlídač státu teď vrátil neočekávanou odpověď (nejspíš dočasný výpadek nebo údržba). Zkus to za chvíli znovu.",
     });
     return;
   }

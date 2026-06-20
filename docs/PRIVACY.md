@@ -46,6 +46,8 @@ Pro zrychlení odezvy a šetření kvóty veřejných API ukládáme dočasně v
 
 Aplikace si pro funkci „Vazby osoby" udržuje na disku (SQLite databáze `data/persons-index.sqlite`) index spojení jméno + datum narození → seznam firem, ve kterých daná osoba figuruje jako jednatel. Tento index vzniká postupně z dat veřejných rejstříků (viz 2.1) a slouží k rychlejšímu nalezení vazeb mezi firmami.
 
+**Právní základ a záruky (datum narození).** Tento index a vyhledávání zpracováváme na základě **oprávněného zájmu** (čl. 6 odst. 1 písm. f GDPR) na transparentnosti vlastnické a řídicí struktury firem a prevenci podvodů. Datum narození slouží výhradně jako **rozlišovací klíč** veřejně zveřejněných osob — jména a data narození statutárů, společníků a skutečných majitelů jsou ze zákona veřejná ve veřejném rejstříku (zák. č. 304/2013 Sb.). Zavedli jsme tyto záruky: vyhledání vyžaduje **jméno i přesné datum narození zároveň** (potvrzujete konkrétní osobu, neprohledáváte jmenovce), datum narození se **nevrací ve výsledku**, **rodné číslo nezpracováváme** vůbec, a přístup je omezen rate-limitem. Proti zpracování můžete kdykoli vznést **námitku** (viz část 7). Provedli jsme k tomu interní balanční test, který je k dispozici na vyžádání na info@simplesolar.cz.
+
 Stejná databáze obsahuje i lokální index ochranných známek z ÚPV otevřených dat (`upv_trademarks`) pro rychlou DD prověrku. Index neobsahuje IČO přihlašovatelů (ÚPV ho neposkytuje), pouze jména právnických osob a anonymizovaná data fyzických.
 
 ## 3. Co NEzpracováváme

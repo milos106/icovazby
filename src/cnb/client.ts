@@ -56,7 +56,14 @@ export async function fetchDailyRates(): Promise<RawCnbRatesResponse> {
   if (!response.ok) {
     throw new Error(`ČNB HTTP ${response.status}`);
   }
-  const json = (await response.json()) as RawCnbRatesResponse;
+  // ČNB může při výpadku vrátit HTTP 200 s HTML — bezpečný parse místo SyntaxError.
+  const text = await response.text();
+  let json: RawCnbRatesResponse;
+  try {
+    json = JSON.parse(text) as RawCnbRatesResponse;
+  } catch {
+    throw new Error("ČNB vrátil neočekávanou odpověď (ne-JSON) — pravděpodobně výpadek.");
+  }
   cache = { at: Date.now(), value: json };
   return json;
 }

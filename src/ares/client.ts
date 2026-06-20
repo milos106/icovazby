@@ -191,7 +191,14 @@ export class AresClient {
     }
 
     if (response.ok) {
-      return (await response.json()) as T;
+      // ARES může při výpadku/údržbě vrátit HTTP 200 s HTML — JSON.parse by jinak
+      // hodil neošetřený SyntaxError → 500. Parsujeme bezpečně.
+      const okText = await response.text();
+      try {
+        return JSON.parse(okText) as T;
+      } catch {
+        throw abort(new NetworkError("ARES vrátil neočekávanou odpověď (ne-JSON) — pravděpodobně výpadek nebo údržba."));
+      }
     }
 
     const body = await safeReadBody(response);

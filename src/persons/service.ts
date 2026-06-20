@@ -423,16 +423,22 @@ export async function getPersonVazbyService(
 
   const totalUnique = new Set(combined.map((v) => v.resolvedIco ?? v.organizace)).size;
 
+  // LIA (docs/GDPR_LIA_VAZBY_OSOBY.md, záruka #2): datum narození se NEVRACÍ ve
+  // výstupu. Uživatel ho zadal na vstupu (model „potvrzuji, neobjevuji"), takže
+  // opisovat ho zpět je zbytečné a bránilo by to úniku DOB třetí osoby.
+  const personOut = hsPerson ?? {
+    jmeno: rawJmeno,
+    prijmeni,
+    titulPred: localPerson?.titulPred ?? null,
+    titulPo: null,
+    narozeni: null as string | null,
+    nameId: null,
+    profileUrl: null,
+  };
+  personOut.narozeni = null;
+
   return {
-    person: hsPerson ?? {
-      jmeno: rawJmeno,
-      prijmeni,
-      titulPred: localPerson?.titulPred ?? null,
-      titulPo: null,
-      narozeni: date,
-      nameId: null,
-      profileUrl: null,
-    },
+    person: personOut,
     vazby: combined,
     truncated,
     totalUnique,

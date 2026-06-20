@@ -175,7 +175,14 @@ async function getJson<T>(path: string): Promise<T> {
     if (!response.ok) {
       throw new Error(`VR API HTTP ${response.status} for ${path}`);
     }
-    return (await response.json()) as T;
+    // VR (msp.gov.cz) občas vrátí HTML (blokace/údržba) i s HTTP 200 — JSON.parse
+    // by spadl na SyntaxError → 500. Mapujeme na VrAccessBlockedError (graceful).
+    const text = await response.text();
+    try {
+      return JSON.parse(text) as T;
+    } catch {
+      throw new VrAccessBlockedError(path);
+    }
   } finally {
     clearTimeout(timer);
   }

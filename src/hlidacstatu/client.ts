@@ -37,6 +37,19 @@ export class HlidacStatuRateLimitedError extends Error {
   }
 }
 
+/**
+ * HS vrátil neočekávanou odpověď — typicky HTTP 200 s HTML stránkou
+ * (Cloudflare/proxy/údržba) nebo 5xx. Bez tohoto by JSON.parse hodil
+ * neošetřený SyntaxError → 500 „Interní chyba serveru". Typovaná chyba
+ * umožní route handlerům vrátit čistou hlášku „dočasně nedostupné".
+ */
+export class HlidacStatuUnavailableError extends Error {
+  constructor(detail: string) {
+    super(`Hlídač státu nedostupný: ${detail}`);
+    this.name = "HlidacStatuUnavailableError";
+  }
+}
+
 function getToken(): string {
   // Priority: per-request token (z X-Hlidac-Token hlavičky) > env token.
   // Tím je možné aby každý uživatel přinesl vlastní token a nesdílel rate
@@ -95,9 +108,18 @@ async function getJson<T>(path: string): Promise<T> {
     if (response.status === 429) {
       throw new HlidacStatuRateLimitedError(body);
     }
-    throw new Error(`Hlídač státu HTTP ${response.status}: ${body.slice(0, 200)}`);
+    // 4xx/5xx (mimo 429) — HS chyba/výpadek, často HTML (Cloudflare/údržba).
+    throw new HlidacStatuUnavailableError(`HTTP ${response.status}: ${body.slice(0, 160)}`);
   }
-  const json = (await response.json()) as T;
+  // HS občas vrátí HTTP 200 s HTML stránkou (proxy/Cloudflare/údržba) — to by
+  // shodilo response.json() na neošetřený SyntaxError → 500. Parsujeme bezpečně.
+  const text = await response.text();
+  let json: T;
+  try {
+    json = JSON.parse(text) as T;
+  } catch {
+    throw new HlidacStatuUnavailableError(`neočekávaná odpověď (ne-JSON): ${text.slice(0, 120)}`);
+  }
   cache.set(key, { at: Date.now(), value: json });
   return json;
 }
