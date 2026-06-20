@@ -578,6 +578,7 @@ function ddSection() {
         // template vyrenderovat, takže listener není zaregistrován.)
         const reportDetail = {
           ico: this.report.ico,
+          obchodniJmeno: this.report.obchodniJmeno,
           pravniForma: this.report.identification?.pravniForma,
           aktivniCount: this.report.statutary?.aktivniCount || 0,
         };
@@ -654,6 +655,9 @@ function graphSection() {
     /** R3 — IČO firmy, ke které je mapa „ukotvena". Při přepnutí na jinou
      *  firmu (nový profil) se mapa vynuluje, ať nedrží předchozí subjekt. */
     _lastReportIco: null,
+    /** Poslední načtený profil (z ares-report-loaded) — pro detekci OSVČ:
+     *  fyzická osoba není ve VR → mapa prázdná → nabídneme „Vazby osoby". */
+    latestReport: null,
     // Selection map pro „Možné jmenovce" (tentativeCandidates). Key = jmeno|prijmeni
     // (unikátní per name; pokud má více seed firem, vše bere). Hodnota = boolean.
     // Default ON — uživatel odškrtává ty, kteří nejsou ten samý člověk.
@@ -713,7 +717,9 @@ function graphSection() {
       // vyšetřování (≥2 IČO nebo ego-osoby) nemaž — jen ukotvení na jednu firmu.
       window.addEventListener("ares-report-loaded", (e) => {
         const ico = e.detail?.ico;
-        if (!ico || this.shared) return;
+        if (!ico) return;
+        this.latestReport = e.detail; // pro OSVČ nótku — nastav VŽDY (i před returny)
+        if (this.shared) return;
         if (ico === this._lastReportIco) return;
         const wasMulti = (this.egoPersons?.length || 0) > 0 || this.parseIcos(this.raw).length >= 2;
         this._lastReportIco = ico;
@@ -966,6 +972,25 @@ function graphSection() {
       this.raw = "";
       const c = document.getElementById("cytoscape-container");
       if (c) c.innerHTML = "";
+    },
+    /** Je poslední načtený subjekt fyzická osoba / OSVČ? (PF 100/101/105/107/108…)
+     *  Taková entita NENÍ ve VR → mapa propojení by byla prázdná; UI místo toho
+     *  nabídne „Vazby osoby". */
+    isFyzickaOsoba() {
+      const pf = String(this.latestReport?.pravniForma ?? "");
+      if (["100", "101", "102", "105", "107", "108", "109"].indexOf(pf) >= 0) return true;
+      const n = parseInt(pf, 10);
+      return Number.isFinite(n) && n >= 100 && n < 111;
+    },
+    /** Otevři „Vazby osoby" s předvyplněným jménem posledního subjektu (bez DOB —
+     *  uživatel ho doplní; samotné hledání DOB stejně vyžaduje). */
+    openLatestPersonVazby() {
+      const r = this.latestReport;
+      if (!r || !r.obchodniJmeno) return;
+      window.dispatchEvent(new CustomEvent("ares-open-person-vazby", {
+        detail: { jmeno: r.obchodniJmeno, datumNarozeni: "" },
+      }));
+      requestAnimationFrame(() => document.getElementById("vazby")?.scrollIntoView({ behavior: "smooth", block: "start" }));
     },
     /** Cytoscape rendering — interaktivní force graph. */
     renderCytoscape() {
