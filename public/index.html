@@ -112,6 +112,9 @@
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <link rel="apple-touch-icon" href="/favicon.svg" />
     <style>
+      /* Busy signál — „aplikace pracuje" (delší /api/ operace). Třídu app-busy
+         přepíná globální fetch-tracker v app.js. */
+      html.app-busy, html.app-busy * { cursor: progress !important; }
       /* Inter font-feature-settings pro lepší letter-spacing v nadpisech,
          lining numerals v IČO/datum atd. — Linear-style polish. */
       html, body {

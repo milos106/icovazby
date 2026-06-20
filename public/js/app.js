@@ -3,6 +3,38 @@
  * Vanilla, no build step. Loaded from /public/js/app.js.
  */
 
+// ── Globální „busy" signál ─────────────────────────────────────────────────
+// Jakákoli delší operace = volání /api/. Monkey-patchneme fetch a počítáme
+// in-flight API requesty; když nějaké běží déle než ~180 ms, přidáme na <html>
+// třídu `app-busy` → CSS nastaví cursor:progress („hodiny"). Práh zabrání
+// blikání u rychlých (cachovaných) odpovědí. Platí pro v1 i v2 (oba načítají
+// tenhle app.js); pokrývá profil, karty, graf/ego, holding, AI, bulk… vše.
+(function () {
+  try {
+    var n = 0, timer = null, root = document.documentElement;
+    var sync = function () {
+      if (n > 0) {
+        if (!timer && !root.classList.contains("app-busy")) {
+          timer = setTimeout(function () { timer = null; if (n > 0) root.classList.add("app-busy"); }, 180);
+        }
+      } else {
+        if (timer) { clearTimeout(timer); timer = null; }
+        root.classList.remove("app-busy");
+      }
+    };
+    var orig = window.fetch;
+    if (typeof orig === "function") {
+      window.fetch = function (input) {
+        var url = typeof input === "string" ? input : (input && input.url) || "";
+        var track = /\/api\//.test(url);
+        if (track) { n++; sync(); }
+        var done = function () { if (track) { n = Math.max(0, n - 1); sync(); } };
+        return orig.apply(this, arguments).then(function (r) { done(); return r; }, function (e) { done(); throw e; });
+      };
+    }
+  } catch (e) { /* fetch tracking je best-effort */ }
+})();
+
 const ICO_RE = /^\d{7,8}$/;
 const STORAGE_RECENT = "icovazby:recent";
 const STORAGE_BOOKMARKS = "icovazby:bookmarks";

@@ -1183,7 +1183,7 @@
         <!-- mini graph (graphSection recyklováno; #cytoscape-container nutné by-id) -->
         <!-- Jediná sekce pravého panelu — Vazby osoby i Rychlá poznámka se přesunuly
              (do nástrojového modalu, resp. na spodek středního sloupce). -->
-        <section class="p-3 space-y-2" x-data="graphSection()" x-init="init()" x-effect="document.documentElement.classList.toggle('app-busy', loading)" @ares-seed-graph.window="seed($event.detail.icos)">
+        <section class="p-3 space-y-2" x-data="graphSection()" x-init="init()" @ares-seed-graph.window="seed($event.detail.icos)">
           <div class="flex items-center justify-between"><h3 class="text-xs font-semibold">🌐 Mapa propojení</h3><button type="button" @click="toggleGraphFull()" class="text-[10px] text-emerald-500 hover:underline">otevřít plné plátno →</button></div>
 
           <!-- ── VYŠETŘOVACÍ OVLÁDÁNÍ (recykluje graphSection z app.js) ──
