@@ -98,6 +98,10 @@
       .card-pop { transition: border-color .15s ease, transform .15s ease; }
       .nav-active { box-shadow: inset 2px 0 0 0 #10b981; }
       #v2-map-box { height: var(--gh, 300px); min-height: 140px; }
+      /* Busy signál — „aplikace pracuje" (hledá propojení / ego-graf). */
+      html.app-busy, html.app-busy * { cursor: progress !important; }
+      @keyframes v2spin { to { transform: rotate(360deg); } }
+      .v2-spin { animation: v2spin .7s linear infinite; }
       #cytoscape-container { width: 100%; height: 100%; }
     </style>
   </head>
@@ -1179,7 +1183,7 @@
         <!-- mini graph (graphSection recyklováno; #cytoscape-container nutné by-id) -->
         <!-- Jediná sekce pravého panelu — Vazby osoby i Rychlá poznámka se přesunuly
              (do nástrojového modalu, resp. na spodek středního sloupce). -->
-        <section class="p-3 space-y-2" x-data="graphSection()" x-init="init()" @ares-seed-graph.window="seed($event.detail.icos)">
+        <section class="p-3 space-y-2" x-data="graphSection()" x-init="init()" x-effect="document.documentElement.classList.toggle('app-busy', loading)" @ares-seed-graph.window="seed($event.detail.icos)">
           <div class="flex items-center justify-between"><h3 class="text-xs font-semibold">🌐 Mapa propojení</h3><button type="button" @click="toggleGraphFull()" class="text-[10px] text-emerald-500 hover:underline">otevřít plné plátno →</button></div>
 
           <!-- ── VYŠETŘOVACÍ OVLÁDÁNÍ (recykluje graphSection z app.js) ──
@@ -1361,6 +1365,14 @@
           <!-- mini-graf / plátno (#cytoscape-container by-id; toggleGraphFull / resizer beze změny) -->
           <div id="v2-map-box" :class="graphFull ? '!fixed inset-0 z-[60] !h-screen !max-h-screen !min-h-screen !rounded-none' : ''" class="relative rounded-lg border border-slate-200 dark:border-ink-700 bg-white dark:bg-ink-950 overflow-hidden">
             <div x-show="renderMode === 'interactive'" id="cytoscape-container"></div>
+
+            <!-- ░ Spinner při práci s grafem (ego / hledání propojení / seed) ░ -->
+            <div x-show="loading" x-cloak class="absolute inset-0 z-30 flex items-center justify-center bg-white/30 dark:bg-ink-950/40 backdrop-blur-[1px] pointer-events-none">
+              <div class="flex items-center gap-2 px-3 py-2 rounded-lg bg-white/95 dark:bg-ink-850/95 border border-slate-200 dark:border-ink-700 shadow-lg text-[12px] font-medium text-slate-600 dark:text-slate-200">
+                <span class="w-4 h-4 rounded-full border-2 border-emerald-500/30 border-t-emerald-500 v2-spin inline-block"></span>
+                <span x-text="raw && parseIcos(raw).length > 1 ? 'Hledám propojení…' : 'Stavím mapu…'"></span>
+              </div>
+            </div>
 
             <!-- ░ Overlay ovládání NAD plátnem (vlevo nahoře) — vrstvy + subjekty v bloku grafu (jako stará verze) ░
                  pointer-events-none na obalu → graf zůstává tažitelný; jen pilulky chytají kliky. -->
