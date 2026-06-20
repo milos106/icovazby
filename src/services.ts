@@ -331,8 +331,13 @@ export async function crossCompanyPersonsService(
     }
   }
 
-  if (uniqueIcos.length < 2) {
-    throw new InvalidInputError("At least two distinct IČOs are required.");
+  // 1 IČO je OK → ego-graf jedné firmy (firma + její statutáři/UBO jako uzly,
+  // sharedCount=0). Auto-expand (seed-VR výše) typicky najde příbuzné firmy a
+  // dostane nás na ≥2; když ne (izolovaná s.r.o.), vykreslíme aspoň ji samotnou,
+  // ať je vždy-viditelný panel mapy užitečný u každé firmy. Multi-subjekt /
+  // overlap funkce se „probudí" až přidáním druhé firmy.
+  if (uniqueIcos.length < 1) {
+    throw new InvalidInputError("At least one IČO is required.");
   }
   if (uniqueIcos.length > 50) {
     throw new InvalidInputError("Maximum 50 IČOs per request.");

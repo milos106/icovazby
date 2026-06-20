@@ -1408,8 +1408,9 @@ function graphSection() {
       } else {
         this.raw = icos.join("\n");
       }
-      if (this.parseIcos(this.raw).length >= 2) await this.run();
-      else this.error = "Pro Mapu propojení potřebuješ alespoň 2 IČO.";
+      // 1 IČO je OK → server vykreslí ego-graf jedné firmy (firma + statutáři).
+      if (this.parseIcos(this.raw).length >= 1) await this.run();
+      else this.error = "Zadej alespoň 1 platné IČO.";
     },
     /**
      * Nový profil firmy v searchSection RESETuje Mapu propojení na jediné
@@ -1799,7 +1800,10 @@ function holdingDiscovery() {
         // Mapa dostane jen IČO. Historický flag čte z globálního store
         // ($store.history.enabled) — již synced s Profilem checkboxem.
         const icos = [parentIco, ...this.result.discovered.map((c) => c.ico)];
-        if (icos.length >= 2) {
+        // Seeduj i jednu firmu (≥1) → ego-graf firmy (firma + statutáři), ať je
+        // panel mapy užitečný u každého subjektu, ne jen u holdingů. Server u 1
+        // IČO ještě zkusí auto-expand; když nic, vykreslí ji samotnou.
+        if (icos.length >= 1) {
           window.dispatchEvent(new CustomEvent("ares-seed-graph", { detail: { icos } }));
         }
       } catch (e) {
