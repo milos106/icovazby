@@ -125,6 +125,16 @@ function parseRozvaha(text: string, pdfUrl: string, rok: number | null): Zaverka
     cr: [1], crHint: /tržby z prodeje|tržby za prod/i,
   });
 
+  // #3 Konzistenční gate per pole — radši mezeru než tiché špatné číslo:
+  for (const col of [0, 1] as const) {
+    // aktiva ≤ 0 je nereálné (každá firma má aktiva > 0) → zahoď
+    if (aktiva[col] != null && (aktiva[col] as number) <= 0) aktiva[col] = null;
+    // „Cizí zdroje" == aktiva = chytlo „Vlastní kapitál a závazky celkem" (pasiva celkem) → zahoď
+    if (cizi[col] != null && aktiva[col] != null && cizi[col] === aktiva[col]) cizi[col] = null;
+    // VK == aktiva = stejná záměna → zahoď
+    if (vk[col] != null && aktiva[col] != null && vk[col] === aktiva[col]) vk[col] = null;
+  }
+
   const fields = [aktiva, vk, cizi, vh, trzby];
   const precteno = fields.filter((v) => v[0] != null).length;
   if (precteno === 0) return null; // úplně nečitelné (sken / strukturovaný formát / netypická forma)
