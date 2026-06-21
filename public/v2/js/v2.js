@@ -854,7 +854,10 @@
         if (!d) return [];
         var out = [];
         (d.pep || []).forEach(function (p) {
-          var f = this.F("amber", "PEP: " + p.jmeno, p.jmeno + " (" + (p.funkce || "osoba ve firmě") + ") je politicky exponovaná osoba — " + p.duvod + ". AML vyžaduje rozšířenou kontrolu (EDD). Signál, ne důkaz; ověř profil v Hlídači státu.", "rizika");
+          var jeUbo = p.zdroj === "skutečný majitel";
+          var titul = jeUbo ? "PEP (skutečný majitel): " + p.jmeno : "PEP: " + p.jmeno;
+          var role = jeUbo ? "skutečný majitel za vlastnickou strukturou" : (p.funkce || "osoba ve firmě");
+          var f = this.F("amber", titul, p.jmeno + " (" + role + ") je politicky exponovaná osoba — " + p.duvod + ". " + (jeUbo ? "Odhalen přes evidenci skutečných majitelů (ne přímý statutár). " : "") + "AML vyžaduje rozšířenou kontrolu (EDD). Signál, ne důkaz; ověř profil v Hlídači státu.", "rizika");
           f.soft = true; // PEP = regulatorní nudge, ne tvrdé negativum
           out.push(f);
         }, this);

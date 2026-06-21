@@ -539,6 +539,29 @@ export function dbGetCompanyPersonsForPep(ico: string): Array<{ personKey: strin
   `).all(i) as Array<{ personKey: string; displayName: string; jmeno: string; prijmeni: string; datumNarozeni: string; funkce: string | null }>;
 }
 
+/** Normalizace části jména do podoby person_key (musí odpovídat store.ts normalize). */
+function normNamePart(s: string): string {
+  return s
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim();
+}
+
+/** PEP/UBO — dohledá datum(a) narození osoby v indexu podle jména. ESM (skuteční
+ *  majitelé) datum narození neuvádí; Hlídač osoby ho ale pro PEP vyžaduje, takže
+ *  ho rekonstruujeme z `person_key` (= normJmeno|normPrijmeni|YYYY-MM-DD). Může
+ *  vrátit víc kandidátů (jmenovci) — volající je všechny prověří. */
+export function dbFindDobByName(jmeno: string, prijmeni: string): string[] {
+  const d = getDb();
+  const j = normNamePart(jmeno);
+  const p = normNamePart(prijmeni);
+  if (!j || !p) return [];
+  const rows = d.prepare(`SELECT DISTINCT datum_narozeni AS dob FROM persons WHERE person_key LIKE ?`).all(`${j}|${p}|%`) as Array<{ dob: string }>;
+  return rows.map((r) => r.dob).filter((x) => /^\d{4}-\d{2}-\d{2}$/.test(x));
+}
+
 /** Forenzní vrstva — kolik firem je s osobou v indexu spojeno (aktivní angažmá).
  *  POZOR: spodní hranice — index obsahuje jen prověřené firmy („známo ≥N"). */
 export function dbCountCompaniesByPerson(personKey: string): number {

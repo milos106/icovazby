@@ -971,7 +971,7 @@ import {
 import { VR_ATTRIBUTION, fetchVrDetailByIco, findSubjektIdByIco } from "./justice_vr/client.js";
 import { fetchSbirkaListin, SL_ATTRIBUTION, parseCzDate } from "./justice_sl/client.js";
 import { extractZaverkaCisla, type ZaverkaCisla } from "./justice_sl/pdf.js";
-import { dbGetFinancials, dbUpsertFinancials, dbGetCompanyPersons, dbGetCompanyPersonsForPep, dbCountCompaniesByPerson, dbGetCompaniesByPerson, dbGetChildrenByParent } from "./persons_index/db.js";
+import { dbGetFinancials, dbUpsertFinancials, dbGetCompanyPersons, dbGetCompanyPersonsForPep, dbCountCompaniesByPerson, dbGetCompaniesByPerson, dbFindDobByName, dbGetChildrenByParent } from "./persons_index/db.js";
 
 function vrAddressToText(a?: {
   ulice?: string;
@@ -2213,8 +2213,9 @@ export async function getPepSankceService(client: AresClient, icoInput: string) 
   //    marker (strana / sponzor strany / politická funkce v událostech).
   const POL_FUNKCE = /poslan|senát|ministr|premiér|hejtman|primátor|starost|zastupitel|\bradní|náměst|prezident|komisař|velvyslan|guvernér|kraj|magistrát|vláda|náměstek/i;
   let pepTokenMissing = false;
-  type PepRow = { jmeno: string; funkce: string | null; profile: string; duvod: string };
-  const screenPerson = async (p: (typeof persons)[number]): Promise<PepRow | null> => {
+  type PepRow = { jmeno: string; funkce: string | null; profile: string; duvod: string; zdroj: string };
+  type ScreenInput = { jmeno: string; prijmeni: string; datumNarozeni: string; displayName: string; funkce: string | null };
+  const screenPerson = async (p: ScreenInput, zdroj: string): Promise<PepRow | null> => {
     if (!/^\d{4}-\d{2}-\d{2}$/.test(p.datumNarozeni) || !p.jmeno || !p.prijmeni) return null;
     try {
       const matches = await searchOsoby(p.jmeno, p.prijmeni, p.datumNarozeni);
@@ -2226,7 +2227,7 @@ export async function getPepSankceService(client: AresClient, icoInput: string) 
       const polFunkce = (detail.udalosti ?? []).some((u) => POL_FUNKCE.test(`${u.role ?? ""} ${u.organizace ?? ""} ${u.typ ?? ""}`));
       if (!strana && !sponzor && !polFunkce) return null; // shoda bez politického markeru → není PEP
       const profile = typeof m.profile === "string" && m.profile.startsWith("http") ? m.profile : `https://www.hlidacstatu.cz/osoba/${m.nameId}`;
-      return { jmeno: p.displayName, funkce: p.funkce, profile, duvod: strana ? "člen politické strany" : sponzor ? "sponzor politické strany" : "politická funkce" };
+      return { jmeno: p.displayName, funkce: p.funkce, profile, duvod: strana ? "člen politické strany" : sponzor ? "sponzor politické strany" : "politická funkce", zdroj };
     } catch (e) {
       if (e instanceof HlidacStatuMissingTokenError) pepTokenMissing = true;
       return null; // jiná chyba (rate limit / 400) → přeskoč osobu
@@ -2235,19 +2236,68 @@ export async function getPepSankceService(client: AresClient, icoInput: string) 
   // SÉRIOVĚ — paralelně trefí HS rate limit (neúplné), a pro AML je kompletnost
   // důležitější než rychlost. ~20 s/firma, ale endpoint je cachovaný (1× per firma)
   // a skóre se přepočítá, až dojede (re-finalize). Sanctions snapshot je pre-warmed.
+  const norm = (s: string) => s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
   const pep: PepRow[] = [];
+  const screenedKeys = new Set<string>(); // jméno+DOB už prověřené (dedup statutár × UBO)
   for (const p of persons.slice(0, 8)) {
-    const r = await screenPerson(p);
+    screenedKeys.add(`${norm(p.jmeno)}|${norm(p.prijmeni)}|${p.datumNarozeni}`);
+    const r = await screenPerson(p, "statutární osoba");
     if (r) pep.push(r);
   }
 
-  // 2) Sankce — EU (konsolidovaný) + OFAC (US) + UN + UK, jména osob + obchodní jméno
+  // 1b) UBO (skutečný majitel) — odhalí PEP/sankce SKRYTÉ za vlastnickou strukturou
+  //     (svěřenské fondy, holdingy). ESM neuvádí datum narození → rekonstruujeme ho
+  //     z indexu (dbFindDobByName); bez DOB Hlídač osoby PEP neprověří. Aktivní záznamy,
+  //     entity/fondy vynechány, strop kvůli HS rate limitu.
+  const uboNames: string[] = [];
+  let uboScreenovano = 0;
+  let uboBezDob = 0;
+  try {
+    if (hasHlidacToken()) {
+      const resp = await fetchUboByIco(ico);
+      const recs = (resp.results[0]?.skutecni_majitele ?? []).filter((r) => !r.datum_vymaz);
+      const seenUbo = new Set<string>();
+      let hsCalls = 0;
+      for (const r of recs) {
+        const jmeno = (r.osoba_jmeno ?? "").trim();
+        const prijmeni = (r.osoba_prijmeni ?? "").trim();
+        if (!jmeno || !prijmeni) continue;
+        // vynech entity / správce fondu (dlouhý „příjmení" s názvem fondu apod.)
+        if (/\bfond|svěřensk|sverensk|trust|s\.?r\.?o|a\.?\s?s\.|spol\./i.test(prijmeni) || prijmeni.length > 40) continue;
+        const dedupe = `${norm(jmeno)}|${norm(prijmeni)}`;
+        if (seenUbo.has(dedupe)) continue;
+        seenUbo.add(dedupe);
+        const display = [r.osoba_titul_pred, jmeno, prijmeni, r.osoba_titul_za].map((s) => (s ?? "").trim()).filter(Boolean).join(" ");
+        uboNames.push(display);
+        // DOB z ESM (zřídka) nebo z indexu
+        const esmDob = r.osoba_datum_narozeni && !r.osoba_datum_narozeni.startsWith("0001-") ? r.osoba_datum_narozeni.slice(0, 10) : null;
+        const dobs = esmDob && /^\d{4}-\d{2}-\d{2}$/.test(esmDob) ? [esmDob] : dbFindDobByName(jmeno, prijmeni).slice(0, 3);
+        if (dobs.length === 0) { uboBezDob++; continue; } // bez DOB nelze PEP prověřit
+        for (const dob of dobs) {
+          if (hsCalls >= 8) break; // strop HS volání pro UBO vrstvu
+          const key = `${norm(jmeno)}|${norm(prijmeni)}|${dob}`;
+          if (screenedKeys.has(key)) break; // už prověřeno jako statutár
+          screenedKeys.add(key);
+          hsCalls++;
+          const rr = await screenPerson({ jmeno, prijmeni, datumNarozeni: dob, displayName: display, funkce: "skutečný majitel" }, "skutečný majitel");
+          uboScreenovano++;
+          if (rr) { pep.push(rr); break; } // PEP shoda → stačí jeden DOB
+        }
+      }
+    }
+  } catch {
+    /* UBO nedostupné → screenuj jen statutáry */
+  }
+
+  // 2) Sankce — EU (konsolidovaný) + OFAC (US) + UN + UK; obchodní jméno + statutáři
+  //    + skuteční majitelé (sankce se křížej dle jména, DOB netřeba).
   let sankce: Array<{ source: string; query: string; matchedAs: string; programme: string }> = [];
   try {
     const names: string[] = [];
     const subj = await client.getEconomicSubject(ico).catch(() => null);
     if (subj?.obchodniJmeno) names.push(subj.obchodniJmeno);
     for (const p of persons) names.push(p.displayName);
+    for (const n of uboNames) names.push(n);
     if (names.length > 0) {
       const [eu, extra] = await Promise.all([
         screenEuSanctions(names).catch(() => ({ hits: [] as Awaited<ReturnType<typeof screenEuSanctions>>["hits"] })),
@@ -2262,7 +2312,7 @@ export async function getPepSankceService(client: AresClient, icoInput: string) 
     /* sankční feedy nedostupné → vynech */
   }
 
-  return { ico, indexovano: persons.length > 0, screenovano: persons.length, pep, pepTokenMissing, sankce, _attribution: PEP_SANKCE_ATTRIBUTION };
+  return { ico, indexovano: persons.length > 0, screenovano: persons.length, uboScreenovano, uboBezDob, pep, pepTokenMissing, sankce, _attribution: PEP_SANKCE_ATTRIBUTION };
 }
 
 // Expose helpers for tests / other consumers
