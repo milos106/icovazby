@@ -298,7 +298,7 @@
             <li class="flex gap-2"><span class="text-emerald-600 dark:text-emerald-400 flex-shrink-0">✓</span><span>Forenzní indikátory (sídlo, bílý kůň, kruhové vlastnictví, phoenix) — měkký signál v risk skóre</span></li>
             <li class="flex gap-2"><span class="text-emerald-600 dark:text-emerald-400 flex-shrink-0">✓</span><span><strong>PEP &amp; sankce i přes svěřenské fondy</strong> &mdash; odhalíme politicky exponovaného skutečného majitele schovaného za vlastnickou strukturou</span></li>
             <li class="flex gap-2"><span class="text-emerald-600 dark:text-emerald-400 flex-shrink-0">✓</span><span>Insolvence, exekuce, sankce &mdash; v jednom přehledu</span></li>
-            <li class="flex gap-2"><span class="text-emerald-600 dark:text-emerald-400 flex-shrink-0">✓</span><span>Watchlist &mdash; email alert při změně statutářů u sledované firmy</span></li>
+            <li class="flex gap-2"><span class="text-emerald-600 dark:text-emerald-400 flex-shrink-0">✓</span><span>Watchlist &mdash; email alert při změně statutářů, sídla, DPH (i nespolehlivý plátce), insolvence či zániku</span></li>
           </ul>
         </div>
 
@@ -817,9 +817,10 @@ flowchart TB
               <div class="text-sm font-semibold mb-2">Email alerty (Watchlist)</div>
               <p class="text-sm text-slate-700 dark:text-slate-300 mb-2">Uložte si firmu do sledovacího seznamu a budete dostávat email vždy, když se změní:</p>
               <ul class="text-sm space-y-1 text-slate-600 dark:text-slate-400">
-                <li>• statutáři/jednatelé</li>
-                <li>• status DPH plátce nebo bankovní účet</li>
-                <li>• vznik insolvence nebo zapsání na EU sankce</li>
+                <li>• statutáři/jednatelé (přibyl/odešel)</li>
+                <li>• <strong>změna sídla</strong> (stěhování)</li>
+                <li>• registrace k DPH (zrušení/obnova) + <strong>zařazení mezi nespolehlivé plátce</strong></li>
+                <li>• vznik insolvence nebo zánik subjektu</li>
               </ul>
             </div>
           </div>
