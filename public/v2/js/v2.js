@@ -70,6 +70,11 @@
       hsTokenSet: false,    // ⚙️ indikátor — má uživatel vlastní HS token (z localStorage)
       _lastGraphIco: null,  // poslední firma, pro kterou byla resetovaná mapa (anti-stale graf)
 
+      // Forenzní indikátory — JEDEN zdroj pravdy: computeRisk je načte a uloží sem;
+      // karta v Rizika i risk skóre čtou z TÉHOŽ → nemůžou se rozejít.
+      forensika: null,
+      forensikaLoading: false,
+
       riskState: {
         loading: false,
         ready: false,        // true až když derivace doběhne (zdroje / watchdog)
@@ -615,7 +620,18 @@
         if (sml) tasks.push(sml.load(ico));
         if (eu) tasks.push(eu.screen(report));
         if (sl) tasks.push(sl.load(ico));
-        if (forn) tasks.push(forn.load(ico, report.sidloText || (report.sidlo && report.sidlo.textovaAdresa)));
+        // Forenzní — JEDNO načtení; výsledek uložíme do self.forensika (karta i skóre
+        // čtou z toho samého). Task pořád resolvuje pro finalize().
+        if (forn) {
+          self.forensika = null;
+          self.forensikaLoading = true;
+          tasks.push(
+            forn.load(ico, report.sidloText || (report.sidlo && report.sidlo.textovaAdresa)).then(
+              function () { self.forensika = forn.data; self.forensikaLoading = false; },
+              function () { self.forensikaLoading = false; },
+            ),
+          );
+        }
 
         var total = tasks.length;
         var done = 0;
@@ -660,7 +676,15 @@
             if (areaIds.indexOf(f.group) >= 0 && ORD[f.level] < ORD[areas[f.group]]) areas[f.group] = f.level;
           });
 
-          var score = Math.max(0, 100 - counts.red * 45 - counts.amber * 12);
+          // Skóre s VÁHAMI: tvrdá fakta (insolvence, sankce…) = red −45 / amber −12;
+          // „měkké" forenzní signály (sídlo, bílý kůň…) lehčí = red −20 / amber −6,
+          // protože jsou „signál, ne důkaz" (false positives: byznys centra, advokáti).
+          var pen = 0;
+          uniq.forEach(function (f) {
+            if (f.level === "red") pen += f.soft ? 20 : 45;
+            else if (f.level === "amber") pen += f.soft ? 6 : 12;
+          });
+          var score = Math.max(0, 100 - pen);
 
           // Neúplné? Když některý zdroj vrátil chybu (typicky HS výpadek/rate-limit),
           // skóre je počítáno z částečných dat → označ, ať nevypadá falešně dokonale.
@@ -801,7 +825,8 @@
         if (d.kruhove && d.kruhove.nalezeno) {
           out.push(this.F("red", "Kruhové vlastnictví", "Cyklus ve vlastnické struktuře (" + (d.kruhove.cesta || []).join(" → ") + ") — možné zastírání skutečného majitele.", "vlastnictvi"));
         }
-        return out;
+        // „měkký" signál — do skóre s nižší vahou než tvrdé fakty (insolvence apod.).
+        return out.map(function (f) { f.soft = true; return f; });
       },
 
       // --- command palette ---

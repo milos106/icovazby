@@ -1121,25 +1121,25 @@
               </section>
 
               <!-- Forenzní indikátory (Fáze 1) -->
-              <section class="card-pop rounded-xl border border-slate-200 dark:border-ink-700 bg-white dark:bg-ink-850 p-3.5" x-data="ddForensikaLoader()" x-init="load(report.ico, report.sidloText || (report.sidlo && report.sidlo.textovaAdresa))">
+              <section class="card-pop rounded-xl border border-slate-200 dark:border-ink-700 bg-white dark:bg-ink-850 p-3.5">
                 <div class="flex items-center justify-between mb-2"><h3 class="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">🕵️ Forenzní indikátory</h3><span class="text-[9px] px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-600 dark:text-amber-300">experimentální</span></div>
-                <div x-show="loading" class="text-[12px] text-slate-400">Analyzuji vazby…</div>
-                <template x-if="data">
+                <div x-show="forensikaLoading" class="text-[12px] text-slate-400">Analyzuji vazby…</div>
+                <template x-if="forensika">
                   <div class="space-y-1.5 text-[12px]">
-                    <div x-show="data.sidlo && data.sidlo.pocet>=40" x-cloak class="flex items-start gap-2" :class="data.sidlo && data.sidlo.level==='red'?'text-rose-500':'text-amber-500'">
-                      <span class="shrink-0">⚠</span><span><strong x-text="data.sidlo && data.sidlo.pocet"></strong> firem na stejné adrese — možné <strong>hromadné/virtuální sídlo</strong> (pozor na byznys centra).</span>
+                    <div x-show="forensika.sidlo && forensika.sidlo.pocet>=40" x-cloak class="flex items-start gap-2" :class="forensika.sidlo && forensika.sidlo.level==='red'?'text-rose-500':'text-amber-500'">
+                      <span class="shrink-0">⚠</span><span><strong x-text="forensika.sidlo && forensika.sidlo.pocet"></strong> firem na stejné adrese — možné <strong>hromadné/virtuální sídlo</strong> (pozor na byznys centra).</span>
                     </div>
-                    <template x-for="p in (data.statutari||[]).filter(function(x){return x.level!=='green'})" :key="p.jmeno">
+                    <template x-for="p in (forensika.statutari||[]).filter(function(x){return x.level!=='green'})" :key="p.jmeno">
                       <div class="flex items-start gap-2" :class="p.level==='red'?'text-rose-500':'text-amber-500'">
                         <span class="shrink-0">⚠</span><span><strong x-text="p.jmeno"></strong> — angažmá v <strong x-text="p.pocetFirem"></strong> firmách (známo ≥). Možný <strong>„bílý kůň"</strong> — ověř kontext (advokát, likvidátor, manažer holdingu).</span>
                       </div>
                     </template>
-                    <div x-show="data.kruhove && data.kruhove.nalezeno" x-cloak class="flex items-start gap-2 text-rose-500"><span class="shrink-0">🔴</span><span><strong>Kruhové vlastnictví</strong> — <span x-text="(data.kruhove.cesta||[]).join(' → ')"></span> — možné zastírání majitele.</span></div>
-                    <div x-show="(!data.sidlo || data.sidlo.pocet<40) && !(data.statutari||[]).some(function(x){return x.level!=='green'}) && !(data.kruhove && data.kruhove.nalezeno)" class="flex items-center gap-2 text-emerald-500"><span>✓</span><span>Bez forenzních varování</span></div>
-                    <p class="pt-1.5 mt-1 border-t border-slate-100 dark:border-ink-700 text-[10px] text-slate-400 leading-snug">Signál, ne důkaz. Počty z interního indexu jsou <strong>spodní hranice</strong> (jen prověřené firmy). <span x-show="!data.indexovano" x-cloak>Osoby této firmy zatím nejsou v indexu → bílý kůň nelze dopočítat.</span></p>
+                    <div x-show="forensika.kruhove && forensika.kruhove.nalezeno" x-cloak class="flex items-start gap-2 text-rose-500"><span class="shrink-0">🔴</span><span><strong>Kruhové vlastnictví</strong> — <span x-text="(forensika.kruhove.cesta||[]).join(' → ')"></span> — možné zastírání majitele.</span></div>
+                    <div x-show="(!forensika.sidlo || forensika.sidlo.pocet<40) && !(forensika.statutari||[]).some(function(x){return x.level!=='green'}) && !(forensika.kruhove && forensika.kruhove.nalezeno)" class="flex items-center gap-2 text-emerald-500"><span>✓</span><span>Bez forenzních varování</span></div>
+                    <p class="pt-1.5 mt-1 border-t border-slate-100 dark:border-ink-700 text-[10px] text-slate-400 leading-snug">Signál, ne důkaz, do skóre s nižší vahou. Počty z interního indexu jsou <strong>spodní hranice</strong> (jen prověřené firmy). <span x-show="!forensika.indexovano" x-cloak>Osoby této firmy zatím nejsou v indexu → bílý kůň nelze dopočítat.</span></p>
                   </div>
                 </template>
-                <p x-show="forError && !loading" x-cloak class="text-[12px] text-rose-500" x-text="forError"></p>
+                <div x-show="!forensikaLoading && !forensika" x-cloak class="text-[12px] text-slate-400">Forenzní analýza nedostupná.</div>
               </section>
 
             </div>

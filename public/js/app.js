@@ -2103,7 +2103,7 @@ function ddSbirkaListinLoader() {
           this.ocrLoading = false;
         } else if (res && res.running) {
           this._ocrPolls = (this._ocrPolls || 0) + 1;
-          if (this._ocrPolls > 18) { this.ocrError = "OCR trvá neobvykle dlouho — zkus „↻" za chvíli."; this.ocrLoading = false; return; }
+          if (this._ocrPolls > 18) { this.ocrError = "OCR trvá neobvykle dlouho — zkus to za chvíli znovu."; this.ocrLoading = false; return; }
           setTimeout(() => this._ocrTick(ico), 12000); // pollni za 12 s
         } else {
           this.ocrError = (res && res.error) || "OCR nic nepřečetlo.";
