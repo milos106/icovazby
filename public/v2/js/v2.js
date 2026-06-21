@@ -842,6 +842,9 @@
         if (d.kruhove && d.kruhove.nalezeno) {
           out.push(this.F("red", "Kruhové vlastnictví", "Cyklus ve vlastnické struktuře (" + (d.kruhove.cesta || []).join(" → ") + ") — možné zastírání skutečného majitele.", "vlastnictvi"));
         }
+        if (d.phoenix) {
+          out.push(this.F(d.phoenix.level, "Možný phoenix: " + d.phoenix.jmeno, d.phoenix.jmeno + " je spojen se zaniklými firmami (" + d.phoenix.zanikle + " z " + d.phoenix.zkontrolovano + " kontrolovaných zaniklo) — možné sériové zakládání a likvidace firem (phoenix). Signál, ne důkaz; ověř historii osoby.", "rizika"));
+        }
         // „měkký" signál — do skóre s nižší vahou než tvrdé fakty (insolvence apod.).
         return out.map(function (f) { f.soft = true; return f; });
       },

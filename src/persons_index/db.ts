@@ -547,6 +547,17 @@ export function dbCountCompaniesByPerson(personKey: string): number {
   return r?.c ?? 0;
 }
 
+/** Forenzní (phoenix) — seznam IČO firem spojených s osobou (aktivní angažmá) +
+ *  funkce v nich. Slouží k dohledání, kolik z nich zaniklo (přes ARES). */
+export function dbGetCompaniesByPerson(personKey: string): Array<{ ico: string; funkce: string | null }> {
+  const d = getDb();
+  return d.prepare(`
+    SELECT ico, GROUP_CONCAT(DISTINCT funkce) AS funkce
+    FROM memberships WHERE person_key = ? AND datum_vymazu IS NULL
+    GROUP BY ico
+  `).all(personKey) as Array<{ ico: string; funkce: string | null }>;
+}
+
 export function dbGetOwnershipDetails(parentIco: string, includeHistorical: boolean): Array<{
   childIco: string;
   parentIco: string;

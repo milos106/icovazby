@@ -971,7 +971,7 @@ import {
 import { VR_ATTRIBUTION, fetchVrDetailByIco, findSubjektIdByIco } from "./justice_vr/client.js";
 import { fetchSbirkaListin, SL_ATTRIBUTION, parseCzDate } from "./justice_sl/client.js";
 import { extractZaverkaCisla, type ZaverkaCisla } from "./justice_sl/pdf.js";
-import { dbGetFinancials, dbUpsertFinancials, dbGetCompanyPersons, dbGetCompanyPersonsForPep, dbCountCompaniesByPerson, dbGetChildrenByParent } from "./persons_index/db.js";
+import { dbGetFinancials, dbUpsertFinancials, dbGetCompanyPersons, dbGetCompanyPersonsForPep, dbCountCompaniesByPerson, dbGetCompaniesByPerson, dbGetChildrenByParent } from "./persons_index/db.js";
 
 function vrAddressToText(a?: {
   ulice?: string;
@@ -2150,12 +2150,43 @@ export async function getForensikaService(client: AresClient, icoInput: string, 
   // 3) Kruhové vlastnictví
   const kruhove = detectOwnershipCycle(ico);
 
+  // 4) Phoenix (Fáze 2) — řídicí osoba (NE likvidátor/insolvenční správce) opakovaně
+  //    spojená se ZANIKLÝMI firmami. Kandidát = osoba s mnoha angažmá; dohledáme stav
+  //    jejích firem přes ARES (datumZaniku). Likvidátoři vyloučeni (mají zaniklé firmy
+  //    z profese). Strop 25 firem (ARES je rychlý). Jen když existuje těžký kandidát.
+  let phoenix: { jmeno: string; zanikle: number; zkontrolovano: number; level: ForLevel } | null = null;
+  const isLikvidator = (f: string | null) => /likvid|insolvenční správce|nucený správce/i.test(f ?? "");
+  const cand = persons
+    .filter((p) => !isLikvidator(p.funkce))
+    .map((p) => ({ p, n: dbCountCompaniesByPerson(p.personKey) }))
+    .filter((x) => x.n >= 10)
+    .sort((a, b) => b.n - a.n)[0];
+  if (cand) {
+    const firmy = dbGetCompaniesByPerson(cand.p.personKey).filter((f) => !isLikvidator(f.funkce)).slice(0, 25);
+    let zanikle = 0;
+    let zkontrolovano = 0;
+    for (const f of firmy) {
+      try {
+        const subj = await client.getEconomicSubject(f.ico);
+        zkontrolovano++;
+        if (subj?.datumZaniku) zanikle++;
+      } catch {
+        /* přeskoč firmu */
+      }
+    }
+    if (zanikle >= 4) {
+      const ratio = zkontrolovano > 0 ? zanikle / zkontrolovano : 0;
+      phoenix = { jmeno: cand.p.displayName, zanikle, zkontrolovano, level: zanikle >= 5 && ratio >= 0.4 ? "red" : "amber" };
+    }
+  }
+
   return {
     ico,
     indexovano: persons.length > 0, // máme osoby firmy v indexu? (jinak bílý kůň nelze)
     sidlo,
     statutari,
     kruhove,
+    phoenix,
     _attribution: FORENSIKA_ATTRIBUTION,
   };
 }
