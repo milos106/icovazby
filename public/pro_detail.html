@@ -193,13 +193,33 @@
       <section id="mapa" class="fn">
         <h2 class="text-2xl font-bold tracking-tight mb-3"><span class="gradient-text">5.</span> Mapa propojení — vyšetřovací plátno</h2>
         <p class="text-slate-700 dark:text-slate-300 mb-4">Interaktivní graf vazeb mezi firmami a osobami. Má <strong>dvě vrstvy</strong> (🏢 vlastnictví · 👥 osoby) a chová se jako <strong>vyšetřovací plátno</strong> — můžeš na něj postavit víc subjektů a hledat, jak spolu souvisí.</p>
-        <div class="rounded-xl border border-slate-200 dark:border-slate-700 p-4 mb-4 text-sm space-y-2 bg-white dark:bg-slate-800">
-          <div><strong>👥 Víc subjektů naráz</strong> — přidáš víc osob/firem, každá má svůj „chip".</div>
-          <div><strong>🌐 Ego-graf osoby</strong> — jeden klik vykreslí <em>všechny</em> firmy dané osoby z indexu.</div>
-          <div><strong>➕ Přidat do mapy</strong> — přidáš osobu k už rozkreslené mapě.</div>
-          <div><strong>🔗 Detekce vazby</strong> — u 2+ subjektů aplikace sama zvýrazní <em>sdílené firmy a můstkové osoby</em> a napíše, přes co jsou propojeni.</div>
-          <div><strong>🎯 Primární subjekt</strong> — klik na chip zvýrazní jednoho hráče bez ztráty kontextu.</div>
-          <div><strong>∩ Režim průniku (AND)</strong> — zůstanou jen firmy, které všechny subjekty <em>sdílejí</em>.</div>
+        <!-- Co která mapová funkce dělá a k čemu je v praxi -->
+        <div class="space-y-2.5 mb-4">
+          <div class="rounded-xl border border-slate-200 dark:border-slate-700 p-3.5 bg-white dark:bg-slate-800">
+            <div class="font-semibold mb-0.5">🌐 Vykreslit mapu propojení</div>
+            <p class="text-sm text-slate-600 dark:text-slate-400"><strong>Co dělá:</strong> vezme 2–50 IČO, najde osoby, které sedí ve více z těch firem zároveň, a vykreslí je jako graf (firmy = uzly, osoby = uzly, hrany = členství).</p>
+            <p class="text-sm text-emerald-700 dark:text-emerald-400 mt-0.5"><strong>V praxi:</strong> prověříš celou skupinu/holding naráz a odhalíš <em>propojené uchazeče</em> ve veřejné zakázce, kartelové vazby nebo společné lidi mezi „nezávislými" firmami.</p>
+          </div>
+          <div class="rounded-xl border border-slate-200 dark:border-slate-700 p-3.5 bg-white dark:bg-slate-800">
+            <div class="font-semibold mb-0.5">👥 Zobrazení statutárů v mapě</div>
+            <p class="text-sm text-slate-600 dark:text-slate-400"><strong>Co dělá:</strong> každý jednatel / člen představenstva je samostatný uzel s hranou na svou firmu; <strong>sdílení statutáři</strong> (ve ≥2 firmách) se zvýrazní oranžově.</p>
+            <p class="text-sm text-emerald-700 dark:text-emerald-400 mt-0.5"><strong>V praxi:</strong> na první pohled vidíš, kdo řídí které firmy — odhalíš „bílé koně" sedící napříč desítkami firem i osobu, která spojuje dva zdánlivě cizí subjekty.</p>
+          </div>
+          <div class="rounded-xl border border-slate-200 dark:border-slate-700 p-3.5 bg-white dark:bg-slate-800">
+            <div class="font-semibold mb-0.5">🔍 Rozkrýt holding</div>
+            <p class="text-sm text-slate-600 dark:text-slate-400"><strong>Co dělá:</strong> z jedné firmy projde vlastnickou strukturu nahoru (kdo ji vlastní) i dolů (dceřinky) a celé to nasype do mapy. <a href="#holding" class="underline">Detail níže</a>.</p>
+            <p class="text-sm text-emerald-700 dark:text-emerald-400 mt-0.5"><strong>V praxi:</strong> zjistíš, do jaké skupiny firma patří, kdo ji <em>nakonec</em> ovládá a jestli je v holdingu firma v insolvenci — klíčové u due diligence před úvěrem/obchodem.</p>
+          </div>
+          <div class="rounded-xl border border-slate-200 dark:border-slate-700 p-3.5 bg-white dark:bg-slate-800">
+            <div class="font-semibold mb-0.5">🌐 Ego-graf osoby do mapy</div>
+            <p class="text-sm text-slate-600 dark:text-slate-400"><strong>Co dělá:</strong> z jednoho subjektu vykreslí <em>všechny</em> firmy, kde daná osoba figuruje (jméno + datum narození). U fyzické osoby (OSVČ) bez vazeb nabídne přímo „Vazby osoby".</p>
+            <p class="text-sm text-emerald-700 dark:text-emerald-400 mt-0.5"><strong>V praxi:</strong> prověříš konkrétního člověka — jednatele, majitele, protistranu — a uvidíš celé jeho portfolio firem (i historické a padlé).</p>
+          </div>
+          <div class="rounded-xl border border-slate-200 dark:border-slate-700 p-3.5 bg-white dark:bg-slate-800">
+            <div class="font-semibold mb-0.5">➕ Přidat do mapy (víc subjektů + detekce vazby)</div>
+            <p class="text-sm text-slate-600 dark:text-slate-400"><strong>Co dělá:</strong> přidá další osobu/firmu k už rozkreslené mapě (nezahodí předchozí). U 2+ subjektů sám zvýrazní <strong>sdílené firmy a můstkové osoby</strong> a napíše, přes co jsou propojeni. <strong>∩ Průnik</strong> nechá jen společné firmy; <strong>🎯 primární</strong> klikem zvýrazní jednoho hráče.</p>
+            <p class="text-sm text-emerald-700 dark:text-emerald-400 mt-0.5"><strong>V praxi:</strong> porovnáš dvě (nebo víc) osob/firem a zjistíš, jestli mají <em>skrytou vazbu</em> — společnou firmu, sdíleného statutára nebo prostředníka — typicky střet zájmů, propojené nabídky, kruhové vlastnictví.</p>
+          </div>
         </div>
         <div class="space-y-2 text-sm">
           <div class="flag-amber pl-3 py-1"><strong>Situace:</strong> přepneš na vrstvu „Vlastnictví" a osoba zmizí → správně, ta vrstva ukazuje jen firma→firma a fyzické společníky/akcionáře, ne statutáře.</div>
