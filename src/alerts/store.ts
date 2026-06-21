@@ -7,6 +7,9 @@
  *  - změna v statutárním orgánu (přidaný / odstraněný jednatel)
  *  - nová insolvence (isInsolvent přešel z false na true)
  *  - zánik subjektu (datumZaniku se objeví)
+ *  - změna sídla (textová adresa)
+ *  - změna registrace k DPH (zrušení / obnova plátcovství)
+ *  - nespolehlivý plátce DPH (přešel na ANO)
  *
  * Snapshot předchozího stavu držíme spolu s subscription — diff oproti
  * aktuální prověrce dělá `checkSubscriptions()`.
@@ -23,6 +26,9 @@ export interface SubscriptionSnapshot {
   datumZaniku?: string | null;
   isInsolvent?: boolean;
   statutariKeys: string[]; // "jmeno|datumNarozeni" pro každého aktivního
+  sidloText?: string | null; // textová adresa sídla — diff = stěhování
+  platceDph?: boolean; // aktivní registrace k DPH
+  nespolehlivyPlatce?: boolean; // ADIS — nespolehlivý plátce DPH (ANO)
 }
 
 export interface Subscription {

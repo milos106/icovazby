@@ -433,7 +433,7 @@ app.post("/api/alerts/subscribe", async (req: FastifyRequest, reply) => {
     const body = subscribeSchema.parse(req.body);
     const sub = await subscribe(body.email, body.ico);
     if (!sub.verifiedAt) {
-      const base = process.env.PUBLIC_BASE_URL ?? `http://${HOST}:${PORT}`;
+      const base = process.env.PUBLIC_BASE_URL ?? "https://icovazby.cz";
       const link = `${base}/api/alerts/verify/${sub.verificationToken}`;
       await sendMail({
         to: sub.email,
@@ -469,6 +469,17 @@ app.delete("/api/alerts/:id", async (req: FastifyRequest, reply) => {
   const id = (req.params as { id: string }).id;
   const ok = await unsubscribe(id);
   reply.send({ ok });
+});
+
+// Klikací odhlášení z e-mailu (GET — odkaz v těle zprávy).
+app.get("/api/alerts/unsubscribe/:id", async (req: FastifyRequest, reply) => {
+  const id = (req.params as { id: string }).id;
+  const ok = await unsubscribe(id);
+  reply.type("text/html").send(
+    ok
+      ? '<!DOCTYPE html><html><body style="font-family:sans-serif;padding:24px"><h2 style="color:#059669">✓ Odhlášeno</h2><p>Už ti nebudeme posílat alerty pro tuto firmu.</p><p><a href="/">Zpět na IČO vazby</a></p></body></html>'
+      : '<!DOCTYPE html><html><body style="font-family:sans-serif;padding:24px;color:#dc2626">Odběr nenalezen (možná už byl zrušen).</body></html>',
+  );
 });
 
 // Printable HTML report — uživatel ho otevře v novém tabu, browser
