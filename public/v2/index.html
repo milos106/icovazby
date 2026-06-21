@@ -1832,7 +1832,7 @@
           <template x-if="toolModal==='bulk'">
             <div x-data="bulkSection()" x-init="init && init()">
               <p class="text-sm text-slate-500 dark:text-slate-400 mb-4">
-                Vlož seznam IČO (1 na řádku, max 50) → paralelní DD pro všechny → CSV export + PDF prověrky.
+                Vlož seznam IČO (1 na řádku) → paralelní prověrka → CSV export + PDF. <strong>AML režim</strong> navíc obohatí o forenzní flagy, PEP/sankce a přeshraniční vlastnictví a seřadí portfolio od nejrizikovějšího.
               </p>
               <form @submit.prevent="run()" class="space-y-3 mb-4">
                 <textarea
@@ -1842,6 +1842,10 @@
                   class="w-full px-3 py-2 border border-slate-200 dark:border-ink-600 dark:bg-ink-850 dark:text-slate-100 rounded-lg font-mono text-sm focus:ring-2 focus:ring-emerald-500 outline-none"
                 ></textarea>
                 <p class="text-xs text-slate-500 dark:text-slate-400">Příklad: 26185610, 45274649, 26185610 — 1 IČO na řádek nebo oddělené čárkami.</p>
+                <label class="flex items-start gap-2 text-sm cursor-pointer select-none">
+                  <input type="checkbox" x-model="aml" class="mt-0.5 accent-emerald-600" />
+                  <span>🛡️ <strong>AML screening</strong> — forenzní flagy + PEP/sankce + přeshraniční vlastnictví, seřazeno od nejrizikovějšího. <span class="text-amber-600 dark:text-amber-400">Pomalejší</span> (PEP přes Hlídač státu), max 25 IČO.</span>
+                </label>
                 <div class="flex gap-3 items-center flex-wrap">
                   <input type="file" accept=".csv,.txt" @change="loadFile($event.target.files[0])" class="text-sm" />
                   <button type="submit" :disabled="loading" class="px-6 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 disabled:opacity-50" x-text="loading ? `Načítám… (${progress}/${total})` : 'Spustit'"></button>
@@ -1865,18 +1869,31 @@
                   <table class="w-full text-sm">
                     <thead class="text-left text-xs text-slate-500 dark:text-slate-400 border-b border-slate-200 dark:border-ink-700">
                       <tr>
+                        <th class="py-2" x-show="lastRunAml">Skóre</th>
                         <th class="py-2">IČO</th>
                         <th>Jméno</th>
                         <th>Risk</th>
                         <th>DPH</th>
                         <th>Statutáři</th>
                         <th>Insolvence</th>
+                        <th x-show="lastRunAml">Forenzní</th>
+                        <th x-show="lastRunAml">PEP</th>
+                        <th x-show="lastRunAml">Sankce</th>
+                        <th x-show="lastRunAml">Přeshr.</th>
                         <th></th>
                       </tr>
                     </thead>
                     <tbody>
                       <template x-for="r in results" :key="r.ico">
                         <tr class="border-b border-slate-100 dark:border-ink-700">
+                          <td x-show="lastRunAml" class="py-1.5">
+                            <span class="px-1.5 py-0.5 rounded text-xs font-semibold" :class="{
+                              'bg-rose-100 text-rose-700': r.amlScore >= 60,
+                              'bg-amber-100 text-amber-700': r.amlScore >= 25 && r.amlScore < 60,
+                              'bg-emerald-100 text-emerald-700': r.amlScore >= 0 && r.amlScore < 25,
+                              'bg-slate-100 text-slate-500': r.amlScore < 0,
+                            }" x-text="(r.amlScore != null && r.amlScore >= 0) ? r.amlScore : '—'"></span>
+                          </td>
                           <td class="py-1.5 font-mono text-xs tnum" x-text="r.ico"></td>
                           <td x-text="r.obchodniJmeno || '—'"></td>
                           <td>
@@ -1890,6 +1907,10 @@
                           <td x-text="r.dph"></td>
                           <td x-text="r.statutary"></td>
                           <td x-text="r.insolvence"></td>
+                          <td x-show="lastRunAml" class="text-xs" x-text="r.forensika || '—'"></td>
+                          <td x-show="lastRunAml" :class="r.pep > 0 ? 'text-amber-600 dark:text-amber-400 font-semibold' : ''" x-text="r.pep != null ? r.pep : '—'"></td>
+                          <td x-show="lastRunAml" :class="r.sankce > 0 ? 'text-rose-600 dark:text-rose-400 font-semibold' : ''" x-text="r.sankce != null ? r.sankce : '—'"></td>
+                          <td x-show="lastRunAml" class="text-xs" x-text="r.crossBorder || '—'"></td>
                           <td>
                             <a :href="'/report/' + r.ico" target="_blank" rel="noopener" class="text-emerald-700 dark:text-emerald-400 underline text-xs">PDF →</a>
                           </td>

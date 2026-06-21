@@ -2738,6 +2738,8 @@ function bulkSection() {
     results: [],
     progress: 0,
     total: 0,
+    aml: false, // AML režim: obohatí o forenziku + PEP/sankce + přeshraniční
+    lastRunAml: false, // jaký režim měl poslední běh (řídí sloupce/CSV)
     init() {
       // Seed z jiné sekce (např. Uložená vyhledávání → Prověřit více firem).
       window.addEventListener("ares-seed-bulk", (e) => {
@@ -2768,15 +2770,19 @@ function bulkSection() {
         this.error = "Žádné platné IČO. Vlož 8místná čísla, 1 na řádku.";
         return;
       }
-      if (icos.length > 50) {
-        this.error = "Maximum 50 IČO na bulk request.";
+      // AML režim je dražší (PEP přes Hlídač státu je rate-limited) → menší cap + nižší konkurence.
+      const cap = this.aml ? 25 : 50;
+      if (icos.length > cap) {
+        this.error = "Maximum " + cap + " IČO" + (this.aml ? " v AML režimu (PEP screening je pomalý)." : " na bulk request.");
         return;
       }
+      this.lastRunAml = this.aml;
       this.loading = true;
       this.total = icos.length;
       this.progress = 0;
       const out = [];
-      const CONCURRENCY = 5;
+      const aml = this.aml;
+      const CONCURRENCY = aml ? 2 : 5;
       let cursor = 0;
       const worker = async () => {
         while (cursor < icos.length) {
@@ -2784,7 +2790,7 @@ function bulkSection() {
           const ico = icos[i];
           try {
             const dd = await jsonFetch(`/api/dd/${ico}`);
-            out[i] = {
+            const row = {
               ico,
               obchodniJmeno: dd.obchodniJmeno,
               risk: dd.risk?.level || "?",
@@ -2793,19 +2799,61 @@ function bulkSection() {
               insolvence: dd.insolvenci?.isInsolvent ? "ANO" : "ne",
               findings: (dd.risk?.findings || []).map((f) => f.message).join("; "),
             };
+            if (aml) out[i] = await this.enrichAml(row, ico, dd);
+            else out[i] = row;
           } catch (e) {
-            out[i] = { ico, obchodniJmeno: "(chyba)", risk: "error", dph: "—", statutary: "—", insolvence: "—", findings: e.message };
+            out[i] = { ico, obchodniJmeno: "(chyba)", risk: "error", dph: "—", statutary: "—", insolvence: "—", findings: e.message, amlScore: -1 };
           }
           this.progress++;
           this.results = out.filter(Boolean);
         }
       };
       await Promise.all(Array.from({ length: CONCURRENCY }, () => worker()));
+      // Nejhorší nahoře (AML přehled portfolia).
+      if (aml) this.results = out.filter(Boolean).sort((a, b) => (b.amlScore || 0) - (a.amlScore || 0));
       this.loading = false;
     },
+    // Obohatí řádek o forenziku + PEP/sankce + přeshraniční a spočítá AML skóre (jen řazení/přehled).
+    async enrichAml(row, ico, dd) {
+      const [forn, ps, cb] = await Promise.all([
+        jsonFetch(`/api/forensika/${ico}`).catch(() => null),
+        jsonFetch(`/api/pep-sankce/${ico}`).catch(() => null),
+        jsonFetch(`/api/cross-border/${ico}`).catch(() => null),
+      ]);
+      const forParts = [];
+      if (forn) {
+        if (forn.sidlo && forn.sidlo.level && forn.sidlo.level !== "green") forParts.push("hromadné sídlo");
+        if ((forn.statutari || []).some((s) => s.level !== "green")) forParts.push("bílý kůň");
+        if (forn.kruhove && forn.kruhove.nalezeno) forParts.push("cyklus");
+        if (forn.phoenix) forParts.push("phoenix");
+      }
+      const pepN = ps && ps.pep ? ps.pep.length : 0;
+      const sankN = ps && ps.sankce ? ps.sankce.length : 0;
+      const cbFlag = cb && cb.crossBorder ? (cb.foreignParent ? "matka v zahraničí" : "zahr. dcery") : "";
+      row.forensika = forParts.join(", ") || "—";
+      row.pep = pepN;
+      row.sankce = sankN;
+      row.crossBorder = cbFlag || "—";
+      // AML skóre (vyšší = rizikovější) — jen pro řazení a přehled, ne oficiální metrika.
+      row.amlScore =
+        (row.risk === "red" ? 40 : row.risk === "yellow" ? 15 : 0) +
+        (row.insolvence === "ANO" ? 30 : 0) +
+        forParts.length * 8 +
+        pepN * 10 +
+        sankN * 40 +
+        (cbFlag ? 6 : 0);
+      return row;
+    },
     exportCsv() {
-      const headers = ["IČO", "Jméno", "Risk", "DPH", "Statutáři", "Insolvence", "Findings"];
-      const rows = this.results.map((r) => [r.ico, r.obchodniJmeno, r.risk, r.dph, r.statutary, r.insolvence, r.findings]);
+      const aml = this.lastRunAml;
+      const headers = aml
+        ? ["AML skóre", "IČO", "Jméno", "Risk", "Insolvence", "Forenzní flagy", "PEP", "Sankce", "Přeshraniční", "DPH", "Statutáři", "Findings"]
+        : ["IČO", "Jméno", "Risk", "DPH", "Statutáři", "Insolvence", "Findings"];
+      const rows = this.results.map((r) =>
+        aml
+          ? [r.amlScore, r.ico, r.obchodniJmeno, r.risk, r.insolvence, r.forensika, r.pep, r.sankce, r.crossBorder, r.dph, r.statutary, r.findings]
+          : [r.ico, r.obchodniJmeno, r.risk, r.dph, r.statutary, r.insolvence, r.findings],
+      );
       const csv = [headers, ...rows].map((row) => row.map((v) => `"${String(v ?? "").replace(/"/g, '""')}"`).join(",")).join("\n");
       const blob = new Blob(["﻿" + csv], { type: "text/csv;charset=utf-8" });
       const url = URL.createObjectURL(blob);
