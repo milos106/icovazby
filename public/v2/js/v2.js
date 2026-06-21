@@ -649,12 +649,13 @@
 
         var total = tasks.length;
         var done = 0;
-        var finalized = false;
+        var watchdogCleared = false;
 
+        // finalize je IDEMPOTENTNÍ a RE-RUNNABLE: watchdog dá rychlé částečné skóre
+        // v 8 s, a až dojedou pomalé loadery (PEP/sankce, forenzika), tick zavolá
+        // finalize znovu a skóre se PŘEPOČÍTÁ s plnými daty (jinak by je minulo).
         function finalize() {
-          if (finalized) return;
-          finalized = true;
-          clearTimeout(watchdog);
+          if (!watchdogCleared) { clearTimeout(watchdog); watchdogCleared = true; }
 
           // ochrana proti race (uživatel mezitím přepnul firmu)
           if (!self.report || self.report.ico !== ico) return;
@@ -853,6 +854,11 @@
           var f = this.F("amber", "PEP: " + p.jmeno, p.jmeno + " (" + (p.funkce || "osoba ve firmě") + ") je politicky exponovaná osoba — " + p.duvod + ". AML vyžaduje rozšířenou kontrolu (EDD). Signál, ne důkaz; ověř profil v Hlídači státu.", "rizika");
           f.soft = true; // PEP = regulatorní nudge, ne tvrdé negativum
           out.push(f);
+        }, this);
+        // Sankce mimo EU (OFAC/UN/UK) — tvrdý red. EU řeší samostatný loader (nezdvojovat).
+        (d.sankce || []).forEach(function (s) {
+          if (s.source === "EU") return;
+          out.push(this.F("red", "Sankce " + s.source + ": " + s.query, s.query + " — shoda na sankčním seznamu " + s.source + " (" + s.matchedAs + (s.programme ? ", " + s.programme : "") + "). Ověř datum narození a zemi u zdroje.", "rizika"));
         }, this);
         return out;
       },

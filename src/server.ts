@@ -201,6 +201,7 @@ app.addHook("onRequest", async (req) => {
 // R16: audit log pro AML compliance. Logujeme DD lookupy + holding discovery
 // + cross-persons. Statické soubory a /healthz nelogujeme (low signal).
 import { dbAudit, dbGetResponseCache, dbSetResponseCache } from "./persons_index/db.js";
+import { screenExtraSanctions } from "./sanctions/client.js";
 app.addHook("onRequest", async (req) => {
   const url = req.url;
   if (!url.startsWith("/api/")) return;
@@ -1009,6 +1010,16 @@ async function warmup() {
         return { name: "eu-sanctions", ok: true, ms: Date.now() - t };
       } catch (e) {
         return { name: "eu-sanctions", ok: false, ms: Date.now() - t, err: String(e) };
+      }
+    })(),
+    (async () => {
+      const t = Date.now();
+      try {
+        // OFAC/UN/UK snapshot (~17 s, 24 h cache) — ať první PEP/sankce screening uživatele není pomalý.
+        await screenExtraSanctions(["__warmup probe__"]);
+        return { name: "extra-sanctions", ok: true, ms: Date.now() - t };
+      } catch (e) {
+        return { name: "extra-sanctions", ok: false, ms: Date.now() - t, err: String(e) };
       }
     })(),
   ];

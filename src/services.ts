@@ -1180,6 +1180,7 @@ export async function getVrDetailService(ico: string) {
 
 // ─── EU consolidated financial sanctions list ─────────────────────────────────
 import { EU_SANCTIONS_ATTRIBUTION, screenEuSanctions } from "./eu_sanctions/client.js";
+import { screenExtraSanctions } from "./sanctions/client.js";
 
 export async function getEuSanctionsScreenService(names: string[]) {
   const r = await screenEuSanctions(names);
@@ -2180,40 +2181,54 @@ export async function getPepSankceService(client: AresClient, icoInput: string) 
   //    obsahuje i běžné statutáry → samotná shoda ≠ PEP. Detail musí mít POLITICKÝ
   //    marker (strana / sponzor strany / politická funkce v událostech).
   const POL_FUNKCE = /poslan|senát|ministr|premiér|hejtman|primátor|starost|zastupitel|\bradní|náměst|prezident|komisař|velvyslan|guvernér|kraj|magistrát|vláda|náměstek/i;
-  const pep: Array<{ jmeno: string; funkce: string | null; profile: string; duvod: string }> = [];
   let pepTokenMissing = false;
-  for (const p of persons.slice(0, 8)) {
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(p.datumNarozeni) || !p.jmeno || !p.prijmeni) continue;
+  type PepRow = { jmeno: string; funkce: string | null; profile: string; duvod: string };
+  const screenPerson = async (p: (typeof persons)[number]): Promise<PepRow | null> => {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(p.datumNarozeni) || !p.jmeno || !p.prijmeni) return null;
     try {
       const matches = await searchOsoby(p.jmeno, p.prijmeni, p.datumNarozeni);
-      if (!Array.isArray(matches) || matches.length === 0) continue;
+      if (!Array.isArray(matches) || matches.length === 0) return null;
       const m = matches[0]!;
       const detail = await fetchOsobaDetail(m.nameId);
       const strana = !!detail.politickaStrana;
       const sponzor = Array.isArray(detail.sponzoring) && detail.sponzoring.length > 0;
       const polFunkce = (detail.udalosti ?? []).some((u) => POL_FUNKCE.test(`${u.role ?? ""} ${u.organizace ?? ""} ${u.typ ?? ""}`));
-      if (!strana && !sponzor && !polFunkce) continue; // shoda bez politického markeru → není PEP
+      if (!strana && !sponzor && !polFunkce) return null; // shoda bez politického markeru → není PEP
       const profile = typeof m.profile === "string" && m.profile.startsWith("http") ? m.profile : `https://www.hlidacstatu.cz/osoba/${m.nameId}`;
-      pep.push({ jmeno: p.displayName, funkce: p.funkce, profile, duvod: strana ? "člen politické strany" : sponzor ? "sponzor politické strany" : "politická funkce" });
+      return { jmeno: p.displayName, funkce: p.funkce, profile, duvod: strana ? "člen politické strany" : sponzor ? "sponzor politické strany" : "politická funkce" };
     } catch (e) {
-      if (e instanceof HlidacStatuMissingTokenError) { pepTokenMissing = true; break; }
-      // jiná chyba (rate limit / 400) → přeskoč osobu, screening pokračuje
+      if (e instanceof HlidacStatuMissingTokenError) pepTokenMissing = true;
+      return null; // jiná chyba (rate limit / 400) → přeskoč osobu
     }
+  };
+  // SÉRIOVĚ — paralelně trefí HS rate limit (neúplné), a pro AML je kompletnost
+  // důležitější než rychlost. ~20 s/firma, ale endpoint je cachovaný (1× per firma)
+  // a skóre se přepočítá, až dojede (re-finalize). Sanctions snapshot je pre-warmed.
+  const pep: PepRow[] = [];
+  for (const p of persons.slice(0, 8)) {
+    const r = await screenPerson(p);
+    if (r) pep.push(r);
   }
 
-  // 2) EU sankce — jména řídicích osob + obchodní jméno
-  let sankce: Array<{ query: string; name: string; programmes: string[] }> = [];
+  // 2) Sankce — EU (konsolidovaný) + OFAC (US) + UN + UK, jména osob + obchodní jméno
+  let sankce: Array<{ source: string; query: string; matchedAs: string; programme: string }> = [];
   try {
     const names: string[] = [];
     const subj = await client.getEconomicSubject(ico).catch(() => null);
     if (subj?.obchodniJmeno) names.push(subj.obchodniJmeno);
     for (const p of persons) names.push(p.displayName);
     if (names.length > 0) {
-      const screen = await screenEuSanctions(names);
-      sankce = screen.hits.map((h) => ({ query: h.query, name: h.entity.aliases?.[0]?.wholeName ?? h.query, programmes: h.entity.programmes }));
+      const [eu, extra] = await Promise.all([
+        screenEuSanctions(names).catch(() => ({ hits: [] as Awaited<ReturnType<typeof screenEuSanctions>>["hits"] })),
+        screenExtraSanctions(names).catch(() => ({ hits: [] as Awaited<ReturnType<typeof screenExtraSanctions>>["hits"] })),
+      ]);
+      sankce = [
+        ...eu.hits.map((h) => ({ source: "EU", query: h.query, matchedAs: h.entity.aliases?.[0]?.wholeName ?? h.query, programme: h.entity.programmes.join("+") })),
+        ...extra.hits.map((h) => ({ source: h.source, query: h.query, matchedAs: h.matchedAs, programme: h.programme ?? "" })),
+      ];
     }
   } catch {
-    /* EU feed nedostupný → vynech */
+    /* sankční feedy nedostupné → vynech */
   }
 
   return { ico, indexovano: persons.length > 0, screenovano: persons.length, pep, pepTokenMissing, sankce, _attribution: PEP_SANKCE_ATTRIBUTION };
