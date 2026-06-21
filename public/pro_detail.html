@@ -154,17 +154,18 @@
       <!-- 2 -->
       <section id="risk" class="fn">
         <h2 class="text-2xl font-bold tracking-tight mb-3"><span class="gradient-text">2.</span> Risk skóre 0–100</h2>
-        <p class="text-slate-700 dark:text-slate-300 mb-4">Jedno číslo, které sečte všechna negativa z 11 zdrojů do zelené / žluté / červené pilulky. Faktory jsou <strong>transparentní</strong> — kliknutím se rozbalí, co se na skóre podílelo a kolik to ubralo.</p>
+        <p class="text-slate-700 dark:text-slate-300 mb-4">Jedno číslo, které sečte všechna negativa do zelené / žluté / červené pilulky. Faktory jsou <strong>transparentní</strong> — kliknutím se rozbalí, co se na skóre podílelo a kolik to ubralo. Skóre = <strong>100 − penalizace</strong>; každý nález ubere podle <strong>závažnosti</strong> (🔴/🟠) a <strong>typu</strong> — <em>tvrdá fakta</em> z registrů váží víc než <em>„měkké" forenzní signály</em> (mají často legitimní vysvětlení).</p>
         <div class="grid sm:grid-cols-2 gap-2 text-xs mb-4">
-          <div class="rounded-lg border border-rose-200 dark:border-rose-800 bg-rose-50 dark:bg-rose-900/20 p-2.5">−50 EU sankce</div>
-          <div class="rounded-lg border border-rose-200 dark:border-rose-800 bg-rose-50 dark:bg-rose-900/20 p-2.5">−30 Insolvence</div>
-          <div class="rounded-lg border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-900/20 p-2.5">−20 Nespolehlivý plátce DPH</div>
-          <div class="rounded-lg border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-900/20 p-2.5">−10 Virtuální sídlo</div>
+          <div class="rounded-lg border border-rose-200 dark:border-rose-800 bg-rose-50 dark:bg-rose-900/20 p-2.5">−45 EU sankce (tvrdé)</div>
+          <div class="rounded-lg border border-rose-200 dark:border-rose-800 bg-rose-50 dark:bg-rose-900/20 p-2.5">−45 Insolvence (tvrdé)</div>
+          <div class="rounded-lg border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-900/20 p-2.5">−12 Nespolehlivý plátce DPH</div>
+          <div class="rounded-lg border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-900/20 p-2.5">−20 Virtuální sídlo (forenzní)</div>
         </div>
         <div class="space-y-2 text-sm">
           <div class="flag-amber pl-3 py-1"><strong>Situace:</strong> skóre je červené → rozbal faktory a podívej se, <em>čím</em> to je (jedna stará insolvence ≠ aktivní sankce).</div>
           <div class="flag-red pl-3 py-1"><strong>🔴 Vyčteš:</strong> skóre &lt; 40 obvykle znamená aspoň jedno tvrdé negativum (sankce / insolvence / nespolehlivý plátce).</div>
           <div class="flag-green pl-3 py-1"><strong>🟢 Vyčteš:</strong> 80–100 = žádné registrované problémy. <em>Nepleť si s „bezpečné" &mdash; znamená to jen „nic v registrech".</em></div>
+          <div class="flag-amber pl-3 py-1"><strong>🕵️ Forenzní indikátory:</strong> hromadné/virtuální sídlo, bílý kůň (osoba v desítkách firem) a kruhové vlastnictví — analytika nad vlastnickým grafem. <strong>Signál, ne důkaz</strong> (false positives: byznys centra, advokáti/likvidátoři) → měkká váha (🔴 −20 / 🟠 −6).</div>
         </div>
       </section>
 
@@ -265,7 +266,7 @@
         <h2 class="text-2xl font-bold tracking-tight mb-3"><span class="gradient-text">8.</span> Hledání podle adresy — virtuální sídla</h2>
         <p class="text-slate-700 dark:text-slate-300 mb-4">Zadáš adresu a uvidíš, <strong>kolik firem na ní sídlí</strong>. Spousta firem na jedné adrese = virtuální sídlo / „úložiště" schránkových firem.</p>
         <div class="space-y-2 text-sm">
-          <div class="flag-red pl-3 py-1"><strong>🔴 Vyčteš:</strong> na adrese sídlí <em>desítky až stovky firem</em> → virtuální kancelář, red flag pro AML i pro reálnost firmy (promítá se do risk skóre jako −10).</div>
+          <div class="flag-red pl-3 py-1"><strong>🔴 Vyčteš:</strong> na adrese sídlí <em>desítky až stovky firem</em> → virtuální kancelář, red flag pro AML i pro reálnost firmy (promítá se do risk skóre jako forenzní indikátor −20/−6).</div>
           <div class="flag-green pl-3 py-1"><strong>🟢 Vyčteš:</strong> firma sídlí na adrese sama / s pár dalšími → reálné sídlo.</div>
         </div>
       </section>
@@ -286,7 +287,7 @@
         <h2 class="text-2xl font-bold tracking-tight mb-3"><span class="gradient-text">10.</span> Insolvence <span class="text-sm font-normal text-slate-500">(ISIR / justice.cz)</span></h2>
         <p class="text-slate-700 dark:text-slate-300 mb-4">Aktivní i historická insolvenční řízení z úplného feedu (ne jen vzorek).</p>
         <div class="space-y-2 text-sm">
-          <div class="flag-red pl-3 py-1"><strong>🔴 Vyčteš:</strong> <em>aktivní insolvence</em> (−30 v risk skóre) · firma nebo její statutář byl v insolvenci v minulosti (vzorec chování).</div>
+          <div class="flag-red pl-3 py-1"><strong>🔴 Vyčteš:</strong> <em>aktivní insolvence</em> (−45 v risk skóre) · firma nebo její statutář byl v insolvenci v minulosti (vzorec chování).</div>
           <div class="flag-amber pl-3 py-1"><strong>Situace:</strong> stará uzavřená insolvence ≠ aktuální problém, ale stojí za pozornost u statutáře, který se objevuje u víc padlých firem.</div>
         </div>
       </section>
