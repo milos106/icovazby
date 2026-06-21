@@ -971,7 +971,7 @@ import {
 import { VR_ATTRIBUTION, fetchVrDetailByIco, findSubjektIdByIco } from "./justice_vr/client.js";
 import { fetchSbirkaListin, SL_ATTRIBUTION, parseCzDate } from "./justice_sl/client.js";
 import { extractZaverkaCisla, type ZaverkaCisla } from "./justice_sl/pdf.js";
-import { dbGetFinancials, dbUpsertFinancials } from "./persons_index/db.js";
+import { dbGetFinancials, dbUpsertFinancials, dbGetCompanyPersons, dbCountCompaniesByPerson, dbGetChildrenByParent } from "./persons_index/db.js";
 
 function vrAddressToText(a?: {
   ulice?: string;
@@ -2067,6 +2067,92 @@ export async function getZaverkaVyvojService(icoInput: string) {
   if (flags.length === 0 && rada.length >= 2) flags.push({ level: "green", text: "Bez varovných finančních trendů." });
 
   return { applicable: true, ico, rada, metriky, trendFlags: flags, jednotka: latest.jednotka, _attribution: SL_ATTRIBUTION };
+}
+
+// ─── Forenzní vrstva (Fáze 1) — analytika nad daty, co už máme ────────────────
+type ForLevel = "red" | "amber" | "green"; // amber = oranžová (UI mapuje stejně)
+const FORENSIKA_ATTRIBUTION = {
+  zdroj: "ARES + interní index (Veřejný rejstřík)",
+  pozn: "Forenzní indikátory — signál, ne důkaz. Počty z indexu jsou spodní hranice (jen prověřené firmy).",
+};
+
+/** Cyklus v ownership grafu z dané firmy (A→B→…→A). DFS s rekurzním zásobníkem,
+ *  ohraničeno hloubkou a počtem uzlů (index je částečný). */
+function detectOwnershipCycle(startIco: string): { nalezeno: boolean; cesta: string[] } {
+  const path: string[] = [];
+  const onPath = new Set<string>();
+  const visited = new Set<string>();
+  let found: string[] | null = null;
+  function dfs(node: string, depth: number): void {
+    if (found || depth > 12 || visited.size > 300) return;
+    if (onPath.has(node)) {
+      const idx = path.indexOf(node);
+      found = path.slice(idx).concat(node);
+      return;
+    }
+    if (visited.has(node)) return;
+    visited.add(node);
+    onPath.add(node);
+    path.push(node);
+    for (const child of dbGetChildrenByParent(node, false)) dfs(child, depth + 1);
+    onPath.delete(node);
+    path.pop();
+  }
+  dfs(startIco.replace(/\D/g, "").padStart(8, "0"), 0);
+  return { nalezeno: !!found, cesta: found ?? [] };
+}
+
+/**
+ * Forenzní indikátory (on-demand): hromadné/virtuální sídlo, přetížený statutár
+ * („bílý kůň"), kruhové vlastnictví. Vše nad daty, co už máme (ARES adresa +
+ * interní index osob/vlastnictví). Signál, ne důkaz — vysoké false-positive (byznys
+ * centra, advokáti v mnoha firmách) → vždy číslo + kontext, ne tvrdá obvinění.
+ */
+export async function getForensikaService(client: AresClient, icoInput: string, adresaInput?: string) {
+  const ico = String(icoInput).replace(/\D/g, "").padStart(8, "0");
+
+  // 1) Sídlo — kolik firem sdílí PŘESNÝ adresní bod (RÚIAN kodAdresnihoMista;
+  //    textová adresa v ARES nehledá spolehlivě). >300 = červená, 40–300 = oranžová.
+  let sidlo: { pocet: number; level: ForLevel; adresa: string | null } | null = null;
+  try {
+    let adresa = adresaInput ?? null;
+    if (!adresa) {
+      const subj = await client.getEconomicSubject(ico);
+      adresa = subj?.sidlo?.textovaAdresa ?? null;
+    }
+    if (adresa && adresa.length >= 3) {
+      const r = await client.searchEconomicSubjects({ sidlo: { textovaAdresa: adresa }, pocet: 1 } as unknown as Parameters<typeof client.searchEconomicSubjects>[0]);
+      const pocet = r.pocetCelkem ?? 0;
+      const level: ForLevel = pocet > 300 ? "red" : pocet >= 40 ? "amber" : "green";
+      sidlo = { pocet, level, adresa };
+    }
+  } catch {
+    /* sídlo nedostupné → vynech */
+  }
+
+  // 2) Bílý kůň — statutáři/UBO firmy s mnoha angažmá (≥25 červená, ≥10 oranžová)
+  const persons = dbGetCompanyPersons(ico);
+  const statutari = persons
+    .map((p) => {
+      const pocetFirem = dbCountCompaniesByPerson(p.personKey);
+      const level: ForLevel = pocetFirem >= 25 ? "red" : pocetFirem >= 10 ? "amber" : "green";
+      return { jmeno: p.displayName, funkce: p.funkce, pocetFirem, level };
+    })
+    .filter((s) => s.pocetFirem >= 10)
+    .sort((a, b) => b.pocetFirem - a.pocetFirem)
+    .slice(0, 5);
+
+  // 3) Kruhové vlastnictví
+  const kruhove = detectOwnershipCycle(ico);
+
+  return {
+    ico,
+    indexovano: persons.length > 0, // máme osoby firmy v indexu? (jinak bílý kůň nelze)
+    sidlo,
+    statutari,
+    kruhove,
+    _attribution: FORENSIKA_ATTRIBUTION,
+  };
 }
 
 // Expose helpers for tests / other consumers

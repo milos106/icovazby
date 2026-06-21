@@ -41,6 +41,7 @@ import {
   getZaverkaCislaService,
   getZaverkaOcrService,
   getZaverkaVyvojService,
+  getForensikaService,
   getSmlouvyService,
   getVrDetailService,
   getTradeLicensesService,
@@ -809,6 +810,18 @@ app.get("/api/zaverka-ocr/:ico", async (req: FastifyRequest, reply) => {
     } finally {
       ocrInFlight--;
     }
+  } catch (e) {
+    sendError(reply, e);
+  }
+});
+
+// ─── Forenzní indikátory (Fáze 1: sídlo, bílý kůň, kruhové vlastnictví) — lazy ──
+app.get("/api/forensika/:ico", async (req: FastifyRequest, reply) => {
+  try {
+    const ico = (req.params as { ico: string }).ico;
+    const adresa = (req.query as { adresa?: string })?.adresa;
+    const key = `forensika:${ico}:${adresa ? "a" : "n"}`;
+    reply.send(await cached(key, () => getForensikaService(client, ico, adresa), { persist: true }));
   } catch (e) {
     sendError(reply, e);
   }

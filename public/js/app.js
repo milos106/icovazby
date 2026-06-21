@@ -2230,6 +2230,31 @@ function ddAdisLoader() {
   };
 }
 
+// Forenzní indikátory (Fáze 1): hromadné sídlo, bílý kůň, kruhové vlastnictví.
+// Adresu předáváme z reportu → server nemusí znovu fetchovat ARES.
+function ddForensikaLoader() {
+  return {
+    data: null,
+    loading: false,
+    forError: "",
+    async load(ico, adresa) {
+      if (!ico) return;
+      this.loading = true;
+      this.data = null;
+      this.forError = "";
+      try {
+        var q = adresa ? "?adresa=" + encodeURIComponent(adresa) : "";
+        this.data = await jsonFetch("/api/forensika/" + encodeURIComponent(ico) + q);
+      } catch (e) {
+        this.forError = "Forenzní indikátory selhaly: " + e.message;
+      } finally {
+        this.loading = false;
+      }
+    },
+  };
+}
+window.ddForensikaLoader = ddForensikaLoader;
+
 /**
  * Načte stav volitelných integrací (Hlídač státu API). Footer atribuce
  * citujícího Hlídače státu se zobrazí pouze pokud je integrace aktivní.

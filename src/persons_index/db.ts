@@ -509,6 +509,29 @@ export function dbGetChildrenByParent(parentIco: string, includeHistorical: bool
   return rows.map((r) => r.child_ico);
 }
 
+/** Forenzní vrstva — aktivní osoby firmy (statutáři/UBO) z indexu. */
+export function dbGetCompanyPersons(ico: string): Array<{ personKey: string; displayName: string; funkce: string | null }> {
+  const d = getDb();
+  const i = ico.replace(/\D/g, "").padStart(8, "0");
+  // jeden řádek na osobu (osoba může mít v jedné firmě víc funkcí → group)
+  const rows = d.prepare(`
+    SELECT m.person_key AS personKey, p.display_name AS displayName,
+           GROUP_CONCAT(DISTINCT m.funkce) AS funkce
+    FROM memberships m JOIN persons p ON p.person_key = m.person_key
+    WHERE m.ico = ? AND m.datum_vymazu IS NULL
+    GROUP BY m.person_key
+  `).all(i) as Array<{ personKey: string; displayName: string; funkce: string | null }>;
+  return rows;
+}
+
+/** Forenzní vrstva — kolik firem je s osobou v indexu spojeno (aktivní angažmá).
+ *  POZOR: spodní hranice — index obsahuje jen prověřené firmy („známo ≥N"). */
+export function dbCountCompaniesByPerson(personKey: string): number {
+  const d = getDb();
+  const r = d.prepare(`SELECT COUNT(DISTINCT ico) AS c FROM memberships WHERE person_key = ? AND datum_vymazu IS NULL`).get(personKey) as { c: number } | undefined;
+  return r?.c ?? 0;
+}
+
 export function dbGetOwnershipDetails(parentIco: string, includeHistorical: boolean): Array<{
   childIco: string;
   parentIco: string;

@@ -602,6 +602,7 @@
         var sml = window.ddSmlouvyLoader ? window.ddSmlouvyLoader() : null;
         var eu = window.ddEuSanctionsLoader ? window.ddEuSanctionsLoader() : null;
         var sl = window.ddSbirkaListinLoader ? window.ddSbirkaListinLoader() : null;
+        var forn = window.ddForensikaLoader ? window.ddForensikaLoader() : null;
 
         // Každý zdroj = jeden promise. „Dorazila odpověď" (i prázdná / chyba /
         // HS-token-gated ok:false) = HOTOVO pro tento zdroj → resolve i reject
@@ -614,6 +615,7 @@
         if (sml) tasks.push(sml.load(ico));
         if (eu) tasks.push(eu.screen(report));
         if (sl) tasks.push(sl.load(ico));
+        if (forn) tasks.push(forn.load(ico, report.sidloText || (report.sidlo && report.sidlo.textovaAdresa)));
 
         var total = tasks.length;
         var done = 0;
@@ -635,6 +637,7 @@
           if (sml) fs = fs.concat(self.fromSmlouvy(sml.smlouvy));
           if (eu) fs = fs.concat(self.fromSanctions(eu.result, report));
           if (sl) fs = fs.concat(self.fromSbirkaListin(sl.sl));
+          if (forn) fs = fs.concat(self.fromForensika(forn.data));
 
           fs = fs.filter(Boolean);
           // generický green „bez signálů" zahoď, pokud máme konkrétní nálezy
@@ -670,6 +673,7 @@
           failed(sml, "smlouvyError", "Registr smluv");
           if (eu && eu.error) missing.push("EU sankce");
           if (sl && (sl.slError || (sl.sl && sl.sl.error))) missing.push("Účetní závěrky");
+          failed(forn, "forError", "Forenzní indikátory");
 
           self.riskState = {
             loading: false, ready: true,
@@ -781,6 +785,23 @@
         if (hits > 0)
           return [this.F("red", "Shoda na sankčním seznamu EU", hits + " shoda v konsolidovaném sankčním listu EU — ověř datum narození a zemi.", "rizika")];
         return [this.F("green", "Nula shod na sankčních seznamech EU", "Screening " + jmen + " jmen bez zásahu.", "rizika")];
+      },
+      // Forenzní indikátory (Fáze 1) — signál, ne důkaz; vždy s číslem a kontextem.
+      fromForensika: function (d) {
+        if (!d) return [];
+        var out = [];
+        var s = d.sidlo;
+        if (s && s.level !== "green" && s.pocet >= 40) {
+          out.push(this.F(s.level, "Sídlo sdílí " + s.pocet + " firem", s.pocet + " subjektů na stejné adrese — možné hromadné/virtuální sídlo (znak schránkové firmy). Pozor na byznys centra (false positive).", "identita"));
+        }
+        (d.statutari || []).forEach(function (p) {
+          if (p.level === "green") return;
+          out.push(this.F(p.level, p.jmeno + " — angažmá v " + p.pocetFirem + " firmách", "Statutár/UBO spojen s ≥" + p.pocetFirem + " firmami (z indexu) — možný bílý kůň / poskytovatel sídel. Ověř kontext (advokát, likvidátor, manažer holdingu).", "vlastnictvi"));
+        }, this);
+        if (d.kruhove && d.kruhove.nalezeno) {
+          out.push(this.F("red", "Kruhové vlastnictví", "Cyklus ve vlastnické struktuře (" + (d.kruhove.cesta || []).join(" → ") + ") — možné zastírání skutečného majitele.", "vlastnictvi"));
+        }
+        return out;
       },
 
       // --- command palette ---
