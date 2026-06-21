@@ -2083,28 +2083,34 @@ function ddSbirkaListinLoader() {
     ocrLoading: false,
     ocrTried: false,
     ocrError: "",
+    // OCR běží na pozadí (může trvat 1–3 min) → spustíme a POLLUJEME, dokud nejsou
+    // čísla (cisla) nebo chyba. Server vrací {running:true}, dokud doběhne.
     async loadOcr(ico) {
       if (!ico || this.ocrLoading) return;
       this.ocrTried = true;
       this.ocrLoading = true;
       this.ocrError = "";
+      this._ocrPolls = 0;
+      this._ocrTick(ico);
+    },
+    async _ocrTick(ico) {
       try {
         const res = await jsonFetch(`/api/zaverka-ocr/${encodeURIComponent(ico)}`);
         if (res && res.cisla) {
           this.cisla = res; // přepíše „nepodařilo se" → zobrazí se OCR čísla
           this.cislaError = "";
-          // OCR je víceletý → rovnou ukaž i graf vývoje (server vrátil sérii)
-          if (res.vyvoj) {
-            this.vyvoj = res.vyvoj;
-            this.vyvojTried = true;
-            this.vyvojError = "";
-          }
+          if (res.vyvoj) { this.vyvoj = res.vyvoj; this.vyvojTried = true; this.vyvojError = ""; }
+          this.ocrLoading = false;
+        } else if (res && res.running) {
+          this._ocrPolls = (this._ocrPolls || 0) + 1;
+          if (this._ocrPolls > 18) { this.ocrError = "OCR trvá neobvykle dlouho — zkus „↻" za chvíli."; this.ocrLoading = false; return; }
+          setTimeout(() => this._ocrTick(ico), 12000); // pollni za 12 s
         } else {
           this.ocrError = (res && res.error) || "OCR nic nepřečetlo.";
+          this.ocrLoading = false;
         }
       } catch (e) {
         this.ocrError = "OCR nelze spustit: " + e.message;
-      } finally {
         this.ocrLoading = false;
       }
     },

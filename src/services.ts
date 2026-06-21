@@ -1946,8 +1946,10 @@ export async function getZaverkaOcrService(icoInput: string) {
   let latestCisla: ZaverkaCisla | null = null;
   let latestRok: number | null = null;
   let ocrDocs = 0;
+  const startTime = Date.now(); // pojistka proti runaway (OCR jede na pozadí, ne v requestu)
   for (const z of zaverky) {
     if (ocrDocs >= 4) break; // strop 4 dokumenty (~8 let) kvůli CPU
+    if (Date.now() - startTime > 240000) break; // tvrdá pojistka 4 min
     if (!z.detailUrl) continue;
     if (have.has(z.rok)) continue; // tenhle rok už pokryt předchozím dokumentem → každý 2.
     const urls = z.detailUrls?.length ? z.detailUrls : z.detailUrl ? [z.detailUrl] : [];

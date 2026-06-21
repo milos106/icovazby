@@ -784,32 +784,38 @@ app.get("/api/zaverka-cisla/:ico", async (req: FastifyRequest, reply) => {
   }
 });
 
-// ─── OCR skenu (Fáze 2b: pdftoppm+tesseract) — on-demand, drahé na CPU ─────────
-// Globální semafor: max 1 OCR najednou (chrání 2vCPU box). Výsledek se cachuje.
-let ocrInFlight = 0;
+// ─── OCR skenu (Fáze 2b: pdftoppm+tesseract) — BĚŽÍ NA POZADÍ + polling ─────────
+// OCR může trvat >100 s (velká firma, víc skenů) → proxy (Cloudflare ~100 s) by
+// request zabila. Proto request startne job na pozadí a vrátí {running:true};
+// frontend pollne. Semafor max 1 OCR (chrání 2vCPU). Úspěch se cachuje (30 d),
+// chyba krátce v paměti (ať polling nerestartuje a uživatel může zkusit znovu).
+const ocrRunning = new Set<string>();
+const ocrErrors = new Map<string, { error: string; ts: number }>();
 app.get("/api/zaverka-ocr/:ico", async (req: FastifyRequest, reply) => {
   try {
     const ico = (req.params as { ico: string }).ico;
-    if (ocrInFlight >= 1) {
-      reply.code(429).send({ applicable: true, error: "OCR právě běží pro jiný subjekt — zkus to za chvíli (šetříme CPU)." });
-      return;
-    }
-    // Cache JEN při úspěchu — chybu nepersistujeme, aby transient výpadek
-    // (or.justice občas vrátí HTML) nezamkl uživatele na 24 h; ať jde zkusit znovu.
     const key = `zavocr:${ico}`;
     const hit = dbGetResponseCache(key, 30 * 24 * 60 * 60 * 1000) as { cisla?: unknown } | undefined;
-    if (hit && hit.cisla) {
-      reply.send(hit);
-      return;
-    }
-    ocrInFlight++;
-    try {
-      const res = (await getZaverkaOcrService(ico)) as { cisla?: unknown };
-      if (res && res.cisla) dbSetResponseCache(key, res); // jen úspěšné OCR
-      reply.send(res);
-    } finally {
-      ocrInFlight--;
-    }
+    if (hit && hit.cisla) { reply.send(hit); return; } // hotovo (úspěch)
+    if (ocrRunning.has(ico)) { reply.send({ applicable: true, running: true }); return; } // běží
+    const err = ocrErrors.get(ico);
+    if (err && Date.now() - err.ts < 3 * 60 * 1000) { reply.send({ applicable: true, error: err.error }); return; } // nedávno selhalo
+    if (ocrRunning.size >= 1) { reply.send({ applicable: true, running: true, queued: true }); return; } // jiný OCR jede → ber jako běží
+    // start na pozadí
+    ocrRunning.add(ico);
+    ocrErrors.delete(ico);
+    void (async () => {
+      try {
+        const res = (await getZaverkaOcrService(ico)) as { cisla?: unknown; error?: string };
+        if (res && res.cisla) dbSetResponseCache(key, res);
+        else ocrErrors.set(ico, { error: res?.error || "OCR nic nepřečetlo.", ts: Date.now() });
+      } catch (e) {
+        ocrErrors.set(ico, { error: (e as Error).message, ts: Date.now() });
+      } finally {
+        ocrRunning.delete(ico);
+      }
+    })();
+    reply.send({ applicable: true, running: true });
   } catch (e) {
     sendError(reply, e);
   }
