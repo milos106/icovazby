@@ -32,6 +32,8 @@ export interface ZaverkaCisla {
   confidence: "high" | "low";
   zdrojPdfUrl: string;
   source?: "text" | "ocr"; // ocr = čteno ze skenu přes tesseract (experimentální)
+  precteno?: number; // kolik z 5 klíčových polí se podařilo přečíst
+  chybi?: string[]; // názvy nepřečtených polí (pro „kompletnost" v UI)
 }
 
 const run = (cmd: string, args: string[]): Promise<string> =>
@@ -57,38 +59,76 @@ function toNum(s: string | undefined): number | null {
 // (\d+ místo \d{1,3} — jinak se 4místné číslo bez oddělovače rozseká na 3+1.)
 const NUM_TOKEN = /[(-]?\d+(?:[  ]\d{3})*\)?/g;
 
-function valuesForLabel(text: string, labels: RegExp[]): [number | null, number | null] {
-  for (const line of text.split("\n")) {
-    for (const re of labels) {
+/**
+ * Vytáhne [běžné, minulé] hodnotu jednoho pole. Dvě strategie:
+ *  1) podle POPISKU (specifické regexy) — primární,
+ *  2) č.ř. KOTVA (univerzální dle vyhlášky 500/2002) — když popisek selže: na řádku
+ *     s „crHint" (široké klíčové slovo, aby se ve spojeném textu nepletla pole se
+ *     stejným č.ř., např. aktiva×tržby = č.ř. 1) vezmi řádek, kde VEDOUCÍ číslo = č.ř.
+ *  Vždy bere POSLEDNÍ dva tokeny = Netto běžné + Netto minulé (plná rozvaha i IFRS).
+ */
+function valuesFor(
+  text: string,
+  opts: { labels: RegExp[]; cr?: number[]; crHint?: RegExp },
+): [number | null, number | null] {
+  const lines = text.split("\n");
+  for (const line of lines) {
+    for (const re of opts.labels) {
       if (re.test(line)) {
-        const after = line.replace(re, " ");
-        const toks = after.match(NUM_TOKEN) || [];
-        if (toks.length >= 2) {
-          // Bereme POSLEDNÍ dva tokeny = Netto běžné + Netto minulé. Funguje pro
-          // standardní rozvahu (č.ř./Brutto/Korekce/Netto/MinuléNetto) i IFRS
-          // (jen 2 sloupce). První tokeny u standardní rozvahy = č.ř./Brutto.
-          return [toNum(toks[toks.length - 2]), toNum(toks[toks.length - 1])];
-        }
+        const toks = line.replace(re, " ").match(NUM_TOKEN) || [];
+        if (toks.length >= 2) return [toNum(toks[toks.length - 2]), toNum(toks[toks.length - 1])];
         if (toks.length === 1) return [toNum(toks[0]), null];
+      }
+    }
+  }
+  if (opts.cr?.length && opts.crHint) {
+    for (const line of lines) {
+      if (!opts.crHint.test(line)) continue;
+      const toks = line.match(NUM_TOKEN) || [];
+      if (toks.length >= 3 && opts.cr.includes(Number(toNum(toks[0])))) {
+        return [toNum(toks[toks.length - 2]), toNum(toks[toks.length - 1])];
       }
     }
   }
   return [null, null];
 }
 
-/** Parsuje rozvahu/výsledovku z layout textu. Vrátí null, když to není rozvaha. */
-function parseRozvaha(text: string, pdfUrl: string, rok: number | null): ZaverkaCisla | null {
-  const aktiva = valuesForLabel(text, [/\bAKTIVA\s+CELKEM\b/i, /\bAktiva celkem\b/i]);
-  if (aktiva[0] == null) return null; // bez „Aktiva celkem" to není rozvaha
+const ZAV_POLE = ["Aktiva", "Vlastní kapitál", "Cizí zdroje", "Výsledek hosp.", "Tržby"] as const;
 
+/** Parsuje rozvahu/výsledovku z layout textu. Per-POLE: vrátí, co se podaří přečíst
+ *  (i jen část), a kolik polí chybí. Null jen když nepřečte VŮBEC nic. */
+function parseRozvaha(text: string, pdfUrl: string, rok: number | null): ZaverkaCisla | null {
   // „Vlastní kapitál a závazky" NEbrat jako kapitál ani cizí zdroje (= pasiva celkem).
-  const vk = valuesForLabel(text, [/Vlastní kapitál\s+celkem(?!\s+a)/i, /Vlastní kapitál\b(?!\s+a\b)/i]);
-  const cizi = valuesForLabel(text, [/Cizí zdroje\b/i]);
-  const vh = valuesForLabel(text, [
-    /Výsledek hospodaření za účetní období/i, /Výsledek hospodaření za běžné/i,
-    /Výsledek hospodaření po zdanění/i, /Čistý zisk za období/i, /Zisk po zdanění/i, /Zisk za rok/i,
-  ]);
-  const trzby = valuesForLabel(text, [/Tržby z prodeje výrobků a služeb/i, /Tržby za prodej vlastních výrobků/i, /Tržby celkem/i]);
+  const aktiva = valuesFor(text, {
+    labels: [/\bAKTIVA\s+CELKEM\b/i, /\bAktiva celkem\b/i, /Celková\s+aktiva/i, /Aktiva\s+celkem/i],
+    cr: [1], crHint: /aktiv/i,
+  });
+  const vk = valuesFor(text, {
+    labels: [/Vlastní kapitál\s+celkem(?!\s+a)/i, /Vlastní kapitál\b(?!\s+a\b)/i, /Vlastní jmění/i],
+    crHint: /vlastní kapitál|vlastní jmění/i,
+  });
+  const cizi = valuesFor(text, {
+    // „Vlastní kapitál a závazky celkem" = pasiva celkem (≈ aktiva) → NEbrat (lookbehind).
+    labels: [/Cizí zdroje\b/i, /(?<!kapitál a )Závazky\s+celkem/i, /Cizí kapitál/i],
+    crHint: /cizí zdroj|cizí kapitál/i,
+  });
+  const vh = valuesFor(text, {
+    labels: [
+      /Výsledek hospodaření za účetní období/i, /Výsledek hospodaření za běžné/i,
+      /Výsledek hospodaření po zdanění/i, /Čistý zisk za období/i, /Zisk po zdanění/i,
+      /Zisk za rok/i, /Čistý zisk\b/i, /Hospodářský výsledek za účetní/i,
+    ],
+    cr: [55, 53], crHint: /výsledek hospodaření za účetní|čistý zisk|po zdanění/i,
+  });
+  const trzby = valuesFor(text, {
+    labels: [/Tržby z prodeje výrobků a služeb/i, /Tržby za prodej vlastních výrobků/i, /Tržby celkem/i, /Tržby z prodeje vlastních/i],
+    cr: [1], crHint: /tržby z prodeje|tržby za prod/i,
+  });
+
+  const fields = [aktiva, vk, cizi, vh, trzby];
+  const precteno = fields.filter((v) => v[0] != null).length;
+  if (precteno === 0) return null; // úplně nečitelné (sken / strukturovaný formát / netypická forma)
+  const chybi = ZAV_POLE.filter((_, i) => fields[i]![0] == null) as unknown as string[];
 
   const jednotka: "tis. Kč" | "Kč" = /v\s+(?:tis(?:íc)?\.?|celých\s+tis)/i.test(text) ? "tis. Kč" : "Kč";
   const maxY = rok; // rok z metadat Sbírky listin (spolehlivé, neparsujeme z PDF)
@@ -98,8 +138,6 @@ function parseRozvaha(text: string, pdfUrl: string, rok: number | null): Zaverka
   if (aktiva[0] != null && vk[0] != null && cizi[0] != null) {
     const pasiva = (vk[0] || 0) + (cizi[0] || 0);
     if (aktiva[0] > 0 && Math.abs(pasiva - aktiva[0]) / aktiva[0] < 0.02) confidence = "high";
-  } else if (aktiva[0] != null && vh[0] != null) {
-    confidence = "low";
   }
 
   return {
@@ -112,6 +150,8 @@ function parseRozvaha(text: string, pdfUrl: string, rok: number | null): Zaverka
     trzby,
     confidence,
     zdrojPdfUrl: pdfUrl,
+    precteno,
+    chybi,
   };
 }
 

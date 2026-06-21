@@ -1002,7 +1002,8 @@
                               </template>
                             </tbody>
                           </table>
-                          <p class="mt-1 text-[10px] text-slate-400">Z poslední závěrky (<span x-text="cisla.rok"></span>) · <span x-show="cisla.cisla.source==='ocr'" class="text-amber-600 dark:text-amber-300">📷 čteno OCR ze skenu — ověř ručně · </span><span x-text="cisla.cisla.confidence==='high'?'✓ aktiva = pasiva':'⚠ nízká spolehlivost — ověř u zdroje'"></span> · experimentální (bez AI).</p>
+                          <p class="mt-1 text-[10px] text-slate-400">Z poslední závěrky (<span x-text="cisla.rok"></span>) · <span x-text="(cisla.cisla.precteno!=null?cisla.cisla.precteno:5)+'/5 polí'"></span> · <span x-show="cisla.cisla.source==='ocr'" class="text-amber-600 dark:text-amber-300">📷 OCR ze skenu · </span><span x-text="cisla.cisla.confidence==='high'?'✓ aktiva = pasiva':'⚠ nízká spolehlivost'"></span> · experimentální (bez AI).</p>
+                          <p x-show="(cisla.cisla.chybi||[]).length" x-cloak class="text-[10px] text-amber-600 dark:text-amber-300 leading-snug">⚠ Nepřečteno: <span x-text="(cisla.cisla.chybi||[]).join(', ')"></span> — jiná/nestandardní forma výkazu, dočti v <a :href="(sl && sl.portalUrl) || 'https://or.justice.cz'" target="_blank" class="underline">PDF</a>.</p>
                         </div>
                       </template>
                       <template x-if="cisla && cisla.error && !cislaLoading">
