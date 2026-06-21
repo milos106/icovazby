@@ -1009,7 +1009,7 @@
                         <div>
                           <p class="text-[11px] text-slate-400" x-text="cisla.error"></p>
                           <button x-show="(!ocrTried || ocrError) && !ocrLoading" type="button" @click="loadOcr(report.ico)" class="mt-1 text-[11px] px-2.5 py-1 rounded-md bg-amber-500/10 text-amber-700 dark:text-amber-300 hover:bg-amber-500/20 font-medium" x-text="ocrError ? '↻ Zkusit OCR znovu' : '🔍 Zkusit přečíst sken (OCR)'"></button>
-                          <div x-show="ocrLoading" x-cloak class="text-[11px] text-slate-400">OCR skenu běží… (~10–60 s, experimentální)</div>
+                          <div x-show="ocrLoading" x-cloak class="text-[11px] text-slate-400">OCR skenů (víc let) běží… (~30–90 s, experimentální)</div>
                           <p x-show="ocrError && !ocrLoading" x-cloak class="text-[11px] text-rose-500" x-text="ocrError"></p>
                         </div>
                       </template>

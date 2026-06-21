@@ -970,7 +970,7 @@ import {
 // ─── Veřejný rejstřík (OR) přes verejnerejstriky.msp.gov.cz ───────────────────
 import { VR_ATTRIBUTION, fetchVrDetailByIco, findSubjektIdByIco } from "./justice_vr/client.js";
 import { fetchSbirkaListin, SL_ATTRIBUTION, parseCzDate } from "./justice_sl/client.js";
-import { extractZaverkaCisla } from "./justice_sl/pdf.js";
+import { extractZaverkaCisla, type ZaverkaCisla } from "./justice_sl/pdf.js";
 import { dbGetFinancials, dbUpsertFinancials } from "./persons_index/db.js";
 
 function vrAddressToText(a?: {
@@ -1917,9 +1917,11 @@ export async function getZaverkaCislaService(icoInput: string) {
 }
 
 /**
- * Fáze 2b — OCR skenu (on-demand, DRAHÉ na CPU). Stejné jako getZaverkaCislaService,
- * ale s opts.ocr → u skenů zkusí tesseract. Výsledek zapíše i do `financials`
- * (ať z toho těží i graf vývoje). Spouští se JEN na explicitní žádost uživatele.
+ * Fáze 2b — OCR skenu (on-demand, DRAHÉ na CPU). U skenů zkusí tesseract.
+ * VÍCELETÝ: OCR-uje každý 2. dokument (PDF nese 2 roky → běžné+minulé), strop 4
+ * dokumenty = až 8 let, ať i firmy se samými skeny mají graf vývoje, ne jen
+ * poslední rok. Výsledek zapíše do `financials` a rovnou vrátí i sérii pro graf.
+ * Spouští se JEN na explicitní žádost uživatele (semafor + cache jen úspěch).
  */
 export async function getZaverkaOcrService(icoInput: string) {
   const sl = (await getSbirkaListinService(icoInput)) as unknown as {
@@ -1932,26 +1934,37 @@ export async function getZaverkaOcrService(icoInput: string) {
     return { applicable: true, error: sl.error || "Žádná uložená účetní závěrka.", _attribution: SL_ATTRIBUTION };
   }
   const ico = String(icoInput).replace(/\D/g, "").padStart(8, "0");
-  // OCR je drahé → jen poslední závěrka (PDF nese 2 roky: běžné + minulé)
-  for (const z of zav.slice(0, 1)) {
+  const zaverky = zav.slice().sort((a, b) => b.rok - a.rok);
+  const have = new Set(dbGetFinancials(ico).map((r) => r.rok)); // co už máme (i z dřív)
+  const z0 = (v: number | null | undefined) => v == null || v === 0;
+  let latestCisla: ZaverkaCisla | null = null;
+  let latestRok: number | null = null;
+  let ocrDocs = 0;
+  for (const z of zaverky) {
+    if (ocrDocs >= 4) break; // strop 4 dokumenty (~8 let) kvůli CPU
     if (!z.detailUrl) continue;
+    if (have.has(z.rok)) continue; // tenhle rok už pokryt předchozím dokumentem → každý 2.
     const res = await extractZaverkaCisla(z.detailUrl, z.rok, { ocr: true });
-    if (!("error" in res)) {
-      // zapiš obě období do financials (OCR = low confidence, nepřepíše high z textu)
-      for (const [idx, rok] of [[0, z.rok], [1, z.rok - 1]] as const) {
-        const z0 = (v: number | null | undefined) => v == null || v === 0;
-        if (z0(res.aktivaCelkem[idx]) && z0(res.vlastniKapital[idx]) && z0(res.ciziZdroje[idx]) && z0(res.trzby[idx]) && z0(res.vysledekHospodareni[idx])) continue;
-        dbUpsertFinancials({
-          ico, rok,
-          aktiva: res.aktivaCelkem[idx], vlastniKapital: res.vlastniKapital[idx],
-          ciziZdroje: res.ciziZdroje[idx], vysledekHospodareni: res.vysledekHospodareni[idx],
-          trzby: res.trzby[idx], jednotka: res.jednotka, confidence: "low", source: "ocr",
-        });
-      }
-      return { applicable: true, rok: z.rok, cisla: res, _attribution: SL_ATTRIBUTION };
+    ocrDocs++;
+    if ("error" in res) continue;
+    if (!latestCisla) { latestCisla = res; latestRok = z.rok; }
+    for (const [idx, rok] of [[0, z.rok], [1, z.rok - 1]] as const) {
+      if (z0(res.aktivaCelkem[idx]) && z0(res.vlastniKapital[idx]) && z0(res.ciziZdroje[idx]) && z0(res.trzby[idx]) && z0(res.vysledekHospodareni[idx])) continue;
+      dbUpsertFinancials({
+        ico, rok,
+        aktiva: res.aktivaCelkem[idx], vlastniKapital: res.vlastniKapital[idx],
+        ciziZdroje: res.ciziZdroje[idx], vysledekHospodareni: res.vysledekHospodareni[idx],
+        trzby: res.trzby[idx], jednotka: res.jednotka, confidence: "low", source: "ocr",
+      });
+      have.add(rok);
     }
   }
-  return { applicable: true, error: "Ani OCR čísla nepřečetl — sken je nečitelný nebo netypická forma. Otevři PDF ručně.", _attribution: SL_ATTRIBUTION };
+  if (!latestCisla) {
+    return { applicable: true, error: "Ani OCR čísla nepřečetl — sken je nečitelný nebo netypická forma. Otevři PDF ručně.", _attribution: SL_ATTRIBUTION };
+  }
+  // Po naplnění financials vrať i sérii pro graf (čte financials, OCR roky přeskočí parsování).
+  const vyvoj = await getZaverkaVyvojService(ico);
+  return { applicable: true, rok: latestRok, cisla: latestCisla, vyvoj, _attribution: SL_ATTRIBUTION };
 }
 
 /**

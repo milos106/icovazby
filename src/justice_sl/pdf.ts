@@ -193,23 +193,33 @@ async function ocrPdfText(path: string): Promise<string> {
   return text;
 }
 
-async function downloadToTmp(url: string): Promise<string | null> {
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), DL_TIMEOUT_MS);
-  try {
-    const res = await undiciFetch(url, { headers: { "user-agent": UA }, signal: controller.signal });
-    if (!res.ok) return null;
-    const buf = Buffer.from(await res.arrayBuffer());
-    if (buf.length > MAX_PDF_BYTES || buf.length < 100) return null;
-    if (buf.subarray(0, 5).toString("latin1") !== "%PDF-") return null; // jen PDF (XML/HTML přeskočíme)
-    const path = join(tmpdir(), `zav-${Date.now()}-${Math.random().toString(36).slice(2)}.pdf`);
-    await writeFile(path, buf);
-    return path;
-  } catch {
-    return null;
-  } finally {
-    clearTimeout(timer);
+// Stažení PDF. or.justice tokeny občas vrátí HTML místo PDF (session/rate) → posíláme
+// JSESSIONID cookie z detail stránky a jednou zkusíme znovu (transient).
+async function downloadToTmp(url: string, cookie?: string): Promise<string | null> {
+  for (let attempt = 0; attempt < 2; attempt++) {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), DL_TIMEOUT_MS);
+    try {
+      const headers: Record<string, string> = { "user-agent": UA };
+      if (cookie) headers.cookie = cookie;
+      const res = await undiciFetch(url, { headers, signal: controller.signal });
+      if (res.ok) {
+        const buf = Buffer.from(await res.arrayBuffer());
+        if (buf.length <= MAX_PDF_BYTES && buf.length >= 100 && buf.subarray(0, 5).toString("latin1") === "%PDF-") {
+          const path = join(tmpdir(), `zav-${Date.now()}-${Math.random().toString(36).slice(2)}.pdf`);
+          await writeFile(path, buf);
+          return path;
+        }
+        // dostali jsme HTML/XML (ne PDF) → krátká pauza a retry s cookie
+      }
+    } catch {
+      /* síťová chyba → retry */
+    } finally {
+      clearTimeout(timer);
+    }
+    if (attempt === 0) await new Promise((r) => setTimeout(r, 400));
   }
+  return null;
 }
 
 /** Z detailu listiny (vypis-sl-detail) najde soubory, stáhne PDF a vrátí
@@ -221,9 +231,12 @@ export async function extractZaverkaCisla(
   opts: { ocr?: boolean } = {},
 ): Promise<ZaverkaCisla | { error: string }> {
   let html: string;
+  let cookie: string | undefined; // JSESSIONID z detailu → potřebné pro stažení souboru
   try {
     const res = await undiciFetch(detailUrl, { headers: { "user-agent": UA, accept: "text/html" } });
     if (!res.ok) return { error: `Detail listiny HTTP ${res.status}` };
+    const sc = res.headers.get("set-cookie");
+    if (sc) cookie = sc.split(";")[0];
     html = await res.text();
   } catch (e) {
     return { error: "Detail listiny nedostupný: " + (e as Error).message };
@@ -234,7 +247,7 @@ export async function extractZaverkaCisla(
   const ocrTodo: Array<{ path: string; url: string }> = []; // skeny k případnému OCR
   for (const id of ids) {
     const url = `${OR_BASE}/ias/content/download?id=${id}`;
-    const path = await downloadToTmp(url);
+    const path = await downloadToTmp(url, cookie);
     if (!path) continue;
     let keep = false;
     try {

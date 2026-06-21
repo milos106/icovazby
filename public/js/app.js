@@ -2093,6 +2093,12 @@ function ddSbirkaListinLoader() {
         if (res && res.cisla) {
           this.cisla = res; // přepíše „nepodařilo se" → zobrazí se OCR čísla
           this.cislaError = "";
+          // OCR je víceletý → rovnou ukaž i graf vývoje (server vrátil sérii)
+          if (res.vyvoj) {
+            this.vyvoj = res.vyvoj;
+            this.vyvojTried = true;
+            this.vyvojError = "";
+          }
         } else {
           this.ocrError = (res && res.error) || "OCR nic nepřečetlo.";
         }
