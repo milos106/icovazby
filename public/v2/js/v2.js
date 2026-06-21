@@ -601,6 +601,7 @@
         var dot = window.ddDotaceLoader ? window.ddDotaceLoader() : null;
         var sml = window.ddSmlouvyLoader ? window.ddSmlouvyLoader() : null;
         var eu = window.ddEuSanctionsLoader ? window.ddEuSanctionsLoader() : null;
+        var sl = window.ddSbirkaListinLoader ? window.ddSbirkaListinLoader() : null;
 
         // Každý zdroj = jeden promise. „Dorazila odpověď" (i prázdná / chyba /
         // HS-token-gated ok:false) = HOTOVO pro tento zdroj → resolve i reject
@@ -612,6 +613,7 @@
         if (dot) tasks.push(dot.load(ico));
         if (sml) tasks.push(sml.load(ico));
         if (eu) tasks.push(eu.screen(report));
+        if (sl) tasks.push(sl.load(ico));
 
         var total = tasks.length;
         var done = 0;
@@ -632,6 +634,7 @@
           if (dot) fs = fs.concat(self.fromDotace(dot.dotace));
           if (sml) fs = fs.concat(self.fromSmlouvy(sml.smlouvy));
           if (eu) fs = fs.concat(self.fromSanctions(eu.result, report));
+          if (sl) fs = fs.concat(self.fromSbirkaListin(sl.sl));
 
           fs = fs.filter(Boolean);
           // generický green „bez signálů" zahoď, pokud máme konkrétní nálezy
@@ -655,6 +658,19 @@
           });
 
           var score = Math.max(0, 100 - counts.red * 45 - counts.amber * 12);
+
+          // Neúplné? Když některý zdroj vrátil chybu (typicky HS výpadek/rate-limit),
+          // skóre je počítáno z částečných dat → označ, ať nevypadá falešně dokonale.
+          var missing = [];
+          function failed(l, f, label) { if (l && l[f]) missing.push(label); }
+          failed(adis, "adisError", "DPH/ADIS");
+          failed(isir, "isirError", "Insolvence");
+          failed(ubo, "uboError", "Skuteční majitelé");
+          failed(dot, "dotaceError", "Dotace");
+          failed(sml, "smlouvyError", "Registr smluv");
+          if (eu && eu.error) missing.push("EU sankce");
+          if (sl && (sl.slError || (sl.sl && sl.sl.error))) missing.push("Účetní závěrky");
+
           self.riskState = {
             loading: false, ready: true,
             findings: uniq,
@@ -662,6 +678,8 @@
             score: score,
             level: (report.risk && report.risk.level) || null,
             areas: areas,
+            incomplete: missing.length > 0,
+            missing: missing,
           };
         }
 
@@ -746,6 +764,15 @@
         if (pep > 0)
           return [this.F("amber", "Politické vazby u veřejných zakázek", "U " + pep + " smluv příznak vazby na politicky exponované osoby.", "finance")];
         return [];
+      },
+      // Sbírka listin — compliance signál podle stavu účetních závěrek (jen PO).
+      fromSbirkaListin: function (s) {
+        if (!s || !s.applicable || s.error) return [];
+        if (s.status === "nikdy") return [this.F("red", "Nepodává účetní závěrky", s.message, "finance")];
+        if (s.status === "zaostava") return [this.F("red", "Účetní závěrky zaostávají", s.message, "finance")];
+        if (s.status === "chybi") return [this.F("amber", "Chybí poslední účetní závěrka", s.message, "finance")];
+        if (s.pozdniPodani) return [this.F("amber", "Účetní závěrka podána pozdě", "Poslední závěrka uložena se zpožděním >15 měsíců po konci období.", "finance")];
+        return [this.F("green", "Účetní závěrky podávány řádně", s.message, "finance")];
       },
       fromSanctions: function (r, report) {
         if (!r) return [];
