@@ -2290,15 +2290,6 @@ function ddCrossBorderLoader() {
     data: null,
     loading: false,
     cbError: "",
-    reasonText(code) {
-      var m = {
-        NATURAL_PERSONS: "skutečným majitelem je fyzická osoba (ne firma)",
-        NON_CONSOLIDATING: "mateřská firma neúčtuje skupinově (nekonsoliduje)",
-        NO_KNOWN_PERSON: "není známá ovládající osoba",
-        NON_PUBLIC: "informace o mateřské firmě není veřejná",
-      };
-      return m[code] || code;
-    },
     async load(ico) {
       if (!ico) return;
       this.loading = true;

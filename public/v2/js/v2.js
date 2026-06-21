@@ -77,6 +77,9 @@
       // PEP + sankce — stejný single-source vzor (computeRisk → self.pepSankce)
       pepSankce: null,
       pepSankceLoading: false,
+      // Přeshraniční vlastnictví (GLEIF LEI) — single-source (karta i skóre čtou odtud)
+      crossBorder: null,
+      crossBorderLoading: false,
 
       riskState: {
         loading: false,
@@ -646,6 +649,18 @@
             ),
           );
         }
+        // Přeshraniční vlastnictví — single-source: karta i skóre čtou self.crossBorder.
+        var cb = window.ddCrossBorderLoader ? window.ddCrossBorderLoader() : null;
+        if (cb) {
+          self.crossBorder = null;
+          self.crossBorderLoading = true;
+          tasks.push(
+            cb.load(ico).then(
+              function () { self.crossBorder = cb.data; self.crossBorderLoading = false; },
+              function () { self.crossBorderLoading = false; },
+            ),
+          );
+        }
 
         var total = tasks.length;
         var done = 0;
@@ -670,6 +685,7 @@
           if (sl) fs = fs.concat(self.fromSbirkaListin(sl.sl));
           if (forn) fs = fs.concat(self.fromForensika(forn.data));
           if (ps) fs = fs.concat(self.fromPepSankce(ps.data));
+          if (cb) fs = fs.concat(self.fromCrossBorder(cb.data));
 
           fs = fs.filter(Boolean);
           // generický green „bez signálů" zahoď, pokud máme konkrétní nálezy
@@ -867,6 +883,47 @@
           out.push(this.F("red", "Sankce " + s.source + ": " + s.query, s.query + " — shoda na sankčním seznamu " + s.source + " (" + s.matchedAs + (s.programme ? ", " + s.programme : "") + "). Ověř datum narození a zemi u zdroje.", "rizika"));
         }, this);
         return out;
+      },
+
+      // Jurisdikce se zvýšeným AML rizikem / bankovním tajemstvím (offshore secrecy
+      // + vybrané FATF/EU vysoce rizikové třetí země). Indikativní baseline — listy
+      // se v čase mění. EU členové záměrně NEjsou (zahraniční ≠ rizikové).
+      HIGH_RISK_JURISDICTIONS: {
+        VG: "Britské Panenské ostrovy", KY: "Kajmanské ostrovy", BM: "Bermudy", SC: "Seychely",
+        MH: "Marshallovy ostrovy", BZ: "Belize", PA: "Panama", VU: "Vanuatu", AI: "Anguilla",
+        BS: "Bahamy", KN: "Sv. Kryštof a Nevis", VC: "Sv. Vincenc a Grenadiny", WS: "Samoa",
+        CK: "Cookovy ostrovy", GI: "Gibraltar", JE: "Jersey", GG: "Guernsey", IM: "Ostrov Man",
+        LI: "Lichtenštejnsko", MC: "Monako", MU: "Mauricius", CW: "Curaçao",
+        SY: "Sýrie", YE: "Jemen", MM: "Myanmar", AF: "Afghánistán", IR: "Írán", KP: "Severní Korea",
+        HT: "Haiti", SS: "Jižní Súdán", ML: "Mali",
+      },
+
+      // Přeshraniční vlastnictví → měkký signál JEN když mateřská sídlí v rizikové/offshore
+      // jurisdikci (ne za „zahraniční" obecně). Rozsvítí tečku u skupiny Vlastnictví.
+      fromCrossBorder: function (d) {
+        if (!d || !d.hasLei) return [];
+        var out = [];
+        var risky = this.HIGH_RISK_JURISDICTIONS;
+        var add = function (p, label) {
+          if (p && p.country && risky[p.country]) {
+            out.push(this.F("amber", "Mateřská v rizikové jurisdikci: " + risky[p.country],
+              p.name + " (" + label + ") sídlí v jurisdikci se zvýšeným AML rizikem / bankovním tajemstvím (" + risky[p.country] + "). Zvýšená pozornost na skutečného majitele a původ prostředků (EDD). Signál, ne důkaz.", "vlastnictvi"));
+          }
+        }.bind(this);
+        add(d.directParent, "přímá mateřská");
+        if (d.ultimateParent && (!d.directParent || d.ultimateParent.lei !== d.directParent.lei)) add(d.ultimateParent, "koncová mateřská");
+        return out.map(function (f) { f.soft = true; return f; });
+      },
+
+      // Překlad GLEIF reporting-exception kódů pro kartu (single-source z self.crossBorder).
+      cbReasonText: function (code) {
+        var m = {
+          NATURAL_PERSONS: "skutečným majitelem je fyzická osoba (ne firma)",
+          NON_CONSOLIDATING: "mateřská firma neúčtuje skupinově (nekonsoliduje)",
+          NO_KNOWN_PERSON: "není známá ovládající osoba",
+          NON_PUBLIC: "informace o mateřské firmě není veřejná",
+        };
+        return m[code] || code;
       },
 
       // --- command palette ---
