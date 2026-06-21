@@ -972,6 +972,7 @@ import { VR_ATTRIBUTION, fetchVrDetailByIco, findSubjektIdByIco } from "./justic
 import { fetchSbirkaListin, SL_ATTRIBUTION, parseCzDate } from "./justice_sl/client.js";
 import { extractZaverkaCisla, type ZaverkaCisla } from "./justice_sl/pdf.js";
 import { dbGetFinancials, dbUpsertFinancials, dbGetCompanyPersons, dbGetCompanyPersonsForPep, dbCountCompaniesByPerson, dbGetCompaniesByPerson, dbFindDobByName, dbGetChildrenByParent } from "./persons_index/db.js";
+import { fetchLeiByIco, fetchCrossBorder, GLEIF_ATTRIBUTION } from "./gleif/client.js";
 
 function vrAddressToText(a?: {
   ulice?: string;
@@ -2313,6 +2314,39 @@ export async function getPepSankceService(client: AresClient, icoInput: string) 
   }
 
   return { ico, indexovano: persons.length > 0, screenovano: persons.length, uboScreenovano, uboBezDob, pep, pepTokenMissing, sankce, _attribution: PEP_SANKCE_ATTRIBUTION };
+}
+
+// ─── Přeshraniční vlastnictví (Hodnota #4, Fáze 1) — GLEIF LEI ───────────────
+/**
+ * Mateřská/dceřiné firmy z GLEIF LEI registru — VČETNĚ zahraničních. Doplňuje
+ * ARES/UBO graf o cross-border vrstvu (kterou české registry nemají). IČO→LEI
+ * deterministicky přes `entity.registeredAs`. LEI má jen menšina firem.
+ */
+export async function getCrossBorderService(icoInput: string) {
+  const ico = String(icoInput).replace(/\D/g, "").padStart(8, "0");
+  const lei = await fetchLeiByIco(ico);
+  if (!lei) return { ico, hasLei: false, _attribution: GLEIF_ATTRIBUTION };
+  const rel = await fetchCrossBorder(lei.lei);
+  const isForeign = (c: { country: string } | null) => !!(c && c.country && c.country !== "CZ");
+  const foreignChildren = rel.children.filter(isForeign);
+  const foreignParent = isForeign(rel.directParent) || isForeign(rel.ultimateParent);
+  return {
+    ico,
+    hasLei: true,
+    lei: lei.lei,
+    name: lei.name,
+    status: lei.status,
+    registrationStatus: lei.registrationStatus,
+    directParent: rel.directParent,
+    ultimateParent: rel.ultimateParent,
+    parentException: rel.parentException,
+    children: rel.children,
+    childrenCount: rel.children.length,
+    foreignChildrenCount: foreignChildren.length,
+    foreignParent,
+    crossBorder: foreignParent || foreignChildren.length > 0,
+    _attribution: GLEIF_ATTRIBUTION,
+  };
 }
 
 // Expose helpers for tests / other consumers

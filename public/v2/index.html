@@ -776,6 +776,46 @@
                   </template>
                 </section>
 
+                <!-- Přeshraniční vlastnictví (GLEIF LEI) -->
+                <section class="card-pop rounded-xl border border-slate-200 dark:border-ink-700 bg-white dark:bg-ink-850 p-3.5" x-data="ddCrossBorderLoader()" x-init="load(report.ico)">
+                  <div class="flex items-center justify-between mb-2.5"><h3 class="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">🌍 Přeshraniční vlastnictví</h3><span class="text-[10px] font-mono text-slate-400">GLEIF LEI</span></div>
+                  <div x-show="loading" class="text-[12px] text-slate-400">Načítám…</div>
+                  <template x-if="!loading && data && data.hasLei">
+                    <div class="space-y-2 text-[13px]">
+                      <div x-show="data.crossBorder" x-cloak class="flex items-start gap-2 text-amber-600 dark:text-amber-400"><span class="shrink-0">🌍</span><span><strong>Přeshraniční struktura</strong> — firma má zahraniční mateřskou a/nebo dceřiné firmy.</span></div>
+                      <div class="flex justify-between gap-3"><dt class="text-slate-400">LEI</dt><dd class="font-mono text-[11px]" x-text="data.lei"></dd></div>
+                      <div class="pt-1.5 border-t border-slate-100 dark:border-ink-700">
+                        <div class="text-slate-400 text-[11px] uppercase tracking-wide mb-1">Mateřská firma</div>
+                        <template x-if="data.directParent || data.ultimateParent">
+                          <div class="space-y-0.5">
+                            <div x-show="data.directParent" class="flex items-center gap-2"><span class="px-1 py-0.5 rounded bg-slate-100 dark:bg-ink-700 text-[10px] font-mono" x-text="data.directParent && data.directParent.country"></span><span x-text="data.directParent && data.directParent.name"></span></div>
+                            <div x-show="data.ultimateParent && (!data.directParent || data.ultimateParent.lei!==data.directParent.lei)" class="flex items-center gap-2"><span class="px-1 py-0.5 rounded bg-slate-100 dark:bg-ink-700 text-[10px] font-mono" x-text="data.ultimateParent && data.ultimateParent.country"></span><span class="text-slate-500" x-text="(data.ultimateParent && data.ultimateParent.name) + ' · koncová mateřská'"></span></div>
+                          </div>
+                        </template>
+                        <template x-if="!data.directParent && !data.ultimateParent">
+                          <p class="text-[12px] text-slate-500" x-text="data.parentException ? 'Bez mateřské firmy — ' + reasonText(data.parentException.reason) + '.' : 'Mateřská firma neuvedena.'"></p>
+                        </template>
+                      </div>
+                      <div x-show="data.childrenCount" x-cloak class="pt-1.5 border-t border-slate-100 dark:border-ink-700">
+                        <div class="text-slate-400 text-[11px] uppercase tracking-wide mb-1"><span x-text="data.childrenCount"></span> dceřiných firem<template x-if="data.foreignChildrenCount"><span class="text-amber-600 dark:text-amber-400"> · <span x-text="data.foreignChildrenCount"></span> v zahraničí</span></template></div>
+                        <div class="flex flex-wrap gap-1">
+                          <template x-for="c in data.children.slice(0, 12)" :key="c.lei">
+                            <span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[11px]" :class="c.country!=='CZ' ? 'bg-amber-500/15 text-amber-700 dark:text-amber-300' : 'bg-slate-100 dark:bg-ink-700 text-slate-600 dark:text-slate-300'"><span class="font-mono text-[9px]" x-text="c.country"></span><span x-text="c.name"></span></span>
+                          </template>
+                          <span x-show="data.childrenCount > 12" x-cloak class="text-[11px] text-slate-400 self-center">+<span x-text="data.childrenCount - 12"></span> dalších</span>
+                        </div>
+                      </div>
+                      <p class="pt-1.5 mt-1 border-t border-slate-100 dark:border-ink-700 text-[10px] text-slate-400 leading-snug">Globální registr LEI (GLEIF, CC0). Vztahy = účetní konsolidace skupiny. LEI má jen menšina firem (hl. s vazbou na finanční trhy).</p>
+                    </div>
+                  </template>
+                  <template x-if="!loading && data && !data.hasLei">
+                    <p class="text-[12px] text-slate-400">Firma nemá LEI v registru GLEIF — přeshraniční data nedostupná (LEI mají hlavně firmy s vazbou na finanční trhy).</p>
+                  </template>
+                  <template x-if="!loading && cbError">
+                    <div class="text-[12px] text-rose-500 flex items-center gap-2"><span x-text="cbError"></span> <button type="button" @click="load(report.ico)" class="underline">↻ Zkusit znovu</button></div>
+                  </template>
+                </section>
+
                 <!-- VR kapitál & akcie -->
                 <section class="card-pop rounded-xl border border-slate-200 dark:border-ink-700 bg-white dark:bg-ink-850 p-3.5" x-data="ddVrLoader()" x-init="load(report.ico)">
                   <div class="flex items-center justify-between mb-2.5"><h3 class="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">⚖️ Kapitál & rejstřík</h3><span class="text-[10px] font-mono text-slate-400">VR (OR)</span></div>

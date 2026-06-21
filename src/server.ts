@@ -43,6 +43,7 @@ import {
   getZaverkaVyvojService,
   getForensikaService,
   getPepSankceService,
+  getCrossBorderService,
   getSmlouvyService,
   getVrDetailService,
   getTradeLicensesService,
@@ -206,7 +207,7 @@ app.addHook("onRequest", async (req) => {
   const url = req.url;
   if (!url.startsWith("/api/")) return;
   if (url.startsWith("/api/features") || url.startsWith("/api/validate")) return;
-  const m = url.match(/^\/api\/(dd|holding\/discover|cross-persons|trademarks|timeline|vr|ubo|dotace|smlouvy|adis|isir|jerrs|sanctions|pep-sankce|zivno|res-classification|search|address|person-vazby)(?:\/([^?]+))?/);
+  const m = url.match(/^\/api\/(dd|holding\/discover|cross-persons|trademarks|timeline|vr|ubo|dotace|smlouvy|adis|isir|jerrs|sanctions|pep-sankce|cross-border|zivno|res-classification|search|address|person-vazby)(?:\/([^?]+))?/);
   if (!m) return;
   const action = m[1];
   const targetIco = m[2] ?? null;
@@ -851,6 +852,16 @@ app.get("/api/pep-sankce/:ico", async (req: FastifyRequest, reply) => {
   try {
     const ico = (req.params as { ico: string }).ico;
     reply.send(await cached(`pepsankce:${ico}`, () => getPepSankceService(client, ico), { persist: true }));
+  } catch (e) {
+    sendError(reply, e);
+  }
+});
+
+// ─── Přeshraniční vlastnictví (Hodnota #4: GLEIF LEI mateřská/dceřiné) — lazy ───
+app.get("/api/cross-border/:ico", async (req: FastifyRequest, reply) => {
+  try {
+    const ico = (req.params as { ico: string }).ico;
+    reply.send(await cached(`crossborder:${ico}`, () => getCrossBorderService(ico), { persist: true }));
   } catch (e) {
     sendError(reply, e);
   }

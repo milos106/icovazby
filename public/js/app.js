@@ -2284,6 +2284,38 @@ function ddPepSankceLoader() {
 }
 window.ddPepSankceLoader = ddPepSankceLoader;
 
+// Přeshraniční vlastnictví (Hodnota #4): GLEIF LEI mateřská/dceřiné firmy vč. zahraničních.
+function ddCrossBorderLoader() {
+  return {
+    data: null,
+    loading: false,
+    cbError: "",
+    reasonText(code) {
+      var m = {
+        NATURAL_PERSONS: "skutečným majitelem je fyzická osoba (ne firma)",
+        NON_CONSOLIDATING: "mateřská firma neúčtuje skupinově (nekonsoliduje)",
+        NO_KNOWN_PERSON: "není známá ovládající osoba",
+        NON_PUBLIC: "informace o mateřské firmě není veřejná",
+      };
+      return m[code] || code;
+    },
+    async load(ico) {
+      if (!ico) return;
+      this.loading = true;
+      this.data = null;
+      this.cbError = "";
+      try {
+        this.data = await jsonFetch("/api/cross-border/" + encodeURIComponent(ico));
+      } catch (e) {
+        this.cbError = "Přeshraniční vlastnictví selhalo: " + e.message;
+      } finally {
+        this.loading = false;
+      }
+    },
+  };
+}
+window.ddCrossBorderLoader = ddCrossBorderLoader;
+
 /**
  * Načte stav volitelných integrací (Hlídač státu API). Footer atribuce
  * citujícího Hlídače státu se zobrazí pouze pokud je integrace aktivní.
