@@ -277,10 +277,23 @@ async function downloadToTmp(url: string, cookie?: string): Promise<string | nul
  *  stažení takových souborů občas vrátilo HTML místo PDF. */
 async function collectFileUrls(detailUrls: string[]): Promise<{ urls: string[]; cookie?: string }> {
   let cookie: string | undefined;
+  // Prime session přes výpis firmy — spolehlivě nastaví BIG-IP cookie (routing na
+  // správný backend), takže následné stažení nevrací HTML místo PDF. (Jako `curl -c jar`.)
+  const subj = detailUrls[0]?.match(/subjektId=(\d+)/)?.[1];
+  if (subj) {
+    try {
+      const res = await undiciFetch(`${OR_BASE}/ias/ui/vypis-sl-firma?subjektId=${subj}`, { headers: { "user-agent": UA, accept: "text/html" } });
+      const sc = res.headers.get("set-cookie");
+      if (sc) cookie = sc.split(";")[0];
+      await res.text();
+    } catch {
+      /* prime selhal → pokračuj bez něj */
+    }
+  }
   const urls: string[] = [];
   for (const du of detailUrls) {
     try {
-      const res = await undiciFetch(du, { headers: { "user-agent": UA, accept: "text/html" } });
+      const res = await undiciFetch(du, { headers: { "user-agent": UA, accept: "text/html", ...(cookie ? { cookie } : {}) } });
       if (!res.ok) continue;
       const sc = res.headers.get("set-cookie");
       if (sc && !cookie) cookie = sc.split(";")[0];

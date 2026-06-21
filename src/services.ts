@@ -2024,14 +2024,24 @@ export async function getZaverkaVyvojService(icoInput: string) {
   const num = (v: number | null | undefined) => (typeof v === "number" ? v : null);
   const ratio = (a: number | null, b: number | null) => (a != null && b != null && b !== 0 ? a / b : null);
   const latest = rada[0]!; // rada.length>0 zaručeno výše
-  const withTrzby = rada.filter((r) => num(r.trzby) != null);
+  // CAGR tržeb přes LOG-LINEÁRNÍ REGRESI (robustní k výkyvům krajních let) — sklon b
+  // z ln(tržby) ~ rok metodou nejmenších čtverců → CAGR = e^b − 1. Bere VŠECHNY roky
+  // s tržbami, ne jen první a poslední. (Pro 2 body splývá s point-to-point.)
   let cagrTrzby: number | null = null;
-  if (withTrzby.length >= 2) {
-    const n = withTrzby[0]!, o = withTrzby[withTrzby.length - 1]!; // length>=2 výše
-    const yrs = n.rok - o.rok;
-    if (yrs > 0 && (o.trzby as number) > 0 && (n.trzby as number) > 0) {
-      cagrTrzby = Math.pow((n.trzby as number) / (o.trzby as number), 1 / yrs) - 1;
+  const pts = rada
+    .filter((r) => num(r.trzby) != null && (r.trzby as number) > 0)
+    .map((r) => ({ x: r.rok, y: Math.log(r.trzby as number) }));
+  if (pts.length >= 2) {
+    const nP = pts.length;
+    const mx = pts.reduce((s, p) => s + p.x, 0) / nP;
+    const my = pts.reduce((s, p) => s + p.y, 0) / nP;
+    let numCov = 0,
+      denVar = 0;
+    for (const p of pts) {
+      numCov += (p.x - mx) * (p.y - my);
+      denVar += (p.x - mx) ** 2;
     }
+    if (denVar > 0) cagrTrzby = Math.exp(numCov / denVar) - 1;
   }
   const metriky = {
     margeLatest: ratio(num(latest.vysledekHospodareni), num(latest.trzby)),
