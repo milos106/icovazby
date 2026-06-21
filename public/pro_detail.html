@@ -126,6 +126,7 @@
         <li><a href="#isir" class="block py-1 text-slate-700 dark:text-slate-300">10 · Insolvence (ISIR)</a></li>
         <li><a href="#sankce" class="block py-1 text-slate-700 dark:text-slate-300">11 · EU sankce</a></li>
         <li><a href="#dotace" class="block py-1 text-slate-700 dark:text-slate-300">12 · Dotace &amp; zakázky</a></li>
+        <li><a href="#zaverky" class="block py-1 text-slate-700 dark:text-slate-300">📄 · Účetní závěrky</a></li>
         <li><a href="#jerrs" class="block py-1 text-slate-700 dark:text-slate-300">13 · ČNB JERRS</a></li>
         <li><a href="#ds" class="block py-1 text-slate-700 dark:text-slate-300">14 · Datová schránka</a></li>
         <li><a href="#osa" class="block py-1 text-slate-700 dark:text-slate-300">15 · Časová osa</a></li>
@@ -310,6 +311,17 @@
         </div>
       </section>
 
+      <!-- 12b -->
+      <section id="zaverky" class="fn">
+        <h2 class="text-2xl font-bold tracking-tight mb-3"><span class="gradient-text">📄</span> Účetní závěrky <span class="text-sm font-normal text-slate-500">(Sbírka listin · or.justice.cz)</span></h2>
+        <p class="text-slate-700 dark:text-slate-300 mb-4">Ze Sbírky listin čteme <strong>metadata</strong> (za které roky a kdy uloženo → <strong>compliance signál</strong> „podává / chybí / nepodává") a nově i <strong>čísla z výkazů</strong>: z PDF rozvahy <em>bez AI</em> (poppler <code>pdftotext</code>) vytáhneme <strong>aktiva, vlastní kapitál, cizí zdroje a výsledek hospodaření</strong>. Při otevření skupiny Finance se <strong>automaticky</strong> ukáže poslední závěrka i <strong>víceletý graf vývoje</strong> (tržby/aktiva v čase + marže, zadluženost, ROE, CAGR, trendové vlajky). U <strong>naskenovaných</strong> závěrek (obrázkové PDF) nabídneme tlačítko <strong>OCR</strong> (tesseract). Vše <strong>experimentální</strong> — u nestandardních forem označená nízká spolehlivost a doporučené ruční ověření.</p>
+        <div class="space-y-2 text-sm">
+          <div class="flag-red pl-3 py-1"><strong>🔴 Vyčteš:</strong> firma <em>nepodává</em> účetní závěrky (porušení zákona) nebo zaostává o roky → častý znak neaktivní / problematické firmy; red flag pro due diligence i AML.</div>
+          <div class="flag-amber pl-3 py-1"><strong>Situace:</strong> chybí poslední očekávaná závěrka, nebo byla podána se zpožděním (&gt;15 měsíců po konci období).</div>
+          <div class="flag-green pl-3 py-1"><strong>🟢 Vyčteš:</strong> závěrky podávány řádně a včas = transparentní, ekonomicky aktivní firma; čísla a graf vývoje rovnou na očích.</div>
+        </div>
+      </section>
+
       <!-- 13 -->
       <section id="jerrs" class="fn">
         <h2 class="text-2xl font-bold tracking-tight mb-3"><span class="gradient-text">13.</span> ČNB JERRS — regulované subjekty</h2>
@@ -386,7 +398,7 @@
         <p class="text-slate-700 dark:text-slate-300 mb-4">Aby nedošlo k falešnému pocitu jistoty:</p>
         <ul class="space-y-2 text-sm text-slate-700 dark:text-slate-300 list-disc pl-5">
           <li><strong>Není to verdikt.</strong> Aplikace ukazuje, <em>co je ve veřejných registrech</em>. „Čisté" skóre neznamená „bezpečné" — jen „nic registrovaného".</li>
-          <li><strong>Účetní závěrky</strong> (rozvahy, výsledovky) zatím nesbíráme — odkazujeme na Sbírku listin na justice.cz.</li>
+          <li><strong>Účetní závěrky — metadata i čísla ČTEME:</strong> ze Sbírky listin (or.justice.cz) compliance signál + čísla z rozvahy (aktiva, kapitál, cizí zdroje, výsledek) z PDF <em>bez AI</em>, víceletý graf vývoje, u skenů OCR. <strong>Ale experimentálně</strong> — u nestandardních/zkrácených forem může číslo chybět nebo být nepřesné (proto nízká spolehlivost + ruční ověření). <strong>Výkaz zisku a ztráty</strong> firmy často neukládají čitelně → graf pak ukazuje aktiva místo tržeb.</li>
           <li><strong>Katastr nemovitostí</strong> — ČÚZK nemá free API pro „co vlastní firma X"; plánováno po monetizaci (placené VDP).</li>
           <li><strong>Historie bez data narození</strong> — VR u starých statutářů DOB neeviduje → proto „Možní jmenovci" a tvé rozhodnutí.</li>
           <li><strong>Náš index není kompletní rejstřík ČR</strong> — zná jen nakrawlované firmy; roste postupně (i ručním doplněním přes „Vím o jiné firmě").</li>

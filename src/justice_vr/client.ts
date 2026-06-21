@@ -197,7 +197,7 @@ function normalizeIco(raw: string): string {
  * Najde subjektId pro dané IČO. Subjekt může mít víc shod (záznamy o
  * zaniklých dceřinkách atd.) — bereme první aktivní. Cache 24h.
  */
-async function findSubjektIdByIco(ico: string): Promise<number | null> {
+export async function findSubjektIdByIco(ico: string): Promise<number | null> {
   const key = normalizeIco(ico);
   const cached = icoSubjectCache.get(key);
   if (cached && Date.now() - cached.at < ICO_TO_SUBJECT_TTL_MS) {

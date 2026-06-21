@@ -191,6 +191,24 @@ function initSchema(d: DbType): void {
       fetched_at INTEGER NOT NULL
     );
     CREATE INDEX IF NOT EXISTS idx_response_cache_fetched ON response_cache(fetched_at);
+
+    -- Finance firem (Přístup 2) — víceletá řada z účetních závěrek (Sbírka listin,
+    -- pdftotext, bez LLM). Jen strukturovaná čísla (KB/firma), PDF se neukládá.
+    -- Seed pro budoucí Přístup 3 (sektorové benchmarky). Hodnoty v tis. Kč.
+    CREATE TABLE IF NOT EXISTS financials (
+      ico TEXT NOT NULL,
+      rok INTEGER NOT NULL,
+      aktiva INTEGER,
+      vlastni_kapital INTEGER,
+      cizi_zdroje INTEGER,
+      vysledek_hospodareni INTEGER,
+      trzby INTEGER,
+      jednotka TEXT,
+      confidence TEXT,
+      source TEXT,
+      updated_at INTEGER NOT NULL,
+      PRIMARY KEY (ico, rok)
+    );
   `);
 }
 
@@ -290,6 +308,41 @@ export function dbSetResponseCache(key: string, payload: unknown): void {
     INSERT INTO response_cache (key, payload, fetched_at) VALUES (?, ?, ?)
     ON CONFLICT(key) DO UPDATE SET payload = excluded.payload, fetched_at = excluded.fetched_at
   `).run(key, JSON.stringify(payload), Date.now());
+}
+
+// ─── Finance (Přístup 2) ──────────────────────────────────────────────────────
+export interface FinancialRow {
+  ico: string; rok: number;
+  aktiva: number | null; vlastniKapital: number | null; ciziZdroje: number | null;
+  vysledekHospodareni: number | null; trzby: number | null;
+  jednotka: string | null; confidence: string | null; source: string | null;
+}
+
+/** Upsert roku. Při konfliktu přepíše JEN když má novější záznam vyšší/rovnou
+ *  confidence (high > low) — ať překryvný „low" rok nepřepíše dřív uložený „high". */
+export function dbUpsertFinancials(r: FinancialRow): void {
+  const d = getDb();
+  const rank = (c: string | null) => (c === "high" ? 2 : c === "low" ? 1 : 0);
+  const prev = d.prepare(`SELECT confidence FROM financials WHERE ico = ? AND rok = ?`).get(r.ico, r.rok) as { confidence: string | null } | undefined;
+  if (prev && rank(prev.confidence) > rank(r.confidence)) return;
+  d.prepare(`
+    INSERT INTO financials (ico, rok, aktiva, vlastni_kapital, cizi_zdroje, vysledek_hospodareni, trzby, jednotka, confidence, source, updated_at)
+    VALUES (@ico, @rok, @aktiva, @vlastniKapital, @ciziZdroje, @vysledekHospodareni, @trzby, @jednotka, @confidence, @source, @updatedAt)
+    ON CONFLICT(ico, rok) DO UPDATE SET
+      aktiva=excluded.aktiva, vlastni_kapital=excluded.vlastni_kapital, cizi_zdroje=excluded.cizi_zdroje,
+      vysledek_hospodareni=excluded.vysledek_hospodareni, trzby=excluded.trzby, jednotka=excluded.jednotka,
+      confidence=excluded.confidence, source=excluded.source, updated_at=excluded.updated_at
+  `).run({ ...r, updatedAt: Date.now() });
+}
+
+/** Vrátí uloženou řadu (sestupně dle roku). */
+export function dbGetFinancials(ico: string): FinancialRow[] {
+  const rows = getDb().prepare(`
+    SELECT ico, rok, aktiva, vlastni_kapital AS vlastniKapital, cizi_zdroje AS ciziZdroje,
+           vysledek_hospodareni AS vysledekHospodareni, trzby, jednotka, confidence, source
+    FROM financials WHERE ico = ? ORDER BY rok DESC
+  `).all(ico) as FinancialRow[];
+  return rows;
 }
 
 // #6: úklid proti neomezenému růstu úložiště. response_cache > 48 h (TTL je 24 h,

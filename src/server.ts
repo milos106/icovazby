@@ -37,6 +37,10 @@ import {
   getJerrsService,
   getPersonVazbyService,
   getResClassificationService,
+  getSbirkaListinService,
+  getZaverkaCislaService,
+  getZaverkaOcrService,
+  getZaverkaVyvojService,
   getSmlouvyService,
   getVrDetailService,
   getTradeLicensesService,
@@ -136,10 +140,8 @@ const serveIndex = async (req: FastifyRequest, reply: FastifyReply) => {
   reply.header("content-type", "text/html; charset=utf-8");
   return INDEX_HTML;
 };
-app.get("/", serveIndex);
-app.get("/index.html", serveIndex);
 
-// `/v2` — workspace varianta UI (varianta C). Aditivní, nedotýká se `/`.
+// `/v2` — workspace varianta UI (varianta C).
 // Mirror serveIndex: vlastní handler protože fastify-static má index:false.
 // V2 HTML předrenderováno při startu + replace {{VERSION}} → PKG_VERSION
 // (stejně jako INDEX_HTML). DŮVOD: v2 skripty (/js/app.js, /v2/js/v2.js) musí
@@ -159,6 +161,12 @@ const serveV2 = async (_req: FastifyRequest, reply: FastifyReply) => {
   return reply.send(V2_HTML);
 };
 app.get("/v2", serveV2);
+// ── Překlopení (2026-06): v2 = HLAVNÍ stránka („aktuální verze"). Klasický
+//    layout přesunut na /klasik. /v2 zůstává funkční kvůli záložkám/odkazům.
+app.get("/", serveV2);
+app.get("/index.html", serveV2);
+app.get("/klasik", serveIndex);
+app.get("/klasik/index.html", serveIndex);
 
 // #8: časově konstantní porovnání admin tokenu (proti timing útoku).
 function adminTokenOk(provided: string | undefined | null): boolean {
@@ -190,7 +198,7 @@ app.addHook("onRequest", async (req) => {
 
 // R16: audit log pro AML compliance. Logujeme DD lookupy + holding discovery
 // + cross-persons. Statické soubory a /healthz nelogujeme (low signal).
-import { dbAudit } from "./persons_index/db.js";
+import { dbAudit, dbGetResponseCache, dbSetResponseCache } from "./persons_index/db.js";
 app.addHook("onRequest", async (req) => {
   const url = req.url;
   if (!url.startsWith("/api/")) return;
@@ -750,6 +758,67 @@ app.get("/api/dotace/:ico", async (req: FastifyRequest, reply) => {
   try {
     const ico = (req.params as { ico: string }).ico;
     reply.send(await cached(`dotace:${ico}`, () => getDotaceService(ico), { persist: true }));
+  } catch (e) {
+    sendError(reply, e);
+  }
+});
+
+// ─── Sbírka listin (or.justice.cz) — Fáze 1: metadata účetních závěrek ────────
+app.get("/api/sbirka-listin/:ico", async (req: FastifyRequest, reply) => {
+  try {
+    const ico = (req.params as { ico: string }).ico;
+    reply.send(await cached(`sl:${ico}`, () => getSbirkaListinService(ico), { persist: true }));
+  } catch (e) {
+    sendError(reply, e);
+  }
+});
+
+// ─── Čísla z poslední závěrky (Fáze 2: PDF → pdftotext, bez LLM) — lazy/cache ──
+app.get("/api/zaverka-cisla/:ico", async (req: FastifyRequest, reply) => {
+  try {
+    const ico = (req.params as { ico: string }).ico;
+    reply.send(await cached(`zavcisla:${ico}`, () => getZaverkaCislaService(ico), { persist: true }));
+  } catch (e) {
+    sendError(reply, e);
+  }
+});
+
+// ─── OCR skenu (Fáze 2b: pdftoppm+tesseract) — on-demand, drahé na CPU ─────────
+// Globální semafor: max 1 OCR najednou (chrání 2vCPU box). Výsledek se cachuje.
+let ocrInFlight = 0;
+app.get("/api/zaverka-ocr/:ico", async (req: FastifyRequest, reply) => {
+  try {
+    const ico = (req.params as { ico: string }).ico;
+    if (ocrInFlight >= 1) {
+      reply.code(429).send({ applicable: true, error: "OCR právě běží pro jiný subjekt — zkus to za chvíli (šetříme CPU)." });
+      return;
+    }
+    // Cache JEN při úspěchu — chybu nepersistujeme, aby transient výpadek
+    // (or.justice občas vrátí HTML) nezamkl uživatele na 24 h; ať jde zkusit znovu.
+    const key = `zavocr:${ico}`;
+    const hit = dbGetResponseCache(key, 30 * 24 * 60 * 60 * 1000) as { cisla?: unknown } | undefined;
+    if (hit && hit.cisla) {
+      reply.send(hit);
+      return;
+    }
+    ocrInFlight++;
+    try {
+      const res = (await getZaverkaOcrService(ico)) as { cisla?: unknown };
+      if (res && res.cisla) dbSetResponseCache(key, res); // jen úspěšné OCR
+      reply.send(res);
+    } finally {
+      ocrInFlight--;
+    }
+  } catch (e) {
+    sendError(reply, e);
+  }
+});
+
+// ─── Víceletý vývoj financí (Přístup 2: řada + metriky + trendy) — lazy/cache ──
+app.get("/api/zaverka-vyvoj/:ico", async (req: FastifyRequest, reply) => {
+  try {
+    const ico = (req.params as { ico: string }).ico;
+    reply.send(await cached(`zavvyvoj:${ico}`, () => getZaverkaVyvojService(ico), { persist: true }));
   } catch (e) {
     sendError(reply, e);
   }

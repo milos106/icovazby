@@ -325,7 +325,7 @@
           <span class="font-mono text-sm text-emerald-600 dark:text-emerald-400">02</span>
           <span class="text-xs uppercase tracking-wider text-slate-500 font-semibold">Datové zdroje</span>
         </div>
-        <h2 class="text-3xl sm:text-4xl font-bold tracking-tightest mb-3">11 veřejných registrů, jedna stránka</h2>
+        <h2 class="text-3xl sm:text-4xl font-bold tracking-tightest mb-3">12 veřejných registrů, jedna stránka</h2>
         <p class="text-slate-600 dark:text-slate-300 mb-12 text-lg max-w-3xl">
           Všechno jsou oficiální veřejné zdroje &mdash; agregujeme je, neukrýváme. Každý údaj má v UI uvedený svůj zdroj
           a datum, abyste věděli, odkud informace pochází a kdy byla aktualizována.
@@ -463,6 +463,17 @@
               </div>
             </div>
             <p class="text-sm text-slate-600 dark:text-slate-400">Vyhledání nemovitostí firmy a propojení v profilu.</p>
+          </div>
+
+          <div class="src-tile rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 p-5">
+            <div class="flex items-center gap-3 mb-2">
+              <div class="feature-icon text-xl">📄</div>
+              <div>
+                <h3 class="font-bold">Sbírka listin (účetní závěrky)</h3>
+                <div class="text-[11px] text-slate-500">or.justice.cz</div>
+              </div>
+            </div>
+            <p class="text-sm text-slate-600 dark:text-slate-400">Za které roky firma uložila závěrku a kdy &mdash; compliance signál „podává / chybí / nepodává" &mdash; a nově i <strong>čísla z výkazů</strong> (aktiva, kapitál, výsledek) z PDF bez AI + víceletý graf vývoje; u skenů OCR. Experimentální.</p>
           </div>
 
         </div>
@@ -1042,9 +1053,10 @@ flowchart TB
       <div class="mt-8 p-5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm">
         <div class="font-semibold mb-1">📌 Důležité &mdash; co zatím <em>není</em></div>
         <p class="text-slate-600 dark:text-slate-400">
-          Účetní závěrky (rozvahy, výsledovky) &mdash; sbíhání ze Sbírky listin OR je v plánu, ale zatím
-          odkazujeme přímo na justice.cz. Stejně tak detailní výpis z katastru &mdash; ten je placený a vyžaduje
-          autentizaci přes ČÚZK.
+          U účetních závěrek čteme <strong>metadata i čísla z výkazů</strong> ze Sbírky listin (aktiva, kapitál,
+          cizí zdroje, výsledek z PDF rozvahy <em>bez AI</em>) + víceletý graf vývoje, u skenů OCR &mdash; vše
+          <strong>experimentální</strong> (u nestandardních forem nízká spolehlivost, doporučené ruční ověření).
+          Detailní výpis z katastru je placený a vyžaduje autentizaci přes ČÚZK.
         </p>
       </div>
     </section>

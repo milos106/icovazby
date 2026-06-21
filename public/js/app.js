@@ -2028,6 +2028,160 @@ function ddSmlouvyLoader() {
   };
 }
 
+// Sbírka listin (or.justice) — Fáze 1: metadata; Fáze 2: čísla z PDF (lazy).
+function ddSbirkaListinLoader() {
+  return {
+    sl: null,
+    loading: false,
+    slError: "",
+    cisla: null,
+    cislaLoading: false,
+    cislaError: "",
+    cislaTried: false,
+    formatCZK,
+    async load(ico) {
+      if (!ico) return;
+      this.loading = true;
+      this.sl = null;
+      this.slError = "";
+      this.cisla = null;
+      this.cislaTried = false;
+      this.cislaError = "";
+      this.ocrTried = false;
+      this.ocrError = "";
+      try {
+        this.sl = await jsonFetch(`/api/sbirka-listin/${encodeURIComponent(ico)}`);
+        // Eager: jakmile máme metadata a firma je v OR, rovnou natáhni čísla i graf
+        // (fire-and-forget, nezdrží render) — uživatel vidí data hned, bez klikání.
+        // OCR zůstává manuální (drahé). Vše cachované → cena jen na 1. zobrazení.
+        if (this.sl && this.sl.applicable && !this.sl.error) {
+          this.loadCisla(ico);
+          this.loadVyvoj(ico);
+        }
+      } catch (e) {
+        this.slError = "Sbírku listin nelze načíst: " + e.message;
+      } finally {
+        this.loading = false;
+      }
+    },
+    // Fáze 2 — lazy: stáhne PDF poslední závěrky a vytáhne čísla (pdftotext, bez LLM).
+    async loadCisla(ico) {
+      if (!ico || this.cislaLoading) return;
+      this.cislaTried = true;
+      this.cislaLoading = true;
+      this.cislaError = "";
+      try {
+        this.cisla = await jsonFetch(`/api/zaverka-cisla/${encodeURIComponent(ico)}`);
+      } catch (e) {
+        this.cislaError = "Čísla nelze načíst: " + e.message;
+      } finally {
+        this.cislaLoading = false;
+      }
+    },
+    // Fáze 2b — OCR skenu (on-demand, drahé). Nabízí se, jen když běžné čtení
+    // selhalo (sken). Výsledek má stejný tvar jako cisla → recyklujeme tabulku.
+    ocrLoading: false,
+    ocrTried: false,
+    ocrError: "",
+    async loadOcr(ico) {
+      if (!ico || this.ocrLoading) return;
+      this.ocrTried = true;
+      this.ocrLoading = true;
+      this.ocrError = "";
+      try {
+        const res = await jsonFetch(`/api/zaverka-ocr/${encodeURIComponent(ico)}`);
+        if (res && res.cisla) {
+          this.cisla = res; // přepíše „nepodařilo se" → zobrazí se OCR čísla
+          this.cislaError = "";
+        } else {
+          this.ocrError = (res && res.error) || "OCR nic nepřečetlo.";
+        }
+      } catch (e) {
+        this.ocrError = "OCR nelze spustit: " + e.message;
+      } finally {
+        this.ocrLoading = false;
+      }
+    },
+    // tis. Kč → čitelná částka v Kč (formatCZK). Záporné OK.
+    fmtTis(v, jednotka) {
+      if (v == null) return "—";
+      var kc = jednotka === "tis. Kč" ? v * 1000 : v;
+      // formatCZK neformátuje záporné → formátuj absolutní hodnotu a vrať znaménko.
+      return (kc < 0 ? "−" : "") + this.formatCZK(Math.abs(kc));
+    },
+    fmtPct(v) {
+      return v == null ? "—" : (v * 100).toFixed(1).replace(".", ",") + " %";
+    },
+    // Přístup 2 — víceletý vývoj (řada + metriky + trendy). Lazy.
+    vyvoj: null,
+    vyvojLoading: false,
+    vyvojError: "",
+    vyvojTried: false,
+    async loadVyvoj(ico) {
+      if (!ico || this.vyvojLoading) return;
+      this.vyvojTried = true;
+      this.vyvojLoading = true;
+      this.vyvojError = "";
+      try {
+        this.vyvoj = await jsonFetch(`/api/zaverka-vyvoj/${encodeURIComponent(ico)}`);
+      } catch (e) {
+        this.vyvojError = "Vývoj nelze načíst: " + e.message;
+      } finally {
+        this.vyvojLoading = false;
+      }
+    },
+    // Metrika sloupců grafu: tržby (preferované); fallback na aktiva, když firma
+    // neukládá čitelnou výsledovku (jen rozvahu) — ať není graf prázdný.
+    _vyvojMetric: "trzby",
+    vyvojMetricLabel() {
+      return this._vyvojMetric === "aktiva" ? "aktiva" : "tržby";
+    },
+    // Plausibility guard: zkrácené/malé formy parser občas přečte špatně
+    // (špatný sloupec „minulé období") → nesmyslné meziroční skoky. Když je
+    // některý rok >10× menší/větší než OBA sousedi, řadu označíme za nespolehlivou
+    // a graf radši nezobrazíme (lepší než sebevědomě špatné číslo).
+    vyvojReliable() {
+      const rada = ((this.vyvoj && this.vyvoj.rada) || []).slice().reverse(); // staré → nové
+      const cnt = (k) => rada.filter((r) => typeof r[k] === "number").length;
+      // Preferuj tržby, ale jen když pokrývají skoro stejně let jako aktiva
+      // (jinak by 3 prázdné sloupce u firem bez recentní výsledovky) → pak aktiva.
+      const ct = cnt("trzby"),
+        ca = cnt("aktiva");
+      const metric = ct >= 2 && ct + 1 >= ca ? "trzby" : ca >= 2 ? "aktiva" : "trzby";
+      const v = rada.map((r) => r[metric]);
+      for (let i = 1; i < v.length - 1; i++) {
+        if (typeof v[i] !== "number" || typeof v[i - 1] !== "number" || typeof v[i + 1] !== "number") continue;
+        const a = Math.abs(v[i - 1]),
+          b = Math.abs(v[i]),
+          c = Math.abs(v[i + 1]);
+        const dip = b > 0 && b * 10 < a && b * 10 < c; // propad mezi dvěma vyššími
+        const spike = a > 0 && c > 0 && b > 10 * a && b > 10 * c; // špička mezi dvěma nižšími
+        if (dip || spike) return false;
+      }
+      return true;
+    },
+    // Řádky grafu (staré → nové) se šířkou sloupce (CSS bar, bez knihovny).
+    vyvojRows() {
+      const rada = ((this.vyvoj && this.vyvoj.rada) || []).slice().reverse();
+      const cnt = (k) => rada.filter((r) => typeof r[k] === "number").length;
+      // Preferuj tržby, ale jen když pokrývají skoro stejně let jako aktiva
+      // (jinak by 3 prázdné sloupce u firem bez recentní výsledovky) → pak aktiva.
+      const ct = cnt("trzby"),
+        ca = cnt("aktiva");
+      const metric = ct >= 2 && ct + 1 >= ca ? "trzby" : ca >= 2 ? "aktiva" : "trzby";
+      this._vyvojMetric = metric;
+      const vals = rada.map((r) => r[metric]).filter((v) => typeof v === "number");
+      const max = vals.length ? Math.max.apply(null, vals.map(Math.abs)) : 0;
+      return rada.map((r) => ({
+        rok: r.rok,
+        val: r[metric],
+        vh: r.vysledekHospodareni,
+        barPct: typeof r[metric] === "number" && max > 0 ? Math.max(3, Math.round((Math.abs(r[metric]) / max) * 100)) : 0,
+      }));
+    },
+  };
+}
+
 function ddUboLoader() {
   return {
     ubo: null,

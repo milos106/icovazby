@@ -968,7 +968,10 @@ import {
 } from "./persons_index/store.js";
 
 // ─── Veřejný rejstřík (OR) přes verejnerejstriky.msp.gov.cz ───────────────────
-import { VR_ATTRIBUTION, fetchVrDetailByIco } from "./justice_vr/client.js";
+import { VR_ATTRIBUTION, fetchVrDetailByIco, findSubjektIdByIco } from "./justice_vr/client.js";
+import { fetchSbirkaListin, SL_ATTRIBUTION, parseCzDate } from "./justice_sl/client.js";
+import { extractZaverkaCisla } from "./justice_sl/pdf.js";
+import { dbGetFinancials, dbUpsertFinancials } from "./persons_index/db.js";
 
 function vrAddressToText(a?: {
   ulice?: string;
@@ -1805,6 +1808,234 @@ export async function exportForInvoicingService(
     endpointHint,
     _attribution: ARES_ATTRIBUTION,
   };
+}
+
+/**
+ * Sbírka listin — Fáze 1: metadata účetních závěrek (co a kdy uloženo).
+ * Hodnota = compliance signál „podává / nepodává / zaostává" — bez čísel z výkazů.
+ */
+export async function getSbirkaListinService(icoInput: string) {
+  const v = validateIcoFn(icoInput);
+  if (!v.valid) throw new InvalidInputError(v.reason ?? "Neplatné IČO.");
+  const subjektId = await findSubjektIdByIco(v.normalized!); // v.valid zaručuje normalized
+  if (subjektId == null) {
+    return {
+      ico: v.normalized,
+      applicable: false,
+      reason: "Subjekt není v obchodním rejstříku (OSVČ / fyzická osoba nebo nezapsaný subjekt) — Sbírka listin se nevede.",
+      _attribution: SL_ATTRIBUTION,
+    };
+  }
+  const portalUrl = `https://or.justice.cz/ias/ui/vypis-sl-firma?subjektId=${subjektId}`;
+  let listiny;
+  try {
+    listiny = await fetchSbirkaListin(subjektId);
+  } catch (e) {
+    return { ico: v.normalized, applicable: true, subjektId, portalUrl, error: "Sbírku listin se nepodařilo načíst: " + (e as Error).message, _attribution: SL_ATTRIBUTION };
+  }
+
+  // Sloučení účetních závěrek po roce (ber první/nejúplnější výskyt roku).
+  const zaverkyMap = new Map<number, { rok: number; podano: string | null; obdobiKDatu: string | null; ref: string; detailUrl: string | null; konsolidovana: boolean }>();
+  for (const l of listiny) {
+    if (!l.jeZaverka) continue;
+    for (const rok of l.roky) {
+      if (!zaverkyMap.has(rok)) {
+        zaverkyMap.set(rok, { rok, podano: l.ulozeno ?? l.doruceno, obdobiKDatu: l.vznik, ref: l.ref, detailUrl: l.detailUrl, konsolidovana: l.konsolidovana });
+      }
+    }
+  }
+  const zaverky = [...zaverkyMap.values()].sort((a, b) => b.rok - a.rok);
+  const posledniRok = zaverky.length ? zaverky[0]!.rok : null;
+  const currentYear = new Date().getFullYear();
+  const expectedLatest = currentYear - 2; // závěrka za rok N se podává typicky do ~poloviny N+1
+
+  let level: RiskLevel = "green";
+  let status: "aktualni" | "chybi" | "zaostava" | "nikdy";
+  let message: string;
+  if (zaverky.length === 0) {
+    level = "red"; status = "nikdy";
+    message = "Firma nemá ve Sbírce listin žádnou účetní závěrku — porušení zákonné povinnosti a silný varovný signál.";
+  } else {
+    const behind = expectedLatest - (posledniRok as number);
+    if (behind <= 0) { level = "green"; status = "aktualni"; message = `Poslední uložená účetní závěrka je za rok ${posledniRok}.`; }
+    else if (behind === 1) { level = "yellow"; status = "chybi"; message = `Chybí účetní závěrka za rok ${expectedLatest} — poslední je za ${posledniRok}.`; }
+    else { level = "red"; status = "zaostava"; message = `Účetní závěrky zaostávají (poslední za ${posledniRok}, očekáván ${expectedLatest}).`; }
+  }
+
+  // Pozdní podání poslední závěrky (>15 měsíců po konci období).
+  let pozdniPodani = false;
+  const top = zaverky[0];
+  if (top?.podano && top?.obdobiKDatu) {
+    const pod = parseCzDate(top.podano);
+    const obd = parseCzDate(top.obdobiKDatu);
+    if (pod && obd) {
+      const months = (new Date(pod.iso).getTime() - new Date(obd.iso).getTime()) / (1000 * 60 * 60 * 24 * 30.4);
+      if (months > 15) pozdniPodani = true;
+    }
+  }
+
+  return {
+    ico: v.normalized,
+    applicable: true,
+    subjektId,
+    portalUrl,
+    level,
+    status,
+    message,
+    posledniRok,
+    posledniPodano: top?.podano ?? null,
+    pozdniPodani,
+    pocetListin: listiny.length,
+    zaverky: zaverky.slice(0, 8),
+    _attribution: SL_ATTRIBUTION,
+  };
+}
+
+/**
+ * Fáze 2 — čísla z poslední uložené účetní závěrky (PDF → pdftotext → parse,
+ * BEZ LLM). Heavy (stahuje PDF), proto lazy + cache. Zkusí poslední 2 závěrky
+ * (kdyby poslední neměla čitelná čísla — např. jen příloha/sken).
+ */
+export async function getZaverkaCislaService(icoInput: string) {
+  const sl = (await getSbirkaListinService(icoInput)) as unknown as {
+    applicable?: boolean; reason?: string; error?: string;
+    zaverky?: Array<{ rok: number; detailUrl: string | null }>;
+  };
+  if (!sl?.applicable) return { applicable: false, reason: sl?.reason, _attribution: SL_ATTRIBUTION };
+  const zav = Array.isArray(sl.zaverky) ? sl.zaverky : [];
+  if (sl.error || zav.length === 0) {
+    return { applicable: true, error: sl.error || "Žádná uložená účetní závěrka.", _attribution: SL_ATTRIBUTION };
+  }
+  for (const z of zav.slice(0, 2)) {
+    if (!z.detailUrl) continue;
+    const res = await extractZaverkaCisla(z.detailUrl, z.rok);
+    if (!("error" in res)) {
+      return { applicable: true, rok: z.rok, cisla: res, _attribution: SL_ATTRIBUTION };
+    }
+  }
+  return { applicable: true, error: "Čísla z výkazů se nepodařilo přečíst (sken / strukturovaný formát) — otevři PDF ručně.", _attribution: SL_ATTRIBUTION };
+}
+
+/**
+ * Fáze 2b — OCR skenu (on-demand, DRAHÉ na CPU). Stejné jako getZaverkaCislaService,
+ * ale s opts.ocr → u skenů zkusí tesseract. Výsledek zapíše i do `financials`
+ * (ať z toho těží i graf vývoje). Spouští se JEN na explicitní žádost uživatele.
+ */
+export async function getZaverkaOcrService(icoInput: string) {
+  const sl = (await getSbirkaListinService(icoInput)) as unknown as {
+    applicable?: boolean; reason?: string; error?: string;
+    zaverky?: Array<{ rok: number; detailUrl: string | null }>;
+  };
+  if (!sl?.applicable) return { applicable: false, reason: sl?.reason, _attribution: SL_ATTRIBUTION };
+  const zav = Array.isArray(sl.zaverky) ? sl.zaverky : [];
+  if (sl.error || zav.length === 0) {
+    return { applicable: true, error: sl.error || "Žádná uložená účetní závěrka.", _attribution: SL_ATTRIBUTION };
+  }
+  const ico = String(icoInput).replace(/\D/g, "").padStart(8, "0");
+  // OCR je drahé → jen poslední závěrka (PDF nese 2 roky: běžné + minulé)
+  for (const z of zav.slice(0, 1)) {
+    if (!z.detailUrl) continue;
+    const res = await extractZaverkaCisla(z.detailUrl, z.rok, { ocr: true });
+    if (!("error" in res)) {
+      // zapiš obě období do financials (OCR = low confidence, nepřepíše high z textu)
+      for (const [idx, rok] of [[0, z.rok], [1, z.rok - 1]] as const) {
+        const z0 = (v: number | null | undefined) => v == null || v === 0;
+        if (z0(res.aktivaCelkem[idx]) && z0(res.vlastniKapital[idx]) && z0(res.ciziZdroje[idx]) && z0(res.trzby[idx]) && z0(res.vysledekHospodareni[idx])) continue;
+        dbUpsertFinancials({
+          ico, rok,
+          aktiva: res.aktivaCelkem[idx], vlastniKapital: res.vlastniKapital[idx],
+          ciziZdroje: res.ciziZdroje[idx], vysledekHospodareni: res.vysledekHospodareni[idx],
+          trzby: res.trzby[idx], jednotka: res.jednotka, confidence: "low", source: "ocr",
+        });
+      }
+      return { applicable: true, rok: z.rok, cisla: res, _attribution: SL_ATTRIBUTION };
+    }
+  }
+  return { applicable: true, error: "Ani OCR čísla nepřečetl — sken je nečitelný nebo netypická forma. Otevři PDF ručně.", _attribution: SL_ATTRIBUTION };
+}
+
+/**
+ * Přístup 2 — víceletá řada financí + metriky + trendy. Stáhne JEN potřebné
+ * závěrky (každé PDF = 2 roky → parsuje každý 2. rok, strop 4 PDF), uloží do
+ * tabulky `financials` (akumuluje se, seed pro Přístup 3). Lazy, CPU-šetrné.
+ */
+export async function getZaverkaVyvojService(icoInput: string) {
+  const sl = (await getSbirkaListinService(icoInput)) as unknown as {
+    applicable?: boolean; reason?: string; error?: string;
+    zaverky?: Array<{ rok: number; detailUrl: string | null }>;
+  };
+  if (!sl?.applicable) return { applicable: false, reason: sl?.reason, _attribution: SL_ATTRIBUTION };
+  const ico = String(icoInput).replace(/\D/g, "").padStart(8, "0");
+  const zaverky = (sl.zaverky ?? []).slice().sort((a, b) => b.rok - a.rok);
+
+  const have = new Set(dbGetFinancials(ico).map((r) => r.rok));
+  let parsed = 0;
+  for (const z of zaverky) {
+    if (parsed >= 4) break;
+    if (!z.detailUrl) continue;
+    if (have.has(z.rok) && have.has(z.rok - 1)) continue; // pár let už máme → šetři stahování
+    const res = await extractZaverkaCisla(z.detailUrl, z.rok);
+    parsed++;
+    if ("error" in res) continue;
+    // PDF nese 2 sloupce: [0]=běžné (z.rok), [1]=minulé (z.rok-1)
+    for (const [idx, rok] of [[0, z.rok], [1, z.rok - 1]] as const) {
+      // Přeskoč prázdný „minulé" sloupec nejstaršího dokumentu (firma ještě
+      // neexistovala) → jinak vznikne fantomový rok se samými nulami/null.
+      const z0 = (v: number | null | undefined) => v == null || v === 0;
+      if (z0(res.aktivaCelkem[idx]) && z0(res.vlastniKapital[idx]) && z0(res.ciziZdroje[idx]) && z0(res.trzby[idx]) && z0(res.vysledekHospodareni[idx])) continue;
+      dbUpsertFinancials({
+        ico, rok,
+        aktiva: res.aktivaCelkem[idx], vlastniKapital: res.vlastniKapital[idx],
+        ciziZdroje: res.ciziZdroje[idx], vysledekHospodareni: res.vysledekHospodareni[idx],
+        trzby: res.trzby[idx], jednotka: res.jednotka, confidence: res.confidence, source: "pdftotext",
+      });
+      have.add(rok);
+    }
+  }
+
+  const z0 = (v: number | null | undefined) => v == null || v === 0;
+  const rada = dbGetFinancials(ico).filter(
+    (r) => !(z0(r.aktiva) && z0(r.vlastniKapital) && z0(r.ciziZdroje) && z0(r.trzby) && z0(r.vysledekHospodareni)),
+  ); // sestupně dle roku; bez prázdných let
+  if (rada.length === 0) {
+    return { applicable: true, rada: [], error: "Z dostupných závěrek se nepodařilo přečíst čísla (sken / formát).", _attribution: SL_ATTRIBUTION };
+  }
+  const num = (v: number | null | undefined) => (typeof v === "number" ? v : null);
+  const ratio = (a: number | null, b: number | null) => (a != null && b != null && b !== 0 ? a / b : null);
+  const latest = rada[0]!; // rada.length>0 zaručeno výše
+  const withTrzby = rada.filter((r) => num(r.trzby) != null);
+  let cagrTrzby: number | null = null;
+  if (withTrzby.length >= 2) {
+    const n = withTrzby[0]!, o = withTrzby[withTrzby.length - 1]!; // length>=2 výše
+    const yrs = n.rok - o.rok;
+    if (yrs > 0 && (o.trzby as number) > 0 && (n.trzby as number) > 0) {
+      cagrTrzby = Math.pow((n.trzby as number) / (o.trzby as number), 1 / yrs) - 1;
+    }
+  }
+  const metriky = {
+    margeLatest: ratio(num(latest.vysledekHospodareni), num(latest.trzby)),
+    zadluzenost: ratio(num(latest.ciziZdroje), num(latest.aktiva)),
+    roe: ratio(num(latest.vysledekHospodareni), num(latest.vlastniKapital)),
+    roa: ratio(num(latest.vysledekHospodareni), num(latest.aktiva)),
+    cagrTrzby,
+  };
+
+  // Trendové flagy
+  const flags: Array<{ level: RiskLevel; text: string }> = [];
+  if (num(latest.vlastniKapital) != null && (latest.vlastniKapital as number) < 0) {
+    flags.push({ level: "red", text: `Záporný vlastní kapitál za ${latest.rok} — předlužení.` });
+  }
+  const lossesRecent = rada.slice(0, 2).filter((r) => num(r.vysledekHospodareni) != null && (r.vysledekHospodareni as number) < 0).length;
+  if (lossesRecent >= 2) flags.push({ level: "red", text: "Ztráta 2 roky po sobě." });
+  else if (num(latest.vysledekHospodareni) != null && (latest.vysledekHospodareni as number) < 0) flags.push({ level: "yellow", text: `Ztráta za ${latest.rok}.` });
+  // klesající obrat 3 roky
+  const t = rada.slice(0, 3).map((r) => num(r.trzby));
+  if (t.length === 3 && t.every((x) => x != null) && (t[0] as number) < (t[1] as number) && (t[1] as number) < (t[2] as number)) {
+    flags.push({ level: "yellow", text: "Klesající obrat 3 roky po sobě." });
+  }
+  if (flags.length === 0 && rada.length >= 2) flags.push({ level: "green", text: "Bez varovných finančních trendů." });
+
+  return { applicable: true, ico, rada, metriky, trendFlags: flags, jednotka: latest.jednotka, _attribution: SL_ATTRIBUTION };
 }
 
 // Expose helpers for tests / other consumers

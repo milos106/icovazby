@@ -229,7 +229,7 @@
   <body class="bg-[#F2FAF5] dark:bg-slate-900 text-slate-900 dark:text-slate-100 min-h-screen flex flex-col transition-colors">
     <header class="bg-white dark:bg-slate-800 border-b dark:border-slate-700 sticky top-0 z-30" x-data="historyBar()" x-init="init()">
       <div class="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between gap-3 flex-wrap">
-        <a href="/" class="flex items-center gap-3 rounded-lg hover:opacity-90 transition-opacity" title="Domů">
+        <a href="/klasik" class="flex items-center gap-3 rounded-lg hover:opacity-90 transition-opacity" title="Domů (klasická verze)">
           <svg width="32" height="32" sm:width="40" sm:height="40" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg" class="shrink-0">
             <path d="M 32 18 L 14 46" stroke="#10b981" stroke-width="3.5" stroke-linecap="round" fill="none"/>
             <path d="M 32 18 L 32 46" stroke="#10b981" stroke-width="3.5" stroke-linecap="round" fill="none"/>
@@ -246,16 +246,15 @@
             <p class="hidden sm:block text-xs text-slate-500 dark:text-slate-400">Prověrka českých firem a jejich propojení</p>
           </div>
         </a>
-        <!-- Přepínač na nové zobrazení V2 (workspace). onclick přenese aktuální
-             PROFILOVÉ IČO do v2 (ne celý ?icos= seznam mapy), ať se otevře tatáž
-             firma. Zdroj: window.__aresLatestReport.ico (nastavuje ddSection),
-             fallback na URL ?ico= / první z ?icos=. Vanilla JS (mimo Alpine). -->
+        <!-- Toto je „klasická" (starší) verze na /klasik. Odkaz vede na AKTUÁLNÍ
+             verzi (v2 = hlavní stránka /). onclick přenese profilové IČO, ať se
+             otevře tatáž firma. Vanilla JS (mimo Alpine scope). -->
         <a
-          href="/v2"
-          onclick="var q=new URLSearchParams(location.search);var i=(window.__aresLatestReport&&window.__aresLatestReport.ico)||q.get('ico')||(q.get('icos')||'').split(',')[0];this.href=i?'/v2?ico='+encodeURIComponent(i)+'&action=profil':'/v2'"
+          href="/"
+          onclick="var q=new URLSearchParams(location.search);var i=(window.__aresLatestReport&&window.__aresLatestReport.ico)||q.get('ico')||(q.get('icos')||'').split(',')[0];this.href=i?'/?ico='+encodeURIComponent(i)+'&action=profil':'/'"
           class="inline-flex items-center gap-1 text-[11px] uppercase tracking-wider px-2.5 py-1 rounded-full bg-emerald-600 text-white hover:bg-emerald-700 transition-colors font-semibold shadow-sm"
-          title="Otevřít nové zobrazení V2 (workspace) — tatáž firma, přehlednější rozložení"
-        >✨ Zobrazení V2 →</a>
+          title="Přejít na aktuální verzi (workspace) — tatáž firma, přehlednější rozložení"
+        >✨ Aktuální verze →</a>
         <a
           href="/pro.html"
           class="hidden sm:inline-flex items-center gap-1 text-[11px] uppercase tracking-wider px-2.5 py-1 rounded-full border border-emerald-300 dark:border-emerald-700 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-50 dark:hover:bg-emerald-900/30 transition-colors font-semibold"
@@ -1666,6 +1665,97 @@
                 <p class="mt-3 pt-2 border-t dark:border-slate-700 text-xs text-slate-500 dark:text-slate-400">
                   Data: <a class="underline font-semibold" href="https://www.hlidacstatu.cz" target="_blank" rel="noopener">Hlídač státu, z.ú.</a>
                   · licence <a class="underline" href="https://creativecommons.org/licenses/by/3.0/cz/" target="_blank" rel="noopener">CC BY 3.0 CZ</a>
+                </p>
+              </div>
+
+              <!-- Účetní závěrky (Sbírka listin) — Fáze 1: metadata (co/kdy uloženo) -->
+              <div id="dd-sbirka" x-show="$store.dalsiRegistry.open" class="dd-card border border-slate-200/80 dark:border-slate-700 rounded-xl p-5 shadow-sm hover:shadow-md transition-shadow scroll-mt-32" x-data="ddSbirkaListinLoader()" x-init="load(report.ico)">
+                <h3 class="text-base font-semibold flex items-center gap-2 mb-3"><span>📄 Účetní závěrky</span><span class="text-xs font-normal text-slate-500 dark:text-slate-400">— Sbírka listin (or.justice.cz)</span></h3>
+                <div x-show="loading" class="text-sm text-slate-400">Načítám…</div>
+                <template x-if="sl && sl.applicable && !sl.error">
+                  <div>
+                    <div class="flex items-start gap-2 text-sm font-medium" :class="sl.level==='red'?'text-rose-600 dark:text-rose-400':(sl.level==='yellow'?'text-amber-600 dark:text-amber-400':'text-emerald-600 dark:text-emerald-400')">
+                      <span x-text="sl.level==='green'?'✓':'⚠'"></span><span x-text="sl.message"></span>
+                    </div>
+                    <div x-show="(sl.zaverky||[]).length" class="mt-2.5 flex flex-wrap gap-1.5">
+                      <template x-for="z in (sl.zaverky||[]).slice(0,8)" :key="z.rok">
+                        <a :href="z.detailUrl" target="_blank" rel="noopener" :title="'Uloženo ' + (z.podano||'') + (z.konsolidovana?' · konsolidovaná':'')" class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full border border-slate-200 dark:border-slate-600 text-xs hover:border-emerald-500/60">
+                          <span class="font-medium" x-text="z.rok"></span><span class="text-slate-400" x-text="z.podano ? ('· ' + z.podano) : ''"></span>
+                        </a>
+                      </template>
+                    </div>
+                    <p x-show="sl.pozdniPodani" x-cloak class="mt-2 text-xs text-amber-600 dark:text-amber-300">⚠ Poslední závěrka podána se zpožděním (&gt;15 měsíců po konci období).</p>
+                    <!-- Fáze 2 — čísla z poslední závěrky (lazy, pdftotext bez LLM) -->
+                    <div class="mt-3 pt-2 border-t dark:border-slate-700">
+                      <button x-show="!cislaTried" type="button" @click="loadCisla(report.ico)" class="text-xs px-3 py-1.5 rounded-lg bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-100 dark:hover:bg-emerald-900/50 font-medium">📊 Načíst čísla z poslední závěrky</button>
+                      <div x-show="cislaLoading" x-cloak class="text-xs text-slate-400">Čtu PDF závěrky…</div>
+                      <template x-if="cisla && cisla.cisla">
+                        <div>
+                          <table class="w-full text-sm mt-1">
+                            <thead><tr class="text-xs text-slate-400"><th class="text-left font-normal py-1">Položka</th><th class="text-right font-normal" x-text="cisla.cisla.obdobi.bezne"></th><th class="text-right font-normal" x-text="cisla.cisla.obdobi.minule"></th></tr></thead>
+                            <tbody class="divide-y divide-slate-100 dark:divide-slate-700">
+                              <template x-for="row in [['Aktiva celkem','aktivaCelkem'],['Vlastní kapitál','vlastniKapital'],['Cizí zdroje','ciziZdroje'],['Výsledek hospodaření','vysledekHospodareni']]" :key="row[1]">
+                                <tr><td class="py-1" x-text="row[0]"></td><td class="text-right font-mono tnum" :class="cisla.cisla[row[1]][0]<0?'text-rose-500':''" x-text="fmtTis(cisla.cisla[row[1]][0], cisla.cisla.jednotka)"></td><td class="text-right font-mono tnum text-slate-400" x-text="fmtTis(cisla.cisla[row[1]][1], cisla.cisla.jednotka)"></td></tr>
+                              </template>
+                            </tbody>
+                          </table>
+                          <p class="mt-1 text-xs text-slate-400">Z poslední závěrky (<span x-text="cisla.rok"></span>) · <span x-show="cisla.cisla.source==='ocr'" class="text-amber-600 dark:text-amber-300">📷 čteno OCR ze skenu — ověř ručně · </span><span x-text="cisla.cisla.confidence==='high'?'✓ aktiva = pasiva':'⚠ nízká spolehlivost — ověř u zdroje'"></span> · experimentální (bez AI).</p>
+                        </div>
+                      </template>
+                      <template x-if="cisla && cisla.error && !cislaLoading">
+                        <div>
+                          <p class="text-xs text-slate-400" x-text="cisla.error"></p>
+                          <button x-show="(!ocrTried || ocrError) && !ocrLoading" type="button" @click="loadOcr(report.ico)" class="mt-1 text-xs px-3 py-1.5 rounded-lg bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 hover:bg-amber-100 dark:hover:bg-amber-900/50 font-medium" x-text="ocrError ? '↻ Zkusit OCR znovu' : '🔍 Zkusit přečíst sken (OCR)'"></button>
+                          <div x-show="ocrLoading" x-cloak class="text-xs text-slate-400">OCR skenu běží… (~10–60 s, experimentální)</div>
+                          <p x-show="ocrError && !ocrLoading" x-cloak class="text-xs text-rose-500" x-text="ocrError"></p>
+                        </div>
+                      </template>
+                      <template x-if="cislaError && !cislaLoading"><p class="text-xs text-rose-500" x-text="cislaError"></p></template>
+                    </div>
+                    <!-- Přístup 2 — víceletý vývoj (lazy) -->
+                    <div class="mt-3 pt-2 border-t dark:border-slate-700">
+                      <button x-show="!vyvojTried" type="button" @click="loadVyvoj(report.ico)" class="text-xs px-3 py-1.5 rounded-lg bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-100 dark:hover:bg-emerald-900/50 font-medium">📈 Zobrazit vývoj (víc let)</button>
+                      <div x-show="vyvojLoading" x-cloak class="text-xs text-slate-400">Čtu závěrky za víc let…</div>
+                      <template x-if="vyvoj && vyvoj.rada && vyvoj.rada.length">
+                        <div>
+                          <div x-show="!vyvojReliable()" x-cloak class="text-xs text-amber-600 dark:text-amber-300 leading-snug py-1">⚠ Čísla ze zkrácené závěrky vypadají nespolehlivě (nesmyslné meziroční skoky) — graf raději nezobrazujeme. Ověř v <a :href="'https://or.justice.cz/ias/ui/rejstrik-$firma?ico='+report.ico" target="_blank" class="underline">Sbírce listin</a>.</div>
+                          <div x-show="vyvojReliable()">
+                          <div class="space-y-1 my-2">
+                            <template x-for="row in vyvojRows()" :key="row.rok">
+                              <div class="flex items-center gap-2 text-xs">
+                                <span class="w-10 shrink-0 font-mono text-slate-500 dark:text-slate-400" x-text="row.rok"></span>
+                                <div class="flex-1 h-3.5 rounded bg-slate-100 dark:bg-slate-700 overflow-hidden"><div class="h-full bg-emerald-500/70" :style="'width:'+row.barPct+'%'"></div></div>
+                                <span class="w-24 shrink-0 text-right font-mono tnum text-slate-500 dark:text-slate-400" x-text="row.val!=null ? fmtTis(row.val, vyvoj.jednotka) : '—'"></span>
+                                <span class="w-20 shrink-0 text-right font-mono tnum" :class="row.vh<0?'text-rose-500':'text-emerald-600 dark:text-emerald-400'" x-text="row.vh!=null ? fmtTis(row.vh, vyvoj.jednotka) : ''"></span>
+                              </div>
+                            </template>
+                            <div class="flex items-center gap-2 text-[10px] text-slate-400"><span class="w-10 shrink-0">rok</span><span class="flex-1" x-text="vyvojMetricLabel()"></span><span class="w-24 text-right shrink-0" x-text="vyvojMetricLabel()"></span><span class="w-20 text-right shrink-0">VH</span></div>
+                          </div>
+                          <div x-show="vyvojMetricLabel()==='aktiva'" x-cloak class="text-[11px] text-amber-600 dark:text-amber-300 mb-1.5 leading-snug">⚠ Firma neukládá čitelný Výkaz zisku a ztráty — sloupce ukazují <strong>aktiva</strong> (velikost rozvahy), ne tržby.</div>
+                          <div class="flex flex-wrap gap-x-4 gap-y-0.5 text-xs text-slate-500 dark:text-slate-400">
+                            <span x-show="vyvoj.metriky.margeLatest!=null">Marže: <strong x-text="fmtPct(vyvoj.metriky.margeLatest)"></strong></span>
+                            <span x-show="vyvoj.metriky.zadluzenost!=null">Zadluženost: <strong x-text="fmtPct(vyvoj.metriky.zadluzenost)"></strong></span>
+                            <span x-show="vyvoj.metriky.roe!=null">ROE: <strong x-text="fmtPct(vyvoj.metriky.roe)"></strong></span>
+                            <span x-show="vyvoj.metriky.cagrTrzby!=null">CAGR tržeb: <strong x-text="fmtPct(vyvoj.metriky.cagrTrzby)"></strong></span>
+                          </div>
+                          <div class="mt-1 space-y-0.5">
+                            <template x-for="f in (vyvoj.trendFlags||[])" :key="f.text">
+                              <div class="text-xs" :class="f.level==='red'?'text-rose-500':(f.level==='yellow'?'text-amber-500':'text-emerald-600 dark:text-emerald-400')"><span x-text="f.level==='green'?'🟢':(f.level==='yellow'?'🟠':'🔴')"></span> <span x-text="f.text"></span></div>
+                            </template>
+                          </div>
+                          <p class="mt-1 text-xs text-slate-400">Z uložených závěrek · experimentální (čteno z PDF, bez AI).</p>
+                          </div>
+                        </div>
+                      </template>
+                      <template x-if="vyvoj && vyvoj.error && !vyvojLoading"><p class="text-xs text-slate-400" x-text="vyvoj.error"></p></template>
+                      <template x-if="vyvojError && !vyvojLoading"><p class="text-xs text-rose-500" x-text="vyvojError"></p></template>
+                    </div>
+                  </div>
+                </template>
+                <template x-if="sl && !sl.applicable"><p class="text-sm text-slate-500 dark:text-slate-400" x-text="sl.reason"></p></template>
+                <template x-if="(slError || (sl && sl.error)) && !loading"><p class="text-sm text-rose-500"><span x-text="slError || (sl && sl.error)"></span> <button type="button" @click="load(report.ico)" class="underline">↻ Zkusit znovu</button></p></template>
+                <p class="mt-3 pt-2 border-t dark:border-slate-700 text-xs text-slate-500 dark:text-slate-400">
+                  <a class="underline" :href="(sl && sl.portalUrl) || 'https://or.justice.cz'" target="_blank" rel="noopener">📄 Sbírka listin na or.justice.cz →</a> · veřejná data dle z. 304/2013 Sb.
                 </p>
               </div>
 

@@ -204,6 +204,8 @@
 
       <!-- Pro koho — za vyhledávacím polem, ve střední části řádku -->
       <a href="/v2/pro.html" target="_blank" rel="noopener" class="hidden md:inline-flex items-center gap-1 shrink-0 text-[13px] font-medium text-emerald-700 dark:text-emerald-400 hover:underline" title="Pro koho je aplikace + příručka co která funkce dělá">📖 Pro koho <span class="text-slate-400">ⓘ</span></a>
+      <!-- Odkaz na starší (klasickou) verzi — přenese profilové IČO na /klasik. -->
+      <a href="/klasik" onclick="var q=new URLSearchParams(location.search);var i=(window.__aresLatestReport&&window.__aresLatestReport.ico)||q.get('ico');this.href=i?'/klasik?ico='+encodeURIComponent(i)+'&action=profil':'/klasik'" class="hidden md:inline-flex items-center gap-1 shrink-0 text-[12px] text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:underline" title="Přepnout na starší (klasickou) verzi rozhraní">starší verze</a>
 
       <div class="ml-auto flex items-center gap-1.5">
         <span x-show="error" x-cloak class="hidden md:inline text-[11px] text-rose-500" x-text="error"></span>
@@ -396,6 +398,9 @@
                     </span>
                   </template>
                 </div>
+                <div x-show="riskState.ready && riskState.incomplete" x-cloak class="mt-1.5 text-[10px] text-amber-600 dark:text-amber-300 leading-snug">
+                  ⚠ Neúplné — nedostupná data (<span x-text="(riskState.missing||[]).join(', ')"></span>). Skóre může být optimistické; po obnovení se dopočítá.
+                </div>
                 <div class="mt-1 text-[10px]" :class="riskState.ready ? 'text-emerald-500' : 'text-slate-400'"
                   x-text="!riskState.ready ? 'počítám prověrku…' : (showFindings ? 'skrýt zjištění ▴' : 'zobrazit zjištění podle priority ▾')"></div>
               </button>
@@ -555,9 +560,9 @@
                Levý sloupec (entita/semafor/nav/nástroje) je na mobilu skrytý, tahle
                lišta tedy supluje navigaci skupin + přístup ke grafu (drawer). -->
           <div x-show="report" class="lg:hidden flex items-center gap-1.5 px-2 pb-2">
-            <span x-show="riskState.ready" x-cloak title="Risk skóre / 100"
+            <span x-show="riskState.ready" x-cloak :title="riskState.incomplete ? ('Neúplné — nedostupná data: ' + (riskState.missing||[]).join(', ')) : 'Risk skóre / 100'"
               :class="riskState.level==='red'?'bg-rose-500/15 text-rose-500':(riskState.level==='yellow'?'bg-amber-500/15 text-amber-500':'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400')"
-              class="shrink-0 px-2 py-1 rounded-full text-[11px] font-bold tnum" x-text="riskState.score"></span>
+              class="shrink-0 px-2 py-1 rounded-full text-[11px] font-bold tnum" x-text="riskState.score + (riskState.incomplete ? ' ⚠' : '')"></span>
             <div class="flex-1 min-w-0 flex items-center gap-1 overflow-x-auto no-scrollbar">
               <template x-for="g in groups" :key="g.id">
                 <button @click="active=g.id"
@@ -898,7 +903,7 @@
 
           <!-- ============ FINANCE ============ -->
           <template x-if="report && active==='finance'">
-            <div class="space-y-3">
+            <div class="flex flex-col gap-3">
               <!-- ADIS souhrn -->
               <section class="card-pop rounded-xl border border-slate-200 dark:border-ink-700 bg-white dark:bg-ink-850 p-3.5" x-data="ddAdisLoader()" x-init="load(report.ico)">
                 <div class="flex items-center justify-between mb-2"><h3 class="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">🏦 DPH / ADIS — platební riziko</h3><span class="text-[10px] font-mono text-slate-400">§109 ZDPH</span></div>
@@ -962,6 +967,98 @@
                 <template x-if="smlouvyError && !loading"><div class="text-[12px] text-rose-500 flex items-center gap-2 flex-wrap"><span>⚠ Služba dočasně nedostupná —</span><span x-text="smlouvyError"></span><button type="button" @click="load(report.ico)" class="underline">↻ Zkusit znovu</button></div></template>
                 <div class="mt-2.5 pt-2 border-t border-slate-100 dark:border-ink-700 text-[11px]">
                   <a class="text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-400" href="https://smlouvy.gov.cz/" target="_blank" rel="noopener">💰 Registr smluv →</a>
+                </div>
+              </section>
+
+              <!-- Účetní závěrky (Sbírka listin) — Fáze 1: jen metadata (co/kdy uloženo) -->
+              <section class="card-pop order-first rounded-xl border border-slate-200 dark:border-ink-700 bg-white dark:bg-ink-850 p-3.5" x-data="ddSbirkaListinLoader()" x-init="load(report.ico)">
+                <div class="flex items-center justify-between mb-2"><h3 class="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">📄 Účetní závěrky (Sbírka listin)</h3><span class="text-[10px] font-mono text-slate-400">or.justice.cz</span></div>
+                <div x-show="loading" class="text-[12px] text-slate-400">Načítám…</div>
+                <template x-if="sl && sl.applicable && !sl.error">
+                  <div>
+                    <div class="flex items-start gap-2 text-[13px]" :class="sl.level==='red'?'text-rose-500':(sl.level==='yellow'?'text-amber-500':'text-emerald-500')">
+                      <span class="shrink-0" x-text="sl.level==='green'?'✓':'⚠'"></span>
+                      <span x-text="sl.message"></span>
+                    </div>
+                    <div x-show="(sl.zaverky||[]).length" class="mt-2 flex flex-wrap gap-1">
+                      <template x-for="z in (sl.zaverky||[]).slice(0,6)" :key="z.rok">
+                        <a :href="z.detailUrl" target="_blank" rel="noopener" :title="'Uloženo ' + (z.podano||'') + (z.konsolidovana?' · konsolidovaná':'')" class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full border border-slate-200 dark:border-ink-700 text-[11px] hover:border-emerald-500/50">
+                          <span class="font-medium" x-text="z.rok"></span><span class="text-slate-400" x-text="z.podano ? ('· ' + z.podano) : ''"></span>
+                        </a>
+                      </template>
+                    </div>
+                    <p x-show="sl.pozdniPodani" x-cloak class="mt-1.5 text-[11px] text-amber-600 dark:text-amber-300">⚠ Poslední závěrka podána se zpožděním (&gt;15 měsíců po konci období).</p>
+                    <!-- Fáze 2 — čísla z poslední závěrky (lazy, pdftotext bez LLM) -->
+                    <div class="mt-2 pt-2 border-t border-slate-100 dark:border-ink-700">
+                      <button x-show="!cislaTried" type="button" @click="loadCisla(report.ico)" class="text-[11px] px-2.5 py-1 rounded-md bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-500/20 font-medium">📊 Načíst čísla z poslední závěrky</button>
+                      <div x-show="cislaLoading" x-cloak class="text-[11px] text-slate-400">Čtu PDF závěrky…</div>
+                      <template x-if="cisla && cisla.cisla">
+                        <div>
+                          <table class="w-full text-[12px]">
+                            <thead><tr class="text-[10px] text-slate-400"><th class="text-left font-normal py-1">Položka</th><th class="text-right font-normal" x-text="cisla.cisla.obdobi.bezne"></th><th class="text-right font-normal" x-text="cisla.cisla.obdobi.minule"></th></tr></thead>
+                            <tbody class="divide-y divide-slate-100 dark:divide-ink-700">
+                              <template x-for="row in [['Aktiva celkem','aktivaCelkem'],['Vlastní kapitál','vlastniKapital'],['Cizí zdroje','ciziZdroje'],['Výsledek hospodaření','vysledekHospodareni']]" :key="row[1]">
+                                <tr><td class="py-1" x-text="row[0]"></td><td class="text-right font-mono tnum" :class="cisla.cisla[row[1]][0]<0?'text-rose-500':''" x-text="fmtTis(cisla.cisla[row[1]][0], cisla.cisla.jednotka)"></td><td class="text-right font-mono tnum text-slate-400" x-text="fmtTis(cisla.cisla[row[1]][1], cisla.cisla.jednotka)"></td></tr>
+                              </template>
+                            </tbody>
+                          </table>
+                          <p class="mt-1 text-[10px] text-slate-400">Z poslední závěrky (<span x-text="cisla.rok"></span>) · <span x-show="cisla.cisla.source==='ocr'" class="text-amber-600 dark:text-amber-300">📷 čteno OCR ze skenu — ověř ručně · </span><span x-text="cisla.cisla.confidence==='high'?'✓ aktiva = pasiva':'⚠ nízká spolehlivost — ověř u zdroje'"></span> · experimentální (bez AI).</p>
+                        </div>
+                      </template>
+                      <template x-if="cisla && cisla.error && !cislaLoading">
+                        <div>
+                          <p class="text-[11px] text-slate-400" x-text="cisla.error"></p>
+                          <button x-show="(!ocrTried || ocrError) && !ocrLoading" type="button" @click="loadOcr(report.ico)" class="mt-1 text-[11px] px-2.5 py-1 rounded-md bg-amber-500/10 text-amber-700 dark:text-amber-300 hover:bg-amber-500/20 font-medium" x-text="ocrError ? '↻ Zkusit OCR znovu' : '🔍 Zkusit přečíst sken (OCR)'"></button>
+                          <div x-show="ocrLoading" x-cloak class="text-[11px] text-slate-400">OCR skenu běží… (~10–60 s, experimentální)</div>
+                          <p x-show="ocrError && !ocrLoading" x-cloak class="text-[11px] text-rose-500" x-text="ocrError"></p>
+                        </div>
+                      </template>
+                      <template x-if="cislaError && !cislaLoading"><p class="text-[11px] text-rose-500" x-text="cislaError"></p></template>
+                    </div>
+                    <!-- Přístup 2 — víceletý vývoj (lazy) -->
+                    <div class="mt-2 pt-2 border-t border-slate-100 dark:border-ink-700">
+                      <button x-show="!vyvojTried" type="button" @click="loadVyvoj(report.ico)" class="text-[11px] px-2.5 py-1 rounded-md bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-500/20 font-medium">📈 Zobrazit vývoj (víc let)</button>
+                      <div x-show="vyvojLoading" x-cloak class="text-[11px] text-slate-400">Čtu závěrky za víc let…</div>
+                      <template x-if="vyvoj && vyvoj.rada && vyvoj.rada.length">
+                        <div>
+                          <div x-show="!vyvojReliable()" x-cloak class="text-[11px] text-amber-600 dark:text-amber-300 leading-snug py-1">⚠ Čísla ze zkrácené závěrky vypadají nespolehlivě (nesmyslné meziroční skoky) — graf raději nezobrazujeme. Ověř v <a :href="'https://or.justice.cz/ias/ui/rejstrik-$firma?ico='+report.ico" target="_blank" class="underline">Sbírce listin</a>.</div>
+                          <div x-show="vyvojReliable()">
+                          <div class="space-y-1 mb-2">
+                            <template x-for="row in vyvojRows()" :key="row.rok">
+                              <div class="flex items-center gap-2 text-[11px]">
+                                <span class="w-9 shrink-0 font-mono text-slate-500 dark:text-slate-400" x-text="row.rok"></span>
+                                <div class="flex-1 h-3 rounded bg-slate-100 dark:bg-ink-800 overflow-hidden"><div class="h-full bg-emerald-500/70" :style="'width:'+row.barPct+'%'"></div></div>
+                                <span class="w-20 shrink-0 text-right font-mono tnum text-slate-500 dark:text-slate-400" x-text="row.val!=null ? fmtTis(row.val, vyvoj.jednotka) : '—'"></span>
+                                <span class="w-16 shrink-0 text-right font-mono tnum" :class="row.vh<0?'text-rose-500':'text-emerald-600 dark:text-emerald-400'" x-text="row.vh!=null ? fmtTis(row.vh, vyvoj.jednotka) : ''"></span>
+                              </div>
+                            </template>
+                            <div class="flex items-center gap-2 text-[9px] text-slate-400"><span class="w-9 shrink-0">rok</span><span class="flex-1" x-text="vyvojMetricLabel()+' (sloupec)'"></span><span class="w-20 text-right shrink-0" x-text="vyvojMetricLabel()"></span><span class="w-16 text-right shrink-0">VH</span></div>
+                          </div>
+                          <div x-show="vyvojMetricLabel()==='aktiva'" x-cloak class="text-[10px] text-amber-600 dark:text-amber-300 mb-1.5 leading-snug">⚠ Firma neukládá čitelný Výkaz zisku a ztráty — sloupce ukazují <strong>aktiva</strong> (velikost rozvahy), ne tržby.</div>
+                          <div class="flex flex-wrap gap-x-3 gap-y-0.5 text-[11px] text-slate-500 dark:text-slate-400">
+                            <span x-show="vyvoj.metriky.margeLatest!=null">Marže: <strong x-text="fmtPct(vyvoj.metriky.margeLatest)"></strong></span>
+                            <span x-show="vyvoj.metriky.zadluzenost!=null">Zadluženost: <strong x-text="fmtPct(vyvoj.metriky.zadluzenost)"></strong></span>
+                            <span x-show="vyvoj.metriky.roe!=null">ROE: <strong x-text="fmtPct(vyvoj.metriky.roe)"></strong></span>
+                            <span x-show="vyvoj.metriky.cagrTrzby!=null">CAGR tržeb: <strong x-text="fmtPct(vyvoj.metriky.cagrTrzby)"></strong></span>
+                          </div>
+                          <div class="mt-1 space-y-0.5">
+                            <template x-for="f in (vyvoj.trendFlags||[])" :key="f.text">
+                              <div class="text-[11px]" :class="f.level==='red'?'text-rose-500':(f.level==='yellow'?'text-amber-500':'text-emerald-600 dark:text-emerald-400')"><span x-text="f.level==='green'?'🟢':(f.level==='yellow'?'🟠':'🔴')"></span> <span x-text="f.text"></span></div>
+                            </template>
+                          </div>
+                          <p class="mt-1 text-[10px] text-slate-400">Z uložených závěrek · experimentální (čteno z PDF, bez AI).</p>
+                          </div>
+                        </div>
+                      </template>
+                      <template x-if="vyvoj && vyvoj.error && !vyvojLoading"><p class="text-[11px] text-slate-400" x-text="vyvoj.error"></p></template>
+                      <template x-if="vyvojError && !vyvojLoading"><p class="text-[11px] text-rose-500" x-text="vyvojError"></p></template>
+                    </div>
+                  </div>
+                </template>
+                <template x-if="sl && !sl.applicable"><p class="text-[12px] text-slate-400" x-text="sl.reason"></p></template>
+                <template x-if="(slError || (sl && sl.error)) && !loading"><div class="text-[12px] text-rose-500 flex items-center gap-2 flex-wrap"><span>⚠ Služba dočasně nedostupná —</span><span x-text="slError || (sl && sl.error)"></span><button type="button" @click="load(report.ico)" class="underline">↻ Zkusit znovu</button></div></template>
+                <div class="mt-2.5 pt-2 border-t border-slate-100 dark:border-ink-700 text-[11px]">
+                  <a class="text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-400" :href="(sl && sl.portalUrl) || 'https://or.justice.cz'" target="_blank" rel="noopener">📄 Sbírka listin →</a>
                 </div>
               </section>
             </div>
