@@ -2261,6 +2261,29 @@ function ddForensikaLoader() {
 }
 window.ddForensikaLoader = ddForensikaLoader;
 
+// PEP + sankce (Hodnota #2): řídicí osoby firmy x PEP (Hlídač státu) + EU sankce.
+function ddPepSankceLoader() {
+  return {
+    data: null,
+    loading: false,
+    psError: "",
+    async load(ico) {
+      if (!ico) return;
+      this.loading = true;
+      this.data = null;
+      this.psError = "";
+      try {
+        this.data = await jsonFetch("/api/pep-sankce/" + encodeURIComponent(ico));
+      } catch (e) {
+        this.psError = "PEP/sankce screening selhal: " + e.message;
+      } finally {
+        this.loading = false;
+      }
+    },
+  };
+}
+window.ddPepSankceLoader = ddPepSankceLoader;
+
 /**
  * Načte stav volitelných integrací (Hlídač státu API). Footer atribuce
  * citujícího Hlídače státu se zobrazí pouze pokud je integrace aktivní.

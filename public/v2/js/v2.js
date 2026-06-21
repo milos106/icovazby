@@ -74,6 +74,9 @@
       // karta v Rizika i risk skóre čtou z TÉHOŽ → nemůžou se rozejít.
       forensika: null,
       forensikaLoading: false,
+      // PEP + sankce — stejný single-source vzor (computeRisk → self.pepSankce)
+      pepSankce: null,
+      pepSankceLoading: false,
 
       riskState: {
         loading: false,
@@ -608,6 +611,7 @@
         var eu = window.ddEuSanctionsLoader ? window.ddEuSanctionsLoader() : null;
         var sl = window.ddSbirkaListinLoader ? window.ddSbirkaListinLoader() : null;
         var forn = window.ddForensikaLoader ? window.ddForensikaLoader() : null;
+        var ps = window.ddPepSankceLoader ? window.ddPepSankceLoader() : null;
 
         // Každý zdroj = jeden promise. „Dorazila odpověď" (i prázdná / chyba /
         // HS-token-gated ok:false) = HOTOVO pro tento zdroj → resolve i reject
@@ -629,6 +633,16 @@
             forn.load(ico, report.sidloText || (report.sidlo && report.sidlo.textovaAdresa)).then(
               function () { self.forensika = forn.data; self.forensikaLoading = false; },
               function () { self.forensikaLoading = false; },
+            ),
+          );
+        }
+        if (ps) {
+          self.pepSankce = null;
+          self.pepSankceLoading = true;
+          tasks.push(
+            ps.load(ico).then(
+              function () { self.pepSankce = ps.data; self.pepSankceLoading = false; },
+              function () { self.pepSankceLoading = false; },
             ),
           );
         }
@@ -654,6 +668,7 @@
           if (eu) fs = fs.concat(self.fromSanctions(eu.result, report));
           if (sl) fs = fs.concat(self.fromSbirkaListin(sl.sl));
           if (forn) fs = fs.concat(self.fromForensika(forn.data));
+          if (ps) fs = fs.concat(self.fromPepSankce(ps.data));
 
           fs = fs.filter(Boolean);
           // generický green „bez signálů" zahoď, pokud máme konkrétní nálezy
@@ -698,6 +713,7 @@
           if (eu && eu.error) missing.push("EU sankce");
           if (sl && (sl.slError || (sl.sl && sl.sl.error))) missing.push("Účetní závěrky");
           failed(forn, "forError", "Forenzní indikátory");
+          failed(ps, "psError", "PEP/sankce");
 
           self.riskState = {
             loading: false, ready: true,
@@ -827,6 +843,18 @@
         }
         // „měkký" signál — do skóre s nižší vahou než tvrdé fakty (insolvence apod.).
         return out.map(function (f) { f.soft = true; return f; });
+      },
+      // PEP — řídicí osoba je politicky exponovaná (AML: rozšířená kontrola/EDD).
+      // Sankce se NEpřidávají (už je řeší ddEuSanctionsLoader → ať se nedublují).
+      fromPepSankce: function (d) {
+        if (!d) return [];
+        var out = [];
+        (d.pep || []).forEach(function (p) {
+          var f = this.F("amber", "PEP: " + p.jmeno, p.jmeno + " (" + (p.funkce || "osoba ve firmě") + ") je politicky exponovaná osoba — " + p.duvod + ". AML vyžaduje rozšířenou kontrolu (EDD). Signál, ne důkaz; ověř profil v Hlídači státu.", "rizika");
+          f.soft = true; // PEP = regulatorní nudge, ne tvrdé negativum
+          out.push(f);
+        }, this);
+        return out;
       },
 
       // --- command palette ---

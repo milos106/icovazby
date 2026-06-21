@@ -971,7 +971,7 @@ import {
 import { VR_ATTRIBUTION, fetchVrDetailByIco, findSubjektIdByIco } from "./justice_vr/client.js";
 import { fetchSbirkaListin, SL_ATTRIBUTION, parseCzDate } from "./justice_sl/client.js";
 import { extractZaverkaCisla, type ZaverkaCisla } from "./justice_sl/pdf.js";
-import { dbGetFinancials, dbUpsertFinancials, dbGetCompanyPersons, dbCountCompaniesByPerson, dbGetChildrenByParent } from "./persons_index/db.js";
+import { dbGetFinancials, dbUpsertFinancials, dbGetCompanyPersons, dbGetCompanyPersonsForPep, dbCountCompaniesByPerson, dbGetChildrenByParent } from "./persons_index/db.js";
 
 function vrAddressToText(a?: {
   ulice?: string;
@@ -1243,6 +1243,8 @@ import {
   fetchInsolvenceAsDluznik,
   fetchSmlouvyByIco,
   fetchUboByIco,
+  searchOsoby,
+  fetchOsobaDetail,
   hasHlidacToken,
   type RawDotace,
   type RawInsolvenceRecord,
@@ -2155,6 +2157,66 @@ export async function getForensikaService(client: AresClient, icoInput: string, 
     kruhove,
     _attribution: FORENSIKA_ATTRIBUTION,
   };
+}
+
+// ─── PEP + sankce (Hodnota #2, Fáze 1) — křížení řídicích osob s PEP/sankcemi ───
+const PEP_SANKCE_ATTRIBUTION = {
+  zdroj: "Hlídač státu (osoby/PEP) + EU konsolidovaný sankční seznam",
+  pozn: "Shoda dle jména (+ data narození u PEP) — signál, ne důkaz; ověř profil/zemi. AML: PEP = rozšířená kontrola (EDD).",
+};
+
+/**
+ * Screening ŘÍDICÍ vrstvy firmy (statutáři + UBO z indexu) proti:
+ *  - PEP — Hlídač státu osoby (politici / veřejně sledované osoby), match dle
+ *    jméno+příjmení+datum narození,
+ *  - EU konsolidovaný sankční seznam (jména osob + obchodní jméno).
+ * Graf-aware: kříží reálné osoby z VR, ne jen obchodní jméno. On-demand (HS rate limit).
+ */
+export async function getPepSankceService(client: AresClient, icoInput: string) {
+  const ico = String(icoInput).replace(/\D/g, "").padStart(8, "0");
+  const persons = dbGetCompanyPersonsForPep(ico);
+
+  // 1) PEP přes Hlídač státu osoby — cap 8 osob (HS rate limit). POZOR: HS „osoby"
+  //    obsahuje i běžné statutáry → samotná shoda ≠ PEP. Detail musí mít POLITICKÝ
+  //    marker (strana / sponzor strany / politická funkce v událostech).
+  const POL_FUNKCE = /poslan|senát|ministr|premiér|hejtman|primátor|starost|zastupitel|\bradní|náměst|prezident|komisař|velvyslan|guvernér|kraj|magistrát|vláda|náměstek/i;
+  const pep: Array<{ jmeno: string; funkce: string | null; profile: string; duvod: string }> = [];
+  let pepTokenMissing = false;
+  for (const p of persons.slice(0, 8)) {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(p.datumNarozeni) || !p.jmeno || !p.prijmeni) continue;
+    try {
+      const matches = await searchOsoby(p.jmeno, p.prijmeni, p.datumNarozeni);
+      if (!Array.isArray(matches) || matches.length === 0) continue;
+      const m = matches[0]!;
+      const detail = await fetchOsobaDetail(m.nameId);
+      const strana = !!detail.politickaStrana;
+      const sponzor = Array.isArray(detail.sponzoring) && detail.sponzoring.length > 0;
+      const polFunkce = (detail.udalosti ?? []).some((u) => POL_FUNKCE.test(`${u.role ?? ""} ${u.organizace ?? ""} ${u.typ ?? ""}`));
+      if (!strana && !sponzor && !polFunkce) continue; // shoda bez politického markeru → není PEP
+      const profile = typeof m.profile === "string" && m.profile.startsWith("http") ? m.profile : `https://www.hlidacstatu.cz/osoba/${m.nameId}`;
+      pep.push({ jmeno: p.displayName, funkce: p.funkce, profile, duvod: strana ? "člen politické strany" : sponzor ? "sponzor politické strany" : "politická funkce" });
+    } catch (e) {
+      if (e instanceof HlidacStatuMissingTokenError) { pepTokenMissing = true; break; }
+      // jiná chyba (rate limit / 400) → přeskoč osobu, screening pokračuje
+    }
+  }
+
+  // 2) EU sankce — jména řídicích osob + obchodní jméno
+  let sankce: Array<{ query: string; name: string; programmes: string[] }> = [];
+  try {
+    const names: string[] = [];
+    const subj = await client.getEconomicSubject(ico).catch(() => null);
+    if (subj?.obchodniJmeno) names.push(subj.obchodniJmeno);
+    for (const p of persons) names.push(p.displayName);
+    if (names.length > 0) {
+      const screen = await screenEuSanctions(names);
+      sankce = screen.hits.map((h) => ({ query: h.query, name: h.entity.aliases?.[0]?.wholeName ?? h.query, programmes: h.entity.programmes }));
+    }
+  } catch {
+    /* EU feed nedostupný → vynech */
+  }
+
+  return { ico, indexovano: persons.length > 0, screenovano: persons.length, pep, pepTokenMissing, sankce, _attribution: PEP_SANKCE_ATTRIBUTION };
 }
 
 // Expose helpers for tests / other consumers

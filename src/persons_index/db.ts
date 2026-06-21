@@ -524,6 +524,21 @@ export function dbGetCompanyPersons(ico: string): Array<{ personKey: string; dis
   return rows;
 }
 
+/** Řídicí osoby firmy s rozpadem jména + DOB (pro PEP screening přes HS osoby,
+ *  které vyžaduje Jmeno+Prijmeni+DatumNarozeni). Jen aktivní angažmá. */
+export function dbGetCompanyPersonsForPep(ico: string): Array<{ personKey: string; displayName: string; jmeno: string; prijmeni: string; datumNarozeni: string; funkce: string | null }> {
+  const d = getDb();
+  const i = ico.replace(/\D/g, "").padStart(8, "0");
+  return d.prepare(`
+    SELECT m.person_key AS personKey, p.display_name AS displayName, p.jmeno AS jmeno,
+           p.prijmeni AS prijmeni, p.datum_narozeni AS datumNarozeni,
+           GROUP_CONCAT(DISTINCT m.funkce) AS funkce
+    FROM memberships m JOIN persons p ON p.person_key = m.person_key
+    WHERE m.ico = ? AND m.datum_vymazu IS NULL AND p.datum_narozeni IS NOT NULL AND p.datum_narozeni != ''
+    GROUP BY m.person_key
+  `).all(i) as Array<{ personKey: string; displayName: string; jmeno: string; prijmeni: string; datumNarozeni: string; funkce: string | null }>;
+}
+
 /** Forenzní vrstva — kolik firem je s osobou v indexu spojeno (aktivní angažmá).
  *  POZOR: spodní hranice — index obsahuje jen prověřené firmy („známo ≥N"). */
 export function dbCountCompaniesByPerson(personKey: string): number {

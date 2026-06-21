@@ -1142,6 +1142,30 @@
                 <div x-show="!forensikaLoading && !forensika" x-cloak class="text-[12px] text-slate-400">Forenzní analýza nedostupná.</div>
               </section>
 
+              <!-- PEP &amp; sankce (Hodnota #2) -->
+              <section class="card-pop rounded-xl border border-slate-200 dark:border-ink-700 bg-white dark:bg-ink-850 p-3.5">
+                <div class="flex items-center justify-between mb-2"><h3 class="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">🏛️ PEP &amp; sankce</h3><span class="text-[9px] px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-600 dark:text-amber-300">řídicí osoby × HS / EU</span></div>
+                <div x-show="pepSankceLoading" class="text-[12px] text-slate-400">Screening osob…</div>
+                <template x-if="pepSankce">
+                  <div class="space-y-1.5 text-[12px]">
+                    <template x-for="p in (pepSankce.pep||[])" :key="p.jmeno">
+                      <div class="flex items-start gap-2 text-amber-500">
+                        <span class="shrink-0">🏛️</span><span><strong x-text="p.jmeno"></strong> — <strong>PEP</strong> (<span x-text="p.duvod"></span>). AML: rozšířená kontrola. <a :href="p.profile" target="_blank" rel="noopener" class="underline">profil →</a></span>
+                      </div>
+                    </template>
+                    <template x-for="s in (pepSankce.sankce||[])" :key="s.query">
+                      <div class="flex items-start gap-2 text-rose-500">
+                        <span class="shrink-0">🚫</span><span><strong x-text="s.query"></strong> — shoda na <strong>EU sankčním seznamu</strong> (<span x-text="(s.programmes||[]).join(', ')"></span>) — ověř datum narození a zemi.</span>
+                      </div>
+                    </template>
+                    <div x-show="(pepSankce.pep||[]).length===0 && (pepSankce.sankce||[]).length===0 && !pepSankce.pepTokenMissing" class="flex items-center gap-2 text-emerald-500"><span>✓</span><span>Žádná PEP ani sankční shoda u řídicích osob</span></div>
+                    <div x-show="pepSankce.pepTokenMissing" x-cloak class="text-amber-600 dark:text-amber-300">PEP screening vyžaduje Hlídač státu token (vlož v ⚙️ Nastavení).</div>
+                    <p class="pt-1.5 mt-1 border-t border-slate-100 dark:border-ink-700 text-[10px] text-slate-400 leading-snug">Kříží <span x-text="pepSankce.screenovano || 0"></span> řídicích osob (statutáři + UBO) s PEP (Hlídač státu) a EU sankcemi. Shoda dle jména — <strong>signál, ne důkaz</strong>; ověř u zdroje.</p>
+                  </div>
+                </template>
+                <div x-show="!pepSankceLoading && !pepSankce" x-cloak class="text-[12px] text-slate-400">PEP/sankce screening nedostupný.</div>
+              </section>
+
             </div>
           </template>
 
