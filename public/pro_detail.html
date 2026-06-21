@@ -165,7 +165,7 @@
           <div class="flag-amber pl-3 py-1"><strong>Situace:</strong> skóre je červené → rozbal faktory a podívej se, <em>čím</em> to je (jedna stará insolvence ≠ aktivní sankce).</div>
           <div class="flag-red pl-3 py-1"><strong>🔴 Vyčteš:</strong> skóre &lt; 40 obvykle znamená aspoň jedno tvrdé negativum (sankce / insolvence / nespolehlivý plátce).</div>
           <div class="flag-green pl-3 py-1"><strong>🟢 Vyčteš:</strong> 80–100 = žádné registrované problémy. <em>Nepleť si s „bezpečné" &mdash; znamená to jen „nic v registrech".</em></div>
-          <div class="flag-amber pl-3 py-1"><strong>🕵️ Forenzní indikátory:</strong> hromadné/virtuální sídlo, bílý kůň (osoba v desítkách firem) a kruhové vlastnictví — analytika nad vlastnickým grafem. <strong>Signál, ne důkaz</strong> (false positives: byznys centra, advokáti/likvidátoři) → měkká váha (🔴 −20 / 🟠 −6).</div>
+          <div class="flag-amber pl-3 py-1"><strong>🕵️ Forenzní indikátory:</strong> hromadné/virtuální sídlo, bílý kůň (osoba v desítkách firem), kruhové vlastnictví a phoenix (osoba sériově zakládá a likviduje firmy) — analytika nad vlastnickým grafem. <strong>Signál, ne důkaz</strong> (false positives: byznys centra, advokáti/likvidátoři) → měkká váha (🔴 −20 / 🟠 −6).</div>
         </div>
       </section>
 
@@ -188,6 +188,7 @@
           <div class="flag-amber pl-3 py-1"><strong>Situace:</strong> jednatel je „nastrčená" osoba, ale UBO ukáže skutečného vlastníka výš v holdingu nebo v zahraničí.</div>
           <div class="flag-red pl-3 py-1"><strong>🔴 Vyčteš:</strong> skutečný majitel je <em>PEP (politicky exponovaná osoba)</em> · vlastník přes <em>kyperskou / offshore</em> strukturu · UBO nezveřejněno (samo o sobě varování pro AML/KYC).</div>
           <div class="flag-green pl-3 py-1"><strong>🟢 Vyčteš:</strong> skutečný majitel = tentýž člověk jako jednatel, transparentní vlastnictví.</div>
+          <div class="flag-red pl-3 py-1"><strong>🕵️ Vidíme i skrz svěřenské fondy:</strong> karta <em>PEP &amp; sankce</em> (ve verzi V2) automaticky prověří nejen statutáry, ale i <strong>skutečné majitele za vlastnickou strukturou</strong> &mdash; svěřenské fondy (trusty), holdingy i offshore. Příklad: u <em>AGROFERTu</em> není Andrej Babiš žádným statutárem (firmu drží přes svěřenský fond <em>AB private trust</em>), přesto ho jako <strong>PEP přes skutečného majitele</strong> odhalíme. Datum narození (které evidence skutečných majitelů neuvádí) doplňujeme z interního indexu osob; neznámou osobu raději označíme „nešlo prověřit (ověř ručně)" než riskovat falešnou shodu.</div>
         </div>
       </section>
 

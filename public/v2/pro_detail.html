@@ -246,6 +246,7 @@
           <div class="flag-amber pl-3 py-1"><strong>Situace:</strong> jednatel je „nastrčená" osoba, ale UBO ukáže skutečného vlastníka výš v holdingu nebo v zahraničí.</div>
           <div class="flag-red pl-3 py-1"><strong>🔴 Vyčteš:</strong> skutečný majitel je <em>PEP (politicky exponovaná osoba)</em> · vlastník přes <em>kyperskou / offshore</em> strukturu · UBO nezveřejněno (samo o sobě varování pro AML/KYC).</div>
           <div class="flag-green pl-3 py-1"><strong>🟢 Vyčteš:</strong> skutečný majitel = tentýž člověk jako jednatel, transparentní vlastnictví.</div>
+          <div class="flag-red pl-3 py-1"><strong>🕵️ Vidíme i skrz svěřenské fondy:</strong> karta <em>PEP &amp; sankce</em> automaticky prověří nejen statutáry, ale i <strong>skutečné majitele za vlastnickou strukturou</strong> &mdash; svěřenské fondy (trusty), holdingy i offshore. Příklad: u <em>AGROFERTu</em> není Andrej Babiš žádným statutárem (firmu drží přes svěřenský fond <em>AB private trust</em>), přesto ho jako <strong>PEP přes skutečného majitele</strong> odhalíme. Evidence skutečných majitelů neuvádí datum narození, takže ho doplňujeme z interního indexu osob; když osobu neznáme, raději ji označíme „nešlo prověřit (ověř ručně)" než abychom riskovali falešnou shodu.</div>
         </div>
       </section>
 
@@ -319,7 +320,8 @@
           <div class="flag-amber pl-3 py-1"><strong>Situace:</strong> skóre je červené → rozbal faktory a podívej se, <em>čím</em> to je (jedna stará insolvence ≠ aktivní sankce; forenzní signál ≠ důkaz).</div>
           <div class="flag-red pl-3 py-1"><strong>🔴 Vyčteš:</strong> skóre &lt; 40 obvykle znamená aspoň jedno tvrdé negativum (sankce / insolvence / nespolehlivý plátce).</div>
           <div class="flag-green pl-3 py-1"><strong>🟢 Vyčteš:</strong> 80–100 = žádné registrované problémy. <em>Nepleť si s „bezpečné" &mdash; znamená to jen „nic v registrech".</em></div>
-          <div class="flag-amber pl-3 py-1"><strong>🕵️ Forenzní indikátory</strong> (skupina Rizika): <em>hromadné/virtuální sídlo</em>, <em>bílý kůň</em> (osoba v desítkách firem) a <em>kruhové vlastnictví</em> — analytika nad vlastnickým grafem. <strong>Signál, ne důkaz</strong> (false positives: byznys centra, advokáti/likvidátoři) → proto měkká váha. Počty z interního indexu jsou spodní hranice.</div>
+          <div class="flag-amber pl-3 py-1"><strong>🕵️ Forenzní indikátory</strong> (skupina Rizika): <em>hromadné/virtuální sídlo</em>, <em>bílý kůň</em> (osoba v desítkách firem), <em>kruhové vlastnictví</em> a <em>phoenix</em> (osoba sériově zakládá a likviduje firmy) — analytika nad vlastnickým grafem. <strong>Signál, ne důkaz</strong> (false positives: byznys centra, advokáti/likvidátoři) → proto měkká váha. Počty z interního indexu jsou spodní hranice.</div>
+          <div class="flag-amber pl-3 py-1"><strong>🏛️ PEP &amp; sankce</strong> (skupina Rizika): křížíme statutáry <em>i skutečné majitele</em> s politicky exponovanými osobami (Hlídač státu) a sankčními seznamy (EU + OFAC + UN + UK). <strong>Vidíme i skrz svěřenské fondy a holdingy</strong> — PEP schovaný za vlastnickou strukturou (např. Andrej Babiš za AGROFERTem přes <em>AB private trust</em>) odhalíme jako PEP „skutečný majitel". Shoda dle jména &mdash; <strong>signál, ne důkaz</strong>; ověř profil/zemi u zdroje.</div>
         </div>
       </section>
 
