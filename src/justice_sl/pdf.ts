@@ -196,7 +196,7 @@ async function ocrPdfText(path: string): Promise<string> {
 // Stažení PDF. or.justice tokeny občas vrátí HTML místo PDF (session/rate) → posíláme
 // JSESSIONID cookie z detail stránky a jednou zkusíme znovu (transient).
 async function downloadToTmp(url: string, cookie?: string): Promise<string | null> {
-  for (let attempt = 0; attempt < 2; attempt++) {
+  for (let attempt = 0; attempt < 3; attempt++) {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), DL_TIMEOUT_MS);
     try {
@@ -217,74 +217,93 @@ async function downloadToTmp(url: string, cookie?: string): Promise<string | nul
     } finally {
       clearTimeout(timer);
     }
-    if (attempt === 0) await new Promise((r) => setTimeout(r, 400));
+    if (attempt < 2) await new Promise((r) => setTimeout(r, 400 + attempt * 400));
   }
   return null;
 }
 
-/** Z detailu listiny (vypis-sl-detail) najde soubory, stáhne PDF a vrátí
- *  rozvahová čísla z prvního, které rozvahu obsahuje.
- *  opts.ocr: u skenů (PDF bez textu) zkusí OCR (tesseract) — DRAHÉ, jen on-demand. */
+/** Projde detail stránky, sebere file-id a JEDNU session cookie (BIG-IP routing).
+ *  Některé detaily cookie nenastaví → sdílíme tu, co dá kterýkoli detail, jinak by
+ *  stažení takových souborů občas vrátilo HTML místo PDF. */
+async function collectFileUrls(detailUrls: string[]): Promise<{ urls: string[]; cookie?: string }> {
+  let cookie: string | undefined;
+  const urls: string[] = [];
+  for (const du of detailUrls) {
+    try {
+      const res = await undiciFetch(du, { headers: { "user-agent": UA, accept: "text/html" } });
+      if (!res.ok) continue;
+      const sc = res.headers.get("set-cookie");
+      if (sc && !cookie) cookie = sc.split(";")[0];
+      const html = await res.text();
+      for (const m of html.matchAll(/\/ias\/content\/download\?id=([a-f0-9]+)/gi)) {
+        urls.push(`${OR_BASE}/ias/content/download?id=${m[1]}`);
+      }
+    } catch {
+      /* detail nedostupný → další */
+    }
+    if (urls.length >= 8) break;
+  }
+  return { urls: [...new Set(urls)].slice(0, 8), cookie };
+}
+
+/** Z listin(y) jednoho roku stáhne PDF a vrátí čísla. Rozvahu (aktiva/VK/cizí) a
+ *  výsledovku (tržby/VH) firmy podávají často jako SAMOSTATNÉ listiny → bereme víc
+ *  detailUrls, text spojíme a parsujeme dohromady (jinak chytneme jen jednu a aktiva
+ *  chybí). opts.ocr: u skenů zkusí OCR (tesseract) — DRAHÉ, jen on-demand. */
 export async function extractZaverkaCisla(
-  detailUrl: string,
+  detailUrl: string | string[],
   rok: number | null = null,
   opts: { ocr?: boolean } = {},
 ): Promise<ZaverkaCisla | { error: string }> {
-  let html: string;
-  let cookie: string | undefined; // JSESSIONID z detailu → potřebné pro stažení souboru
-  try {
-    const res = await undiciFetch(detailUrl, { headers: { "user-agent": UA, accept: "text/html" } });
-    if (!res.ok) return { error: `Detail listiny HTTP ${res.status}` };
-    const sc = res.headers.get("set-cookie");
-    if (sc) cookie = sc.split(";")[0];
-    html = await res.text();
-  } catch (e) {
-    return { error: "Detail listiny nedostupný: " + (e as Error).message };
-  }
-  const ids = [...new Set([...html.matchAll(/\/ias\/content\/download\?id=([a-f0-9]+)/gi)].map((m) => m[1]))].slice(0, 5);
-  if (ids.length === 0) return { error: "V detailu listiny nejsou soubory ke stažení." };
+  const detailUrls = (Array.isArray(detailUrl) ? detailUrl : [detailUrl]).filter(Boolean).slice(0, 4);
+  if (detailUrls.length === 0) return { error: "Chybí odkaz na listinu." };
 
-  const ocrTodo: Array<{ path: string; url: string }> = []; // skeny k případnému OCR
-  for (const id of ids) {
-    const url = `${OR_BASE}/ias/content/download?id=${id}`;
-    const path = await downloadToTmp(url, cookie);
-    if (!path) continue;
+  const { urls: fileUrls, cookie } = await collectFileUrls(detailUrls);
+  const files: Array<{ path: string; url: string }> = [];
+  for (const url of fileUrls) {
+    const path = await downloadToTmp(url, cookie); // sdílená cookie napříč soubory
+    if (path) files.push({ path, url });
+  }
+  if (files.length === 0) return { error: "Soubory listiny se nepodařilo stáhnout (token vypršel / sken / formát)." };
+
+  let combined = ""; // text všech čitelných souborů → rozvaha i výkaz pohromadě
+  const ocrTodo: Array<{ path: string; url: string }> = [];
+  const firstUrl = files[0]!.url;
+  for (const { path, url } of files) {
     let keep = false;
     try {
       const text = await run("pdftotext", ["-layout", path, "-"]);
-      const parsed = parseRozvaha(text, url, rok);
-      if (parsed) return parsed;
-      // málo textu = pravděpodobně sken → kandidát na OCR (jen když opts.ocr)
+      combined += "\n" + text;
       if (opts.ocr && text.replace(/\s/g, "").length < 200) {
         ocrTodo.push({ path, url });
-        keep = true;
+        keep = true; // sken → necháme soubor pro OCR
       }
     } catch {
-      if (opts.ocr) {
-        ocrTodo.push({ path, url });
-        keep = true;
-      }
+      if (opts.ocr) { ocrTodo.push({ path, url }); keep = true; }
     } finally {
       if (!keep) unlink(path).catch(() => {});
     }
   }
 
-  // OCR fallback (drahé) — jen na explicitní žádost a jen u skenů bez textu
-  if (opts.ocr) {
-    for (const { path, url } of ocrTodo) {
+  let parsed = parseRozvaha(combined, firstUrl, rok);
+  if (parsed) return parsed;
+
+  // OCR fallback (drahé) — jen na žádost a jen u skenů; OCR text přidáme k textovému.
+  if (opts.ocr && ocrTodo.length) {
+    for (const { path } of ocrTodo) {
       try {
-        const text = await ocrPdfText(path);
-        const parsed = parseRozvaha(text, url, rok);
-        if (parsed) {
-          parsed.source = "ocr";
-          parsed.confidence = "low"; // OCR je vždy nejistý (záměny 0/O, 5/S, 8/B)
-          return parsed;
-        }
+        combined += "\n" + (await ocrPdfText(path));
       } catch {
-        /* OCR selhal → zkus další */
+        /* OCR strany selhal */
       } finally {
         unlink(path).catch(() => {});
       }
+    }
+    parsed = parseRozvaha(combined, firstUrl, rok);
+    if (parsed) {
+      parsed.source = "ocr";
+      parsed.confidence = "low"; // OCR je vždy nejistý (záměny 0/O, 5/S, 8/B)
+      return parsed;
     }
   }
   return opts.ocr

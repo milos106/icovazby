@@ -1835,13 +1835,18 @@ export async function getSbirkaListinService(icoInput: string) {
   }
 
   // Sloučení účetních závěrek po roce (ber první/nejúplnější výskyt roku).
-  const zaverkyMap = new Map<number, { rok: number; podano: string | null; obdobiKDatu: string | null; ref: string; detailUrl: string | null; konsolidovana: boolean }>();
+  // Rozvaha + výsledovka + příloha bývají SAMOSTATNÉ listiny stejného roku → na rok
+  // sbíráme VŠECHNY detailUrls (detailUrl = první, pro UI odkaz/zpětnou kompatibilitu).
+  const zaverkyMap = new Map<number, { rok: number; podano: string | null; obdobiKDatu: string | null; ref: string; detailUrl: string | null; detailUrls: string[]; konsolidovana: boolean }>();
   for (const l of listiny) {
     if (!l.jeZaverka) continue;
     for (const rok of l.roky) {
-      if (!zaverkyMap.has(rok)) {
-        zaverkyMap.set(rok, { rok, podano: l.ulozeno ?? l.doruceno, obdobiKDatu: l.vznik, ref: l.ref, detailUrl: l.detailUrl, konsolidovana: l.konsolidovana });
+      let e = zaverkyMap.get(rok);
+      if (!e) {
+        e = { rok, podano: l.ulozeno ?? l.doruceno, obdobiKDatu: l.vznik, ref: l.ref, detailUrl: l.detailUrl, detailUrls: [], konsolidovana: l.konsolidovana };
+        zaverkyMap.set(rok, e);
       }
+      if (l.detailUrl && !e.detailUrls.includes(l.detailUrl)) e.detailUrls.push(l.detailUrl);
     }
   }
   const zaverky = [...zaverkyMap.values()].sort((a, b) => b.rok - a.rok);
@@ -1899,7 +1904,7 @@ export async function getSbirkaListinService(icoInput: string) {
 export async function getZaverkaCislaService(icoInput: string) {
   const sl = (await getSbirkaListinService(icoInput)) as unknown as {
     applicable?: boolean; reason?: string; error?: string;
-    zaverky?: Array<{ rok: number; detailUrl: string | null }>;
+    zaverky?: Array<{ rok: number; detailUrl: string | null; detailUrls?: string[] }>;
   };
   if (!sl?.applicable) return { applicable: false, reason: sl?.reason, _attribution: SL_ATTRIBUTION };
   const zav = Array.isArray(sl.zaverky) ? sl.zaverky : [];
@@ -1907,8 +1912,9 @@ export async function getZaverkaCislaService(icoInput: string) {
     return { applicable: true, error: sl.error || "Žádná uložená účetní závěrka.", _attribution: SL_ATTRIBUTION };
   }
   for (const z of zav.slice(0, 2)) {
-    if (!z.detailUrl) continue;
-    const res = await extractZaverkaCisla(z.detailUrl, z.rok);
+    const urls = z.detailUrls?.length ? z.detailUrls : z.detailUrl ? [z.detailUrl] : [];
+    if (!urls.length) continue;
+    const res = await extractZaverkaCisla(urls, z.rok);
     if (!("error" in res)) {
       return { applicable: true, rok: z.rok, cisla: res, _attribution: SL_ATTRIBUTION };
     }
@@ -1926,7 +1932,7 @@ export async function getZaverkaCislaService(icoInput: string) {
 export async function getZaverkaOcrService(icoInput: string) {
   const sl = (await getSbirkaListinService(icoInput)) as unknown as {
     applicable?: boolean; reason?: string; error?: string;
-    zaverky?: Array<{ rok: number; detailUrl: string | null }>;
+    zaverky?: Array<{ rok: number; detailUrl: string | null; detailUrls?: string[] }>;
   };
   if (!sl?.applicable) return { applicable: false, reason: sl?.reason, _attribution: SL_ATTRIBUTION };
   const zav = Array.isArray(sl.zaverky) ? sl.zaverky : [];
@@ -1944,7 +1950,8 @@ export async function getZaverkaOcrService(icoInput: string) {
     if (ocrDocs >= 4) break; // strop 4 dokumenty (~8 let) kvůli CPU
     if (!z.detailUrl) continue;
     if (have.has(z.rok)) continue; // tenhle rok už pokryt předchozím dokumentem → každý 2.
-    const res = await extractZaverkaCisla(z.detailUrl, z.rok, { ocr: true });
+    const urls = z.detailUrls?.length ? z.detailUrls : z.detailUrl ? [z.detailUrl] : [];
+    const res = await extractZaverkaCisla(urls, z.rok, { ocr: true });
     ocrDocs++;
     if ("error" in res) continue;
     if (!latestCisla) { latestCisla = res; latestRok = z.rok; }
@@ -1975,7 +1982,7 @@ export async function getZaverkaOcrService(icoInput: string) {
 export async function getZaverkaVyvojService(icoInput: string) {
   const sl = (await getSbirkaListinService(icoInput)) as unknown as {
     applicable?: boolean; reason?: string; error?: string;
-    zaverky?: Array<{ rok: number; detailUrl: string | null }>;
+    zaverky?: Array<{ rok: number; detailUrl: string | null; detailUrls?: string[] }>;
   };
   if (!sl?.applicable) return { applicable: false, reason: sl?.reason, _attribution: SL_ATTRIBUTION };
   const ico = String(icoInput).replace(/\D/g, "").padStart(8, "0");
@@ -1985,9 +1992,10 @@ export async function getZaverkaVyvojService(icoInput: string) {
   let parsed = 0;
   for (const z of zaverky) {
     if (parsed >= 4) break;
-    if (!z.detailUrl) continue;
     if (have.has(z.rok) && have.has(z.rok - 1)) continue; // pár let už máme → šetři stahování
-    const res = await extractZaverkaCisla(z.detailUrl, z.rok);
+    const urls = z.detailUrls?.length ? z.detailUrls : z.detailUrl ? [z.detailUrl] : [];
+    if (!urls.length) continue;
+    const res = await extractZaverkaCisla(urls, z.rok);
     parsed++;
     if ("error" in res) continue;
     // PDF nese 2 sloupce: [0]=běžné (z.rok), [1]=minulé (z.rok-1)
