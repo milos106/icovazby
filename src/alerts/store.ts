@@ -38,9 +38,15 @@ export interface Subscription {
   createdAt: string;
   verifiedAt?: string;
   verificationToken?: string;
+  verificationSentAt?: string; // kdy naposled odešel ověřovací e-mail (anti-bombing)
   lastCheckedAt?: string;
   snapshot?: SubscriptionSnapshot;
 }
+
+// Anti-abuse: nejvýš N nepotvrzených odběrů na e-mail a re-send až po cooldownu.
+const MAX_PENDING_PER_EMAIL = 5;
+const RESEND_COOLDOWN_MS = 60 * 60 * 1000; // 1 h
+export type SubscribeAction = "send" | "skip" | "blocked";
 
 interface Store {
   version: 1;
@@ -66,21 +72,42 @@ async function persist(store: Store): Promise<void> {
   cache = store;
 }
 
-export async function subscribe(email: string, ico: string): Promise<Subscription> {
+/**
+ * Vrací subscription + zda se má poslat ověřovací e-mail. Anti-abuse:
+ *  - `skip`: už ověřeno, NEBO čeká na potvrzení a ověřovák odešel < cooldown
+ *    (brání e-mail bombingu opakovaným POSTem stejné dvojice);
+ *  - `blocked`: na e-mail je už příliš mnoho nepotvrzených odběrů
+ *    (brání bombingu varírováním IČO na cizí adresu);
+ *  - `send`: nový odběr / re-send po cooldownu → pošli ověřovák.
+ */
+export async function subscribe(email: string, ico: string): Promise<{ sub: Subscription; action: SubscribeAction }> {
   const store = await load();
-  // Idempotence: pokud (email,ico) existuje, vrátíme existující.
+  const now = Date.now();
   const existing = store.subscriptions.find((s) => s.email === email && s.ico === ico);
-  if (existing) return existing;
+  if (existing) {
+    if (existing.verifiedAt) return { sub: existing, action: "skip" }; // už aktivní
+    const sentAt = existing.verificationSentAt ? Date.parse(existing.verificationSentAt) : 0;
+    if (now - sentAt < RESEND_COOLDOWN_MS) return { sub: existing, action: "skip" };
+    existing.verificationToken = randomUUID();
+    existing.verificationSentAt = new Date().toISOString();
+    await persist(store);
+    return { sub: existing, action: "send" };
+  }
+  const pending = store.subscriptions.filter((s) => s.email === email && !s.verifiedAt).length;
+  if (pending >= MAX_PENDING_PER_EMAIL) {
+    return { sub: { id: "", email, ico, createdAt: new Date().toISOString() }, action: "blocked" };
+  }
   const sub: Subscription = {
     id: randomUUID(),
     email,
     ico,
     createdAt: new Date().toISOString(),
     verificationToken: randomUUID(),
+    verificationSentAt: new Date().toISOString(),
   };
   store.subscriptions.push(sub);
   await persist(store);
-  return sub;
+  return { sub, action: "send" };
 }
 
 export async function verify(token: string): Promise<Subscription | null> {

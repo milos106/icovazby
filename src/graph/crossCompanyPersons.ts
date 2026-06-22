@@ -271,7 +271,16 @@ function uniqueIcoCount(memberships: Membership[]): number {
 }
 
 function escapeMermaid(s: string): string {
-  return s.replace(/"/g, "'").replace(/\n/g, " ");
+  // HTML-escapuj — jména z rejstříku jsou útočníkem ovlivnitelná (firma se dá
+  // zaregistrovat s názvem `<img onerror=...>`) a label se renderuje přes Mermaid.
+  // Spolu se securityLevel:"strict" v initu je to obrana proti stored XSS.
+  return s
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/[[\]{}|]/g, " ") // znaky Mermaid syntaxe uzlů
+    .replace(/[\r\n]/g, " ");
 }
 
 function renderMermaid(

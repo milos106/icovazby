@@ -2854,7 +2854,14 @@ function bulkSection() {
           ? [r.amlScore, r.ico, r.obchodniJmeno, r.risk, r.insolvence, r.forensika, r.pep, r.sankce, r.crossBorder, r.dph, r.statutary, r.findings]
           : [r.ico, r.obchodniJmeno, r.risk, r.dph, r.statutary, r.insolvence, r.findings],
       );
-      const csv = [headers, ...rows].map((row) => row.map((v) => `"${String(v ?? "").replace(/"/g, '""')}"`).join(",")).join("\n");
+      // Formula-injection ochrana: buňka začínající =,+,-,@,tab,CR by se v Excelu
+      // vyhodnotila jako vzorec (jméno firmy z rejstříku je útočníkem ovlivnitelné).
+      var csvCell = function (v) {
+        var s = String(v == null ? "" : v);
+        if (/^[=+\-@\t\r]/.test(s)) s = "'" + s;
+        return '"' + s.replace(/"/g, '""') + '"';
+      };
+      const csv = [headers, ...rows].map((row) => row.map(csvCell).join(",")).join("\n");
       const blob = new Blob(["﻿" + csv], { type: "text/csv;charset=utf-8" });
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");

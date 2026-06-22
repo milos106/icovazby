@@ -13,6 +13,7 @@ import { dirname, join } from "node:path";
 import { randomBytes, timingSafeEqual } from "node:crypto";
 import fastifyRateLimit from "@fastify/rate-limit";
 import fastifyStatic from "@fastify/static";
+import helmet from "@fastify/helmet";
 import Fastify, { type FastifyReply, type FastifyRequest } from "fastify";
 import { z } from "zod";
 import { AresClient } from "./ares/client.js";
@@ -117,6 +118,34 @@ await app.register(fastifyRateLimit, {
     message: `Příliš mnoho dotazů, zkuste to za ${Math.ceil(ctx.ttl / 1000)} s.`,
   }),
 });
+
+// Bezpečnostní hlavičky. CSP je nutně permisivní na skriptech (Tailwind CDN +
+// Alpine vyžadují unsafe-inline/eval, app má i inline onclick), ale drží klíčové
+// restrikce: connect-src jen self+Umami (brzdí exfiltraci při XSS), object-src
+// none, base-uri self, frame-ancestors none (clickjacking). COEP/CORP vypnuté,
+// ať se nerozbije načítání z CDN ani embed.js na cizích webech.
+await app.register(helmet, {
+  contentSecurityPolicy: {
+    directives: {
+      "script-src": ["'self'", "'unsafe-inline'", "'unsafe-eval'", "https://cdn.tailwindcss.com", "https://cdn.jsdelivr.net", "https://unpkg.com", "https://stats.icovazby.cz"],
+      "script-src-attr": ["'unsafe-inline'"], // inline onclick v HTML
+      "style-src": ["'self'", "'unsafe-inline'", "https://cdn.tailwindcss.com", "https://fonts.googleapis.com"],
+      "font-src": ["'self'", "https://fonts.gstatic.com", "data:"],
+      "img-src": ["'self'", "data:", "blob:"],
+      "connect-src": ["'self'", "https://stats.icovazby.cz"],
+      "frame-ancestors": ["'none'"],
+    },
+  },
+  crossOriginEmbedderPolicy: false,
+  crossOriginResourcePolicy: false,
+  hsts: { maxAge: 15552000, includeSubDomains: false }, // ať neovlivní subdomény
+});
+
+// Per-route limit pro DRAHÉ endpointy (HS sekvenčně / hodně ARES volání /
+// uncached render). Vyšší než profilové procházení i dávka, ale brání
+// amplifikaci scrapingem přes různá IČO (obejde cache). Laditelné přes env.
+const EXPENSIVE_LIMIT = parseEnvNumber(process.env.RATE_LIMIT_EXPENSIVE_PER_MIN, 60);
+const expensiveCfg = { config: { rateLimit: { max: EXPENSIVE_LIMIT, timeWindow: "1 minute" } } };
 
 await app.register(fastifyStatic, {
   root: PUBLIC_DIR,
@@ -429,11 +458,14 @@ const subscribeSchema = z.object({
   ico: z.string().regex(/^\d{7,8}$/),
 });
 
-app.post("/api/alerts/subscribe", async (req: FastifyRequest, reply) => {
+app.post("/api/alerts/subscribe", {
+  // Posílá e-mail → přísnější limit proti bombingu (vedle anti-abuse ve store).
+  config: { rateLimit: { max: 5, timeWindow: "1 minute" } },
+}, async (req: FastifyRequest, reply) => {
   try {
     const body = subscribeSchema.parse(req.body);
-    const sub = await subscribe(body.email, body.ico);
-    if (!sub.verifiedAt) {
+    const { sub, action } = await subscribe(body.email, body.ico);
+    if (action === "send") {
       const base = process.env.PUBLIC_BASE_URL ?? "https://icovazby.cz";
       const link = `${base}/api/alerts/verify/${sub.verificationToken}`;
       await sendMail({
@@ -442,6 +474,7 @@ app.post("/api/alerts/subscribe", async (req: FastifyRequest, reply) => {
         text: `Pro aktivaci alertů pro IČO ${sub.ico} klikni: ${link}\n\nPokud jsi o odběr nežádal, zprávu ignoruj.`,
       });
     }
+    // Generická odpověď — neprozrazuje skip/blocked (zamezí enumeraci a sondování).
     reply.send({ ok: true, pendingVerification: !sub.verifiedAt });
   } catch (e) {
     if (e instanceof z.ZodError) {
@@ -485,12 +518,20 @@ app.get("/api/alerts/unsubscribe/:id", async (req: FastifyRequest, reply) => {
 
 // Printable HTML report — uživatel ho otevře v novém tabu, browser
 // auto-invokuje window.print() → uloží jako PDF.
-app.get("/report/:ico", async (req: FastifyRequest, reply) => {
+app.get("/report/:ico", expensiveCfg, async (req: FastifyRequest, reply) => {
   try {
     const ico = (req.params as { ico: string }).ico;
-    const report = await fullDueDiligenceService(client, ico);
-    const { renderDdReportHtml } = await import("./report/html.js");
-    reply.type("text/html").send(renderDdReportHtml(report as never));
+    // Cache renderovaného HTML — bez ní běžel full DD na KAŽDÝ request (DoS amplifikace).
+    const html = await cached(
+      `report:${ico}`,
+      async () => {
+        const report = await fullDueDiligenceService(client, ico);
+        const { renderDdReportHtml } = await import("./report/html.js");
+        return renderDdReportHtml(report as never);
+      },
+      { persist: true },
+    );
+    reply.type("text/html").send(html);
   } catch (e) {
     sendError(reply, e);
   }
@@ -836,7 +877,7 @@ app.get("/api/zaverka-ocr/:ico", async (req: FastifyRequest, reply) => {
 });
 
 // ─── Forenzní indikátory (Fáze 1: sídlo, bílý kůň, kruhové vlastnictví) — lazy ──
-app.get("/api/forensika/:ico", async (req: FastifyRequest, reply) => {
+app.get("/api/forensika/:ico", expensiveCfg, async (req: FastifyRequest, reply) => {
   try {
     const ico = (req.params as { ico: string }).ico;
     const adresa = (req.query as { adresa?: string })?.adresa;
@@ -848,7 +889,7 @@ app.get("/api/forensika/:ico", async (req: FastifyRequest, reply) => {
 });
 
 // ─── PEP + sankce (Hodnota #2: řídicí osoby × PEP/EU sankce) — lazy/cache ───────
-app.get("/api/pep-sankce/:ico", async (req: FastifyRequest, reply) => {
+app.get("/api/pep-sankce/:ico", expensiveCfg, async (req: FastifyRequest, reply) => {
   try {
     const ico = (req.params as { ico: string }).ico;
     reply.send(await cached(`pepsankce:${ico}`, () => getPepSankceService(client, ico), { persist: true }));
@@ -858,7 +899,7 @@ app.get("/api/pep-sankce/:ico", async (req: FastifyRequest, reply) => {
 });
 
 // ─── Přeshraniční vlastnictví (Hodnota #4: GLEIF LEI mateřská/dceřiné) — lazy ───
-app.get("/api/cross-border/:ico", async (req: FastifyRequest, reply) => {
+app.get("/api/cross-border/:ico", expensiveCfg, async (req: FastifyRequest, reply) => {
   try {
     const ico = (req.params as { ico: string }).ico;
     reply.send(await cached(`crossborder:${ico}`, () => getCrossBorderService(ico), { persist: true }));
@@ -888,7 +929,7 @@ app.get("/api/smlouvy/:ico", async (req: FastifyRequest, reply) => {
 });
 
 // ─── UBO (skuteční majitelé via Hlídač státu) ─────────────────────────────────
-app.get("/api/ubo/:ico", async (req: FastifyRequest, reply) => {
+app.get("/api/ubo/:ico", expensiveCfg, async (req: FastifyRequest, reply) => {
   try {
     const ico = (req.params as { ico: string }).ico;
     reply.send(await cached(`ubo:${ico}`, () => getUboService(ico), { persist: true }));
