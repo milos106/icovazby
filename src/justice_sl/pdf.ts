@@ -14,6 +14,7 @@ import { fetch as undiciFetch } from "undici";
 import { execFile } from "node:child_process";
 import { writeFile, unlink, readdir } from "node:fs/promises";
 import { tmpdir } from "node:os";
+import { randomBytes } from "node:crypto";
 import { join, basename } from "node:path";
 
 const OR_BASE = (process.env.OR_JUSTICE_URL || "https://or.justice.cz").replace(/\/+$/, "");
@@ -216,7 +217,7 @@ async function ocrPdfText(path: string): Promise<string> {
   const dir = tmpdir();
   let text = "";
   for (let pg = 1; pg <= OCR_MAX_PAGES; pg++) {
-    const prefix = join(dir, `ocr-${Date.now()}-${Math.random().toString(36).slice(2)}-p${pg}`);
+    const prefix = join(dir, `ocr-${randomBytes(12).toString("hex")}-p${pg}`);
     const base = basename(prefix);
     try {
       await run("pdftoppm", ["-png", "-r", OCR_DPI, "-f", String(pg), "-l", String(pg), path, prefix]);
@@ -256,8 +257,8 @@ async function downloadToTmp(url: string, cookie?: string): Promise<string | nul
       if (res.ok) {
         const buf = Buffer.from(await res.arrayBuffer());
         if (buf.length <= MAX_PDF_BYTES && buf.length >= 100 && buf.subarray(0, 5).toString("latin1") === "%PDF-") {
-          const path = join(tmpdir(), `zav-${Date.now()}-${Math.random().toString(36).slice(2)}.pdf`);
-          await writeFile(path, buf);
+          const path = join(tmpdir(), `zav-${randomBytes(12).toString("hex")}.pdf`);
+          await writeFile(path, buf, { flag: "wx" }); // wx = selže přes pre-planted symlink (anti-race)
           return path;
         }
         // dostali jsme HTML/XML (ne PDF) → krátká pauza a retry s cookie

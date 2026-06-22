@@ -132,7 +132,7 @@ function parseEntity(raw: RawEntity): EuSanctionsEntity {
   const publicationUrls: string[] = [];
   for (const r of regs) {
     if (r["@_programme"]) programmesSet.add(r["@_programme"]);
-    if (r.publicationUrl) publicationUrls.push(r.publicationUrl);
+    if (r.publicationUrl && /^https?:\/\//i.test(r.publicationUrl)) publicationUrls.push(r.publicationUrl); // jen http(s) → :href nemůže být javascript:
   }
 
   const aliases = asArray(raw.nameAlias).map((a) => ({

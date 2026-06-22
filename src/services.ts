@@ -1587,7 +1587,7 @@ export async function getSmlouvyService(icoInput: string) {
           odkaz:
             s.identifikator?.idSmlouvy && s.identifikator?.idVerze
               ? `https://www.hlidacstatu.cz/Detail/${s.identifikator.idSmlouvy}`
-              : (s.odkaz ?? null),
+              : (s.odkaz && /^https?:\/\//i.test(s.odkaz) ? s.odkaz : null), // jen http(s) → :href nemůže být javascript:
           vazbaNaPolitiky: Boolean(s.sVazbouNaPolitikyAktualni),
         };
       });

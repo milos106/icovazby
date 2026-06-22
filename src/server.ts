@@ -10,7 +10,7 @@
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
-import { randomBytes, timingSafeEqual } from "node:crypto";
+import { randomBytes, timingSafeEqual, createHash } from "node:crypto";
 import fastifyRateLimit from "@fastify/rate-limit";
 import fastifyStatic from "@fastify/static";
 import helmet from "@fastify/helmet";
@@ -204,9 +204,11 @@ app.get("/klasik/index.html", serveIndex);
 function adminTokenOk(provided: string | undefined | null): boolean {
   const expected = process.env.ADMIN_TOKEN?.trim();
   if (!expected || !provided) return false;
-  const a = Buffer.from(provided);
-  const b = Buffer.from(expected);
-  return a.length === b.length && timingSafeEqual(a, b);
+  // Hash na pevnou délku (32 B) → timingSafeEqual neprozradí délku tokenu
+  // a odpadá délkový early-return.
+  const a = createHash("sha256").update(provided).digest();
+  const b = createHash("sha256").update(expected).digest();
+  return timingSafeEqual(a, b);
 }
 // #5: CSV buňka odolná proti formula-injection (Excel/Sheets vyhodnotí =,+,-,@,tab).
 function csvCell(v: unknown): string {
