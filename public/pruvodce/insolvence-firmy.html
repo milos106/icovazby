@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="cs">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Jak zjistit, jestli je firma v insolvenci (a další rizika)</title>
+    <meta name="description" content="Jak zdarma ověřit insolvenci firmy v ISIR a jaká další rizika zkontrolovat před obchodem. Krok za krokem, z oficiálních registrů." />
+    <link rel="canonical" href="https://icovazby.cz/pruvodce/insolvence-firmy.html" />
+    <meta property="og:type" content="article" />
+    <meta property="og:title" content="Jak zjistit, jestli je firma v insolvenci" />
+    <meta property="og:description" content="Ověření insolvence v ISIR a jaká další rizika zkontrolovat před obchodem." />
+    <meta property="og:url" content="https://icovazby.cz/pruvodce/insolvence-firmy.html" />
+    <meta property="og:site_name" content="IČO vazby" />
+    <meta name="twitter:card" content="summary" />
+    <script>(function () { var s = localStorage.getItem("icovazby:theme"); var d = window.matchMedia("(prefers-color-scheme: dark)").matches; if (s === "dark" || (s !== "light" && d)) document.documentElement.classList.add("dark"); })();</script>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>tailwind.config = { darkMode: "class", theme: { extend: { fontFamily: { sans: ["Inter", "sans-serif"] } } } };</script>
+    <style>
+      html:not(.dark) body { background-color: #F2FAF5; }
+      .gradient-text { background: linear-gradient(135deg, #059669 0%, #0d9488 100%); -webkit-background-clip: text; background-clip: text; color: transparent; }
+      .art h2 { font-size: 1.4rem; font-weight: 700; margin-top: 2rem; margin-bottom: .6rem; letter-spacing: -.01em; }
+      .art h3 { font-weight: 600; font-size: 1.05rem; margin-top: 1.25rem; }
+      .art p { margin: .7rem 0; line-height: 1.75; color: #334155; } .dark .art p { color: #cbd5e1; }
+      .art ul, .art ol { margin: .6rem 0 .6rem 1.3rem; line-height: 1.75; list-style: disc; } .art ol { list-style: decimal; }
+      .art li { margin: .3rem 0; }
+      .art a { color: #059669; text-decoration: underline; } .dark .art a { color: #34d399; }
+      .tldr { border-left: 3px solid #10b981; background: rgba(16,185,129,.07); padding: .85rem 1rem; border-radius: .4rem; margin: 1rem 0 1.5rem; }
+      .faq dt { font-weight: 600; margin-top: .9rem; } .faq dd { margin: .2rem 0 0; color: #475569; } .dark .faq dd { color: #94a3b8; }
+    </style>
+    <script>(function () { var ids = { "icovazby.cz": "fae564b9-662d-4783-8958-0b489058a6a7", "www.icovazby.cz": "fae564b9-662d-4783-8958-0b489058a6a7", "dev.icovazby.cz": "a1e4e3b5-1188-450b-b7b6-9b3dd086492d" }; var id = ids[location.hostname]; if (!id) return; var s = document.createElement("script"); s.async = true; s.src = "https://stats.icovazby.cz/script.js"; s.setAttribute("data-website-id", id); document.head.appendChild(s); })();</script>
+    <script type="application/ld+json">{ "@context": "https://schema.org", "@type": "Article", "headline": "Jak zjistit, jestli je firma v insolvenci (a další rizika)", "description": "Jak zdarma ověřit insolvenci firmy v ISIR a jaká další rizika zkontrolovat před obchodem.", "author": { "@type": "Organization", "name": "SimpleSolar s.r.o." }, "publisher": { "@type": "Organization", "name": "IČO vazby" }, "mainEntityOfPage": "https://icovazby.cz/pruvodce/insolvence-firmy.html" }</script>
+    <script type="application/ld+json">{ "@context": "https://schema.org", "@type": "FAQPage", "mainEntity": [ { "@type": "Question", "name": "Je ISIR zdarma?", "acceptedAnswer": { "@type": "Answer", "text": "Ano, Insolvenční rejstřík je veřejný a zdarma." } }, { "@type": "Question", "name": "Co když firma byla v insolvenci v minulosti?", "acceptedAnswer": { "@type": "Answer", "text": "Není to automaticky problém, ale projděte, jak řízení dopadlo." } }, { "@type": "Question", "name": "Stačí zkontrolovat jen insolvenci?", "acceptedAnswer": { "@type": "Answer", "text": "Ne — kombinujte ji s financemi, DPH a vlastníky pro úplný obrázek." } } ] }</script>
+  </head>
+  <body class="bg-[#F2FAF5] dark:bg-slate-900 text-slate-900 dark:text-slate-100 font-sans">
+    <header class="sticky top-0 z-30 bg-white/85 dark:bg-slate-900/85 backdrop-blur border-b border-slate-200 dark:border-slate-800">
+      <div class="max-w-5xl mx-auto px-5 py-3 flex items-center justify-between gap-3">
+        <a href="/" class="flex items-center gap-3 hover:opacity-80">
+          <svg width="34" height="34" viewBox="0 0 64 64" class="shrink-0"><path d="M 32 18 L 14 46" stroke="#10b981" stroke-width="3.5" stroke-linecap="round" fill="none" /><path d="M 32 18 L 32 46" stroke="#10b981" stroke-width="3.5" stroke-linecap="round" fill="none" /><path d="M 32 18 L 50 46" stroke="#10b981" stroke-width="3.5" stroke-linecap="round" fill="none" /><rect x="6" y="42" width="16" height="16" rx="3" fill="#10b981" /><rect x="24" y="42" width="16" height="16" rx="3" fill="#10b981" /><rect x="42" y="42" width="16" height="16" rx="3" fill="#10b981" /><circle cx="32" cy="18" r="11" fill="#065f46" /><circle cx="32" cy="18" r="7" fill="#34d399" /></svg>
+          <div class="font-bold text-lg gradient-text">IČO vazby</div>
+        </a>
+        <a href="/" class="px-4 py-2 bg-emerald-600 text-white rounded-lg text-sm font-semibold hover:bg-emerald-700">Otevřít aplikaci →</a>
+      </div>
+    </header>
+
+    <main class="max-w-3xl mx-auto px-5 py-10 art">
+      <nav class="text-xs text-slate-500 mb-4"><a href="/pruvodce/index.html">Průvodci</a> › Insolvence firmy</nav>
+      <h1 class="text-3xl sm:text-4xl font-extrabold tracking-tight mb-4">Jak zjistit, jestli je firma v insolvenci (a další rizika)</h1>
+      <div class="tldr"><strong>Krátká odpověď:</strong> Insolvenci ověříte zdarma v <strong>Insolvenčním rejstříku (ISIR)</strong> na isir.justice.cz — zadáte IČO a uvidíte, jestli proti firmě běží řízení. Před obchodem ale stojí za to zkontrolovat i finanční zdraví, spolehlivost plátce DPH a kdo firmu ovládá.</div>
+
+      <h2>Proč to řešit</h2>
+      <p>Aktivní insolvence znamená vysoké riziko, že firma <strong>nezaplatí</strong> nebo nedodá. Zjistit to dřív, než vystavíte fakturu nebo podepíšete rezervačku, je otázka půl minuty.</p>
+
+      <h2>Jak to ověřit ručně</h2>
+      <ol>
+        <li><strong>ISIR</strong> (<a href="https://isir.justice.cz" target="_blank" rel="noopener">isir.justice.cz</a>) — vyhledáte podle IČO. Uvidíte aktivní i historická řízení, fázi (úpadek, konkurs, reorganizace) a soud.</li>
+        <li><strong>Historie</strong> — i ukončené řízení v minulosti je signál, projděte kontext.</li>
+        <li><strong>Doplňková rizika</strong> — finanční vývoj z účetních závěrek, status nespolehlivého plátce DPH, podezřelé vlastnické vazby.</li>
+      </ol>
+      <p><strong>Red flag:</strong> aktivní úpadek/konkurs, opakovaná řízení, nebo insolvence v kombinaci se zhoršujícími se financemi.</p>
+
+      <h2>Jak to zvládnout naráz</h2>
+      <p><strong>icovazby.cz</strong> ukáže insolvenci (ISIR) i ostatní rizika pohromadě a spočítá <strong>risk skóre</strong> — insolvence, sankce, nespolehlivý plátce DPH, finanční trendy a forenzní signály na jedné obrazovce. Zdarma, z oficiálních zdrojů.</p>
+
+      <div class="my-8 rounded-xl bg-emerald-600 text-white p-6 text-center">
+        <div class="text-lg font-bold mb-1">Prověřte rizika firmy</div>
+        <a href="/" class="inline-block mt-2 px-6 py-3 bg-white text-emerald-700 rounded-lg font-bold hover:bg-emerald-50">Otevřít icovazby.cz →</a>
+      </div>
+
+      <h2>Časté dotazy</h2>
+      <dl class="faq">
+        <dt>Je ISIR zdarma?</dt>
+        <dd>Ano, je to veřejný rejstřík.</dd>
+        <dt>Co když firma byla v insolvenci v minulosti?</dt>
+        <dd>Není to automaticky problém, ale projděte, jak řízení dopadlo.</dd>
+        <dt>Stačí zkontrolovat jen insolvenci?</dt>
+        <dd>Ne — kombinujte s financemi, DPH a vlastníky pro úplný obrázek.</dd>
+      </dl>
+
+      <div class="mt-10 pt-6 border-t border-slate-200 dark:border-slate-700 text-sm">
+        <div class="font-semibold mb-2">Související průvodci</div>
+        <ul class="space-y-1">
+          <li><a href="/pruvodce/jak-proverit-firmu.html">Jak prověřit firmu před spoluprací</a></li>
+          <li><a href="/pruvodce/nespolehlivy-platce-dph.html">Nespolehlivý plátce DPH</a></li>
+          <li><a href="/pruvodce/skutecny-majitel-firmy.html">Kdo je skutečný majitel firmy</a></li>
+        </ul>
+      </div>
+    </main>
+
+    <footer class="bg-slate-900 text-slate-400 py-10 px-5 text-sm">
+      <div class="max-w-3xl mx-auto">
+        <div class="flex flex-wrap items-center justify-between gap-4 mb-4">
+          <div><div class="text-white font-semibold">IČO vazby</div><div class="text-xs">SimpleSolar s.r.o., IČO 07315520</div></div>
+          <div class="flex gap-4 text-xs"><a href="/" class="hover:text-emerald-400">Aplikace</a><a href="/pruvodce/index.html" class="hover:text-emerald-400">Průvodci</a><a href="/privacy.html" class="hover:text-emerald-400">GDPR</a></div>
+        </div>
+        <div class="text-xs text-slate-500 border-t border-slate-800 pt-4">Data z oficiálních veřejných registrů ČR a EU. Neposkytujeme právní ani daňové poradenství.</div>
+      </div>
+    </footer>
+  </body>
+</html>

@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="cs">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Jak najít propojení mezi firmami a osobami (kdo s kým podniká)</title>
+    <meta name="description" content="Jak odhalit vazby mezi firmami a lidmi, bílé koně a skryté propojení. Vlastnická mapa krok za krokem, zdarma z oficiálních registrů." />
+    <link rel="canonical" href="https://icovazby.cz/pruvodce/propojeni-firem-a-osob.html" />
+    <meta property="og:type" content="article" />
+    <meta property="og:title" content="Jak najít propojení mezi firmami a osobami" />
+    <meta property="og:description" content="Kdo s kým podniká, kdo sedí v desítkách firem (bílý kůň) a jak číst vlastnickou mapu." />
+    <meta property="og:url" content="https://icovazby.cz/pruvodce/propojeni-firem-a-osob.html" />
+    <meta property="og:site_name" content="IČO vazby" />
+    <meta name="twitter:card" content="summary" />
+    <script>(function () { var s = localStorage.getItem("icovazby:theme"); var d = window.matchMedia("(prefers-color-scheme: dark)").matches; if (s === "dark" || (s !== "light" && d)) document.documentElement.classList.add("dark"); })();</script>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>tailwind.config = { darkMode: "class", theme: { extend: { fontFamily: { sans: ["Inter", "sans-serif"] } } } };</script>
+    <style>
+      html:not(.dark) body { background-color: #F2FAF5; }
+      .gradient-text { background: linear-gradient(135deg, #059669 0%, #0d9488 100%); -webkit-background-clip: text; background-clip: text; color: transparent; }
+      .art h2 { font-size: 1.4rem; font-weight: 700; margin-top: 2rem; margin-bottom: .6rem; letter-spacing: -.01em; }
+      .art h3 { font-weight: 600; font-size: 1.05rem; margin-top: 1.25rem; }
+      .art p { margin: .7rem 0; line-height: 1.75; color: #334155; } .dark .art p { color: #cbd5e1; }
+      .art ul, .art ol { margin: .6rem 0 .6rem 1.3rem; line-height: 1.75; list-style: disc; } .art ol { list-style: decimal; }
+      .art li { margin: .3rem 0; }
+      .art a { color: #059669; text-decoration: underline; } .dark .art a { color: #34d399; }
+      .tldr { border-left: 3px solid #10b981; background: rgba(16,185,129,.07); padding: .85rem 1rem; border-radius: .4rem; margin: 1rem 0 1.5rem; }
+      .faq dt { font-weight: 600; margin-top: .9rem; } .faq dd { margin: .2rem 0 0; color: #475569; } .dark .faq dd { color: #94a3b8; }
+    </style>
+    <script>(function () { var ids = { "icovazby.cz": "fae564b9-662d-4783-8958-0b489058a6a7", "www.icovazby.cz": "fae564b9-662d-4783-8958-0b489058a6a7", "dev.icovazby.cz": "a1e4e3b5-1188-450b-b7b6-9b3dd086492d" }; var id = ids[location.hostname]; if (!id) return; var s = document.createElement("script"); s.async = true; s.src = "https://stats.icovazby.cz/script.js"; s.setAttribute("data-website-id", id); document.head.appendChild(s); })();</script>
+    <script type="application/ld+json">{ "@context": "https://schema.org", "@type": "Article", "headline": "Jak najít propojení mezi firmami a osobami", "description": "Jak odhalit vazby mezi firmami a lidmi, bílé koně a skryté propojení.", "author": { "@type": "Organization", "name": "SimpleSolar s.r.o." }, "publisher": { "@type": "Organization", "name": "IČO vazby" }, "mainEntityOfPage": "https://icovazby.cz/pruvodce/propojeni-firem-a-osob.html" }</script>
+    <script type="application/ld+json">{ "@context": "https://schema.org", "@type": "FAQPage", "mainEntity": [ { "@type": "Question", "name": "Odkud data o propojení pocházejí?", "acceptedAnswer": { "@type": "Answer", "text": "Z Veřejného rejstříku a dalších oficiálních registrů — jde o veřejná data." } }, { "@type": "Question", "name": "Co je bílý kůň?", "acceptedAnswer": { "@type": "Answer", "text": "Osoba formálně vedená v mnoha firmách, často nastrčená; sama o sobě signál, ne důkaz." } }, { "@type": "Question", "name": "Uvidím i zahraniční vlastníky?", "acceptedAnswer": { "@type": "Answer", "text": "Přeshraniční vlastnictví doplňujeme z globálního registru LEI." } } ] }</script>
+  </head>
+  <body class="bg-[#F2FAF5] dark:bg-slate-900 text-slate-900 dark:text-slate-100 font-sans">
+    <header class="sticky top-0 z-30 bg-white/85 dark:bg-slate-900/85 backdrop-blur border-b border-slate-200 dark:border-slate-800">
+      <div class="max-w-5xl mx-auto px-5 py-3 flex items-center justify-between gap-3">
+        <a href="/" class="flex items-center gap-3 hover:opacity-80">
+          <svg width="34" height="34" viewBox="0 0 64 64" class="shrink-0"><path d="M 32 18 L 14 46" stroke="#10b981" stroke-width="3.5" stroke-linecap="round" fill="none" /><path d="M 32 18 L 32 46" stroke="#10b981" stroke-width="3.5" stroke-linecap="round" fill="none" /><path d="M 32 18 L 50 46" stroke="#10b981" stroke-width="3.5" stroke-linecap="round" fill="none" /><rect x="6" y="42" width="16" height="16" rx="3" fill="#10b981" /><rect x="24" y="42" width="16" height="16" rx="3" fill="#10b981" /><rect x="42" y="42" width="16" height="16" rx="3" fill="#10b981" /><circle cx="32" cy="18" r="11" fill="#065f46" /><circle cx="32" cy="18" r="7" fill="#34d399" /></svg>
+          <div class="font-bold text-lg gradient-text">IČO vazby</div>
+        </a>
+        <a href="/" class="px-4 py-2 bg-emerald-600 text-white rounded-lg text-sm font-semibold hover:bg-emerald-700">Otevřít aplikaci →</a>
+      </div>
+    </header>
+
+    <main class="max-w-3xl mx-auto px-5 py-10 art">
+      <nav class="text-xs text-slate-500 mb-4"><a href="/pruvodce/index.html">Průvodci</a> › Propojení firem a osob</nav>
+      <h1 class="text-3xl sm:text-4xl font-extrabold tracking-tight mb-4">Jak najít propojení mezi firmami a osobami</h1>
+      <div class="tldr"><strong>Krátká odpověď:</strong> Propojení složíte z <strong>Veřejného rejstříku</strong> (kdo je kde jednatel/společník) a z vlastnické struktury. Když chcete vidět, <strong>kdo s kým podniká, kdo sedí v desítkách firem nebo kdo stojí za více subjekty</strong>, pomůže vlastnická mapa, která to vykreslí jako graf.</div>
+
+      <h2>Proč to řešit</h2>
+      <p>Skryté vazby odhalí <strong>bílého koně</strong> (osobu nastrčenou do mnoha firem), propojené spřízněné firmy, nebo že protistrana ovládá i firmu, se kterou jste měli špatnou zkušenost. Klíčové pro due diligence, compliance i investigativu.</p>
+
+      <h2>Jak to zjistit ručně</h2>
+      <ol>
+        <li><strong>Veřejný rejstřík</strong> — u osoby dohledáte, kde všude je zapsaná jako jednatel/společník.</li>
+        <li><strong>Vlastnická struktura</strong> — přes mateřské a dceřiné firmy poskládáte, kdo koho vlastní.</li>
+        <li><strong>Ručně narazíte na limit</strong> — proklikat desítky firem a osob a udržet v hlavě, kdo s kým souvisí, je nereálné.</li>
+      </ol>
+      <p><strong>Red flag:</strong> osoba v desítkách firem, kruhové vlastnictví (firmy vlastní navzájem), nebo více „prázdných" firem se stejnými lidmi na stejné adrese.</p>
+
+      <h2>Jak to zvládnout naráz</h2>
+      <p><strong>icovazby.cz</strong> vykreslí <strong>mapu propojení</strong> firem a osob, upozorní na bílé koně (osoba v desítkách firem), kruhové vlastnictví i podezřelá hromadná sídla. Kliknete na osobu a uvidíte všechny její firmy. Zdarma, z oficiálních registrů.</p>
+
+      <div class="my-8 rounded-xl bg-emerald-600 text-white p-6 text-center">
+        <div class="text-lg font-bold mb-1">Rozkreslete vazby</div>
+        <a href="/" class="inline-block mt-2 px-6 py-3 bg-white text-emerald-700 rounded-lg font-bold hover:bg-emerald-50">Otevřít icovazby.cz →</a>
+      </div>
+
+      <h2>Časté dotazy</h2>
+      <dl class="faq">
+        <dt>Odkud data pocházejí?</dt>
+        <dd>Z Veřejného rejstříku a dalších oficiálních registrů — jde o veřejná data.</dd>
+        <dt>Co je „bílý kůň"?</dt>
+        <dd>Osoba formálně vedená v mnoha firmách, často nastrčená; sama o sobě signál, ne důkaz.</dd>
+        <dt>Uvidím i zahraniční vlastníky?</dt>
+        <dd>Přeshraniční vlastnictví doplňujeme z globálního registru LEI.</dd>
+      </dl>
+
+      <div class="mt-10 pt-6 border-t border-slate-200 dark:border-slate-700 text-sm">
+        <div class="font-semibold mb-2">Související průvodci</div>
+        <ul class="space-y-1">
+          <li><a href="/pruvodce/skutecny-majitel-firmy.html">Kdo je skutečný majitel firmy</a></li>
+          <li><a href="/pruvodce/jak-proverit-firmu.html">Jak prověřit firmu před spoluprací</a></li>
+          <li><a href="/pruvodce/insolvence-firmy.html">Jak zjistit, jestli je firma v insolvenci</a></li>
+        </ul>
+      </div>
+    </main>
+
+    <footer class="bg-slate-900 text-slate-400 py-10 px-5 text-sm">
+      <div class="max-w-3xl mx-auto">
+        <div class="flex flex-wrap items-center justify-between gap-4 mb-4">
+          <div><div class="text-white font-semibold">IČO vazby</div><div class="text-xs">SimpleSolar s.r.o., IČO 07315520</div></div>
+          <div class="flex gap-4 text-xs"><a href="/" class="hover:text-emerald-400">Aplikace</a><a href="/pruvodce/index.html" class="hover:text-emerald-400">Průvodci</a><a href="/privacy.html" class="hover:text-emerald-400">GDPR</a></div>
+        </div>
+        <div class="text-xs text-slate-500 border-t border-slate-800 pt-4">Data z oficiálních veřejných registrů ČR a EU. Neposkytujeme právní ani daňové poradenství.</div>
+      </div>
+    </footer>
+  </body>
+</html>
