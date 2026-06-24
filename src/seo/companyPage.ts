@@ -1,9 +1,37 @@
-// Server-rendered, indexovatelná stránka per firma pro SEO (Etapa 1).
+// Server-rendered, indexovatelná stránka per firma pro SEO (Etapa 1+2).
 // Bere výstup fullDueDiligenceService a renderuje sémantické HTML s
-// firma-specifickým <title>/meta/OG + JSON-LD schema.org/Organization.
-// Záměrně bez CDN/JS závislostí — lehká, rychlá, dobře indexovatelná.
+// firma-specifickým <title>/meta/OG + JSON-LD schema.org/Organization +
+// interní odkazy na propojené firmy (Etapa 2). Záměrně bez CDN/JS závislostí.
 
 const BASE_URL = process.env.PUBLIC_BASE_URL ?? "https://icovazby.cz";
+
+const DIACRITICS: Record<string, string> = {
+  á: "a", č: "c", ď: "d", é: "e", ě: "e", í: "i", ň: "n", ó: "o",
+  ř: "r", š: "s", ť: "t", ú: "u", ů: "u", ý: "y", ž: "z",
+};
+
+/** URL slug z názvu firmy (bez diakritiky, ascii). Keyword-in-URL + canonical. */
+export function slugify(name: string | null | undefined): string {
+  if (!name) return "firma";
+  const s = name
+    .toLowerCase()
+    .replace(/[áčďéěíňóřšťúůýž]/g, (c) => DIACRITICS[c] ?? c)
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 60)
+    .replace(/-+$/g, "");
+  return s || "firma";
+}
+
+/** Kanonická cesta firemní stránky (se slugem). */
+export function firmaPath(ico: string, name: string | null | undefined): string {
+  return `/firma/${encodeURIComponent(ico)}/${slugify(name)}`;
+}
+
+export interface RelatedCompany {
+  ico: string;
+  name: string | null;
+}
 
 interface DdLike {
   ico: string;
@@ -67,10 +95,10 @@ function jsonLd(r: DdLike, url: string): string {
   return JSON.stringify(org);
 }
 
-export function renderCompanyPage(report: DdLike): string {
+export function renderCompanyPage(report: DdLike, related: RelatedCompany[] = []): string {
   const r = report;
   const name = r.obchodniJmeno ?? `IČO ${r.ico}`;
-  const url = `${BASE_URL}/firma/${encodeURIComponent(r.ico)}`;
+  const url = `${BASE_URL}${firmaPath(r.ico, name)}`;
   const risk = RISK[r.risk.level];
   const title = `${name} (IČO ${r.ico}) — prověrka, vazby a rizika | IČO vazby`;
   const desc = metaDescription(r);
@@ -94,6 +122,17 @@ export function renderCompanyPage(report: DdLike): string {
 
   const nace = (r.identification.czNace ?? []).slice(0, 8).map(esc).join(", ");
   const predmety = r.trade_licenses.predmety.slice(0, 10).map(esc).join(", ");
+
+  const relatedHtml = related.length
+    ? `<h2>Propojené firmy</h2>
+<p>Vlastnicky či personálně propojené subjekty (z grafu vazeb IČO vazby):</p>
+<ul>${related
+        .map(
+          (c) =>
+            `<li><a href="${esc(firmaPath(c.ico, c.name))}">${esc(c.name ?? `IČO ${c.ico}`)}</a> <span class="muted">(IČO ${esc(c.ico)})</span></li>`,
+        )
+        .join("")}</ul>`
+    : "";
 
   return `<!DOCTYPE html>
 <html lang="cs">
@@ -172,6 +211,8 @@ ${
 
 <h2>Živnostenská oprávnění</h2>
 <p>Celkem ${r.trade_licenses.total}, aktivních ${r.trade_licenses.aktivni}.${predmety ? ` Předměty: ${predmety}.` : ""}</p>
+
+${relatedHtml}
 
 <h2>Související</h2>
 <ul>
