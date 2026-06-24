@@ -102,6 +102,14 @@ const app = Fastify({
   trustProxy: process.env.TRUST_PROXY ?? "loopback",
 });
 
+// Interní volající na loopbacku (ares-mcp → 127.0.0.1:3000, BEZ X-Forwarded-For)
+// se nepočítá do rate-limitu. Bezpečné: web traffic jde přes Caddy s XFF +
+// trustProxy="loopback", takže req.ip externího klienta NIKDY není loopback;
+// app navíc bindí jen 127.0.0.1, takže zvenčí se přímo doloopbacku nedostaneš.
+const LOOPBACK_IPS = new Set(["127.0.0.1", "::1", "::ffff:127.0.0.1"]);
+const isLoopbackReq = (req: { ip?: string }): boolean =>
+  typeof req.ip === "string" && LOOPBACK_IPS.has(req.ip);
+
 await app.register(fastifyRateLimit, {
   // 200/min/IP: jeden DD profil + graf + plné plátno snadno vystřelí 30-60 dotazů
   // v dávce (risk engine + lazy karty + holding/cross-persons), takže 60 bylo pro
@@ -109,6 +117,7 @@ await app.register(fastifyRateLimit, {
   // rate-limit + per-IP keying; tohle je sekundární backstop. Laditelné přes env.
   max: parseEnvNumber(process.env.RATE_LIMIT_PER_MIN, 200),
   timeWindow: "1 minute",
+  allowList: (req) => isLoopbackReq(req),
   // #1: jen req.ip (důvěryhodně spočtené z X-Forwarded-For od Caddy na loopbacku).
   // Klientem zaslané hlavičky už NEčteme — daly se podvrhnout a obejít limit.
   keyGenerator: (req) => req.ip,
@@ -145,7 +154,11 @@ await app.register(helmet, {
 // uncached render). Vyšší než profilové procházení i dávka, ale brání
 // amplifikaci scrapingem přes různá IČO (obejde cache). Laditelné přes env.
 const EXPENSIVE_LIMIT = parseEnvNumber(process.env.RATE_LIMIT_EXPENSIVE_PER_MIN, 60);
-const expensiveCfg = { config: { rateLimit: { max: EXPENSIVE_LIMIT, timeWindow: "1 minute" } } };
+const expensiveCfg = {
+  config: {
+    rateLimit: { max: EXPENSIVE_LIMIT, timeWindow: "1 minute", allowList: isLoopbackReq },
+  },
+};
 
 await app.register(fastifyStatic, {
   root: PUBLIC_DIR,
@@ -999,7 +1012,7 @@ const holdingSchema = z.object({
 const HEAVY_LIMIT = parseEnvNumber(process.env.RATE_LIMIT_HEAVY_PER_MIN, 10);
 
 app.post("/api/holding/discover", {
-  config: { rateLimit: { max: HEAVY_LIMIT, timeWindow: "1 minute" } },
+  config: { rateLimit: { max: HEAVY_LIMIT, timeWindow: "1 minute", allowList: isLoopbackReq } },
 }, async (req: FastifyRequest, reply) => {
   try {
     const parsed = holdingSchema.safeParse(req.body);
@@ -1022,7 +1035,7 @@ const crossSchema = z.object({
   emitMermaid: z.boolean().optional(),
 });
 app.post("/api/cross-persons", {
-  config: { rateLimit: { max: HEAVY_LIMIT, timeWindow: "1 minute" } },
+  config: { rateLimit: { max: HEAVY_LIMIT, timeWindow: "1 minute", allowList: isLoopbackReq } },
 }, async (req: FastifyRequest, reply) => {
   try {
     const parsed = crossSchema.safeParse(req.body);
