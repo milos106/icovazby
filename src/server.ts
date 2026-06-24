@@ -24,7 +24,8 @@ import { VrAccessBlockedError } from "./justice_vr/client.js";
 import { LlmNotConfiguredError, generateAiSummary } from "./llm/service.js";
 import { LlmApiError } from "./llm/providers.js";
 import { hsTokenContext } from "./hlidacstatu/token_context.js";
-import { indexStats } from "./persons_index/store.js";
+import { indexStats, listSubjects } from "./persons_index/store.js";
+import { renderCompanyPage } from "./seo/companyPage.js";
 import {
   crossCompanyPersonsService,
   discoverHolding,
@@ -550,6 +551,41 @@ app.get("/report/:ico", expensiveCfg, async (req: FastifyRequest, reply) => {
   } catch (e) {
     sendError(reply, e);
   }
+});
+
+// SEO (Etapa 1): server-rendered, indexovatelná stránka per firma. Globální
+// rate-limit (ne expensive) — ať Googlebot může crawlovat; render je server-cached.
+app.get("/firma/:ico", async (req: FastifyRequest, reply) => {
+  try {
+    const ico = (req.params as { ico: string }).ico;
+    const html = await cached(
+      `firma-seo:${ico}`,
+      async () => {
+        const report = await fullDueDiligenceService(client, ico);
+        return renderCompanyPage(report as never);
+      },
+      { persist: true },
+    );
+    reply.header("cache-control", "public, max-age=86400").type("text/html").send(html);
+  } catch (e) {
+    sendError(reply, e);
+  }
+});
+
+// SEO: sitemap firemních stránek z inventáře (persons_index). Druhý sitemap
+// vedle statického /sitemap.xml; oba jsou v robots.txt.
+app.get("/sitemap-firmy.xml", async (_req: FastifyRequest, reply) => {
+  const base = process.env.PUBLIC_BASE_URL ?? "https://icovazby.cz";
+  const MAX = 50000; // limit URL na jeden sitemap soubor (sitemaps.org)
+  const urls = listSubjects()
+    .slice(0, MAX)
+    .map(
+      (s) =>
+        `  <url><loc>${base}/firma/${encodeURIComponent(s.ico)}</loc><changefreq>monthly</changefreq></url>`,
+    )
+    .join("\n");
+  const xml = `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${urls}\n</urlset>`;
+  reply.header("cache-control", "public, max-age=3600").type("application/xml").send(xml);
 });
 
 app.get("/api/dd/:ico", async (req: FastifyRequest, reply) => {

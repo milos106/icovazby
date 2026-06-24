@@ -24,3 +24,4 @@ User-agent: Meta-ExternalAgent
 Disallow: /
 
 Sitemap: https://icovazby.cz/sitemap.xml
+Sitemap: https://icovazby.cz/sitemap-firmy.xml
