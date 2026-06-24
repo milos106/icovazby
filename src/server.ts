@@ -24,8 +24,13 @@ import { VrAccessBlockedError } from "./justice_vr/client.js";
 import { LlmNotConfiguredError, generateAiSummary } from "./llm/service.js";
 import { LlmApiError } from "./llm/providers.js";
 import { hsTokenContext } from "./hlidacstatu/token_context.js";
-import { indexStats, listSubjects } from "./persons_index/store.js";
-import { renderCompanyPage } from "./seo/companyPage.js";
+import {
+  getChildrenByParent,
+  getSubjectName,
+  indexStats,
+  listSubjects,
+} from "./persons_index/store.js";
+import { firmaPath, renderCompanyPage } from "./seo/companyPage.js";
 import {
   crossCompanyPersonsService,
   discoverHolding,
@@ -553,16 +558,22 @@ app.get("/report/:ico", expensiveCfg, async (req: FastifyRequest, reply) => {
   }
 });
 
-// SEO (Etapa 1): server-rendered, indexovatelná stránka per firma. Globální
-// rate-limit (ne expensive) — ať Googlebot může crawlovat; render je server-cached.
-app.get("/firma/:ico", async (req: FastifyRequest, reply) => {
+// SEO (Etapa 1+2): server-rendered, indexovatelná stránka per firma se slug URL
+// a interním prolinkováním na propojené firmy (z lokálního ownership indexu —
+// levné, bez ARES volání). Globální rate-limit ať Googlebot crawluje; cache persist.
+const firmaHandler = async (req: FastifyRequest, reply: FastifyReply) => {
   try {
     const ico = (req.params as { ico: string }).ico;
     const html = await cached(
-      `firma-seo:${ico}`,
+      // -v2: slug canonical + interní prolinkování (Etapa 2); ignoruje Etapa-1 cache.
+      `firma-seo-v2:${ico}`,
       async () => {
         const report = await fullDueDiligenceService(client, ico);
-        return renderCompanyPage(report as never);
+        // Interní odkazy: dceřinky/propojené firmy z indexu (O(1), bez upstream).
+        const related = getChildrenByParent((report as { ico: string }).ico)
+          .slice(0, 30)
+          .map((childIco) => ({ ico: childIco, name: getSubjectName(childIco) }));
+        return renderCompanyPage(report as never, related);
       },
       { persist: true },
     );
@@ -570,7 +581,9 @@ app.get("/firma/:ico", async (req: FastifyRequest, reply) => {
   } catch (e) {
     sendError(reply, e);
   }
-});
+};
+app.get("/firma/:ico", firmaHandler);
+app.get("/firma/:ico/:slug", firmaHandler); // slug je kosmetický; klíč je IČO, canonical → slug URL
 
 // SEO: sitemap firemních stránek z inventáře (persons_index). Druhý sitemap
 // vedle statického /sitemap.xml; oba jsou v robots.txt.
@@ -581,7 +594,7 @@ app.get("/sitemap-firmy.xml", async (_req: FastifyRequest, reply) => {
     .slice(0, MAX)
     .map(
       (s) =>
-        `  <url><loc>${base}/firma/${encodeURIComponent(s.ico)}</loc><changefreq>monthly</changefreq></url>`,
+        `  <url><loc>${base}${firmaPath(s.ico, s.obchodniJmeno)}</loc><changefreq>monthly</changefreq></url>`,
     )
     .join("\n");
   const xml = `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${urls}\n</urlset>`;

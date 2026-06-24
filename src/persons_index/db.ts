@@ -276,6 +276,16 @@ export function dbListSubjects(): Array<{ ico: string; obchodniJmeno: string | n
   return rows.map((r) => ({ ico: r.ico, obchodniJmeno: r.obchodni_jmeno, seenAt: r.seen_at }));
 }
 
+export function dbGetSubjectName(ico: string): string | null {
+  const d = getDb();
+  const key = ico.replace(/\D/g, "").padStart(8, "0");
+  if (!/^\d{8}$/.test(key)) return null;
+  const row = d.prepare(`SELECT obchodni_jmeno FROM subjects WHERE ico = ?`).get(key) as
+    | { obchodni_jmeno: string | null }
+    | undefined;
+  return row?.obchodni_jmeno ?? null;
+}
+
 // ─── Investigations (Fáze D — uložená vyšetřovací plátna) ──────────────────────
 
 export function dbSaveInvestigation(id: string, state: unknown): void {

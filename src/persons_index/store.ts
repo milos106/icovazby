@@ -16,6 +16,7 @@ import {
   dbFindTentative,
   dbGetChildrenByParent,
   dbGetOwnershipDetails,
+  dbGetSubjectName,
   dbListSubjects,
   dbStats,
   dbUpsertMembership,
@@ -198,6 +199,11 @@ export function getChildrenByParent(
   includeHistorical = false,
 ): string[] {
   return dbGetChildrenByParent(parentIco, includeHistorical);
+}
+
+/** Obchodní jméno subjektu z indexu (pro anchor text interních odkazů). */
+export function getSubjectName(ico: string): string | null {
+  return dbGetSubjectName(ico);
 }
 
 export function getOwnershipDetails(
