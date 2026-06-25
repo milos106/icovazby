@@ -2574,12 +2574,18 @@ export async function groupFundingService(client: AresClient, icoInput: string, 
   const poFirmach: Array<{ ico: string; obchodniJmeno: string | null; role: string; dotaceCZK: number; dotaceCount: number; zakazkyCZK: number; zakazkyCount: number }> = [];
 
   for (const c of group) {
-    const [dotR, smlR] = await Promise.allSettled([
+    // Název: discoverHolding ho u objevených dceřinek nechává null → doplníme z ARES.
+    // Stejný cache klíč `subj:` jako discoverHolding → parent + prošlé firmy = cache hit.
+    const [dotR, smlR, subR] = await Promise.allSettled([
       cached(`dotace:${c.ico}`, () => getDotaceService(c.ico), { persist: true, isComplete: isOk }),
       cached(`smlouvy:${c.ico}`, () => getSmlouvyService(c.ico), { persist: true, isComplete: isOk }),
+      c.obchodniJmeno ? Promise.resolve(null) : cached(`subj:${c.ico}`, () => client.getEconomicSubject(c.ico), { persist: true }),
     ]);
     const dot = dotR.status === "fulfilled" ? (dotR.value as { available?: boolean; topPayedCZK?: number; totalDotaci?: number }) : null;
     const sml = smlR.status === "fulfilled" ? (smlR.value as { available?: boolean; topSumCZK?: number; totalContracts?: number }) : null;
+    const obchodniJmeno =
+      c.obchodniJmeno ??
+      (subR.status === "fulfilled" && subR.value ? (subR.value as { obchodniJmeno?: string | null }).obchodniJmeno ?? null : null);
     const dCZK = dot && dot.available !== false ? dot.topPayedCZK ?? 0 : 0;
     const zCZK = sml && sml.available !== false ? sml.topSumCZK ?? 0 : 0;
     const dCnt = dot?.totalDotaci ?? 0;
@@ -2588,7 +2594,7 @@ export async function groupFundingService(client: AresClient, icoInput: string, 
     zakazkyCelkemCZK += zCZK;
     dotaceCount += dCnt;
     zakazkyCount += zCnt;
-    poFirmach.push({ ico: c.ico, obchodniJmeno: c.obchodniJmeno, role: c.role, dotaceCZK: dCZK, dotaceCount: dCnt, zakazkyCZK: zCZK, zakazkyCount: zCnt });
+    poFirmach.push({ ico: c.ico, obchodniJmeno, role: c.role, dotaceCZK: dCZK, dotaceCount: dCnt, zakazkyCZK: zCZK, zakazkyCount: zCnt });
   }
   poFirmach.sort((a, b) => b.dotaceCZK + b.zakazkyCZK - (a.dotaceCZK + a.zakazkyCZK));
 
