@@ -324,165 +324,168 @@
       <div class="max-w-6xl mx-auto px-5">
         <div class="flex items-baseline gap-3 mb-2">
           <span class="font-mono text-sm text-emerald-600 dark:text-emerald-400">02</span>
-          <span class="text-xs uppercase tracking-wider text-slate-500 font-semibold">Datové zdroje</span>
+          <span class="text-xs uppercase tracking-wider text-slate-500 font-semibold">Uspořádání aplikace</span>
         </div>
-        <h2 class="text-3xl sm:text-4xl font-bold tracking-tightest mb-3">12 veřejných registrů, jedna stránka</h2>
-        <p class="text-slate-600 dark:text-slate-300 mb-12 text-lg max-w-3xl">
-          Všechno jsou oficiální veřejné zdroje &mdash; agregujeme je, neukrýváme. Každý údaj má v UI uvedený svůj zdroj
-          a datum, abyste věděli, odkud informace pochází a kdy byla aktualizována.
+        <h2 class="text-3xl sm:text-4xl font-bold tracking-tightest mb-3">Profil rozdělený do šesti skupin &mdash; přesně jako v aplikaci</h2>
+        <p class="text-slate-600 dark:text-slate-300 mb-10 text-lg max-w-3xl">
+          Po zadání IČO se otevře pracovní plocha o třech sloupcích. Vlevo je subjekt, risk semafor a navigace, uprostřed
+          karty vybrané skupiny, vpravo stále viditelná mapa propojení. Žádné překlikávání mezi taby &mdash; vše na jedné obrazovce.
         </p>
+
+        <!-- 3-sloupcový layout — schéma -->
+        <div class="grid md:grid-cols-3 gap-4 mb-12">
+          <div class="rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 p-5">
+            <div class="text-[11px] uppercase tracking-wider text-slate-400 font-semibold mb-2">Levý sloupec</div>
+            <div class="font-bold mb-1.5">Subjekt · semafor · navigace</div>
+            <p class="text-sm text-slate-600 dark:text-slate-400">Hlavička firmy, <strong>risk semafor</strong> ze čtyř oblastí, seznam <strong>šesti skupin</strong> (klávesy&nbsp;<kbd class="px-1 rounded bg-slate-100 dark:bg-slate-700 font-mono text-[11px]">1–6</kbd>) a panel <strong>nástrojů</strong>. Oranžová/červená tečka u skupiny = signál uvnitř.</p>
+          </div>
+          <div class="rounded-xl bg-white dark:bg-slate-800 border border-emerald-300 dark:border-emerald-700 p-5">
+            <div class="text-[11px] uppercase tracking-wider text-emerald-500 font-semibold mb-2">Prostřední sloupec</div>
+            <div class="font-bold mb-1.5">Karty aktivní skupiny</div>
+            <p class="text-sm text-slate-600 dark:text-slate-400">Obsah vybrané skupiny v kartách s uvedeným zdrojem. Dole vždy <strong>📝 Rychlá poznámka</strong> (per&nbsp;IČO) a <strong>📑 Uložená vyhledávání</strong>.</p>
+          </div>
+          <div class="rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 p-5">
+            <div class="text-[11px] uppercase tracking-wider text-slate-400 font-semibold mb-2">Pravý sloupec</div>
+            <div class="font-bold mb-1.5">🌐 Vyšetřovací panel</div>
+            <p class="text-sm text-slate-600 dark:text-slate-400">Stále viditelná <strong>mapa propojení</strong> (Cytoscape) s vrstvami <strong>Osoby / Vlastnictví / Oboji</strong>. Vyšetřování lze uložit a sdílet read-only odkazem.</p>
+          </div>
+        </div>
+
+        <h3 class="text-xl font-bold mb-1">Šest skupin profilu</h3>
+        <p class="text-slate-600 dark:text-slate-300 mb-6 text-sm max-w-3xl">Stejné ikony i pořadí jako v levé navigaci aplikace. Každá karta uvnitř má uvedený svůj veřejný zdroj.</p>
 
         <div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
 
+          <!-- 1 · Identita -->
           <div class="src-tile rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 p-5">
             <div class="flex items-center gap-3 mb-2">
-              <div class="feature-icon text-xl">🏛️</div>
+              <div class="feature-icon text-xl">🪪</div>
               <div>
-                <h3 class="font-bold">ARES</h3>
-                <div class="text-[11px] text-slate-500">Ministerstvo financí</div>
+                <h3 class="font-bold">1 · Identita</h3>
+                <div class="text-[11px] text-slate-500">kdo subjekt je</div>
               </div>
             </div>
-            <p class="text-sm text-slate-600 dark:text-slate-400">Identifikace firmy: IČO, DIČ, sídlo, právní forma, předmět podnikání, datum vzniku/zániku.</p>
+            <ul class="text-sm text-slate-600 dark:text-slate-400 space-y-1">
+              <li>· <strong>Identifikace</strong> &mdash; IČO, DIČ, sídlo, právní forma, vznik/zánik <span class="text-[11px] text-slate-400">(ARES)</span></li>
+              <li>· <strong>DPH</strong> &mdash; plátcovství a oznámené účty <span class="text-[11px] text-slate-400">(ARES · ADIS)</span></li>
+              <li>· <strong>Živnosti · RŽP</strong> &mdash; obory s CZ-NACE <span class="text-[11px] text-slate-400">(MPO)</span></li>
+              <li>· <strong>Datová schránka</strong> <span class="text-[11px] text-slate-400">(MV ČR)</span></li>
+              <li>· <strong>ČNB JERRS</strong> &mdash; regulované subjekty <span class="text-[11px] text-slate-400">(ČNB)</span></li>
+            </ul>
           </div>
 
+          <!-- 2 · Vlastnictví a řízení -->
           <div class="src-tile rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 p-5">
             <div class="flex items-center gap-3 mb-2">
-              <div class="feature-icon text-xl">📜</div>
+              <div class="feature-icon text-xl">👥</div>
               <div>
-                <h3 class="font-bold">Veřejný rejstřík (OR)</h3>
-                <div class="text-[11px] text-slate-500">Ministerstvo spravedlnosti</div>
+                <h3 class="font-bold">2 · Vlastnictví a řízení</h3>
+                <div class="text-[11px] text-slate-500">kdo za firmou stojí</div>
               </div>
             </div>
-            <p class="text-sm text-slate-600 dark:text-slate-400">Statutáři, jednatelé, prokuristé, akcionáři, podíly, historie změn (i 30 let zpět), spisová značka.</p>
+            <ul class="text-sm text-slate-600 dark:text-slate-400 space-y-1">
+              <li>· <strong>👥 Statutární orgán</strong> &mdash; jednatelé, prokuristé <span class="text-[11px] text-slate-400">(VR)</span></li>
+              <li>· <strong>👤 Skuteční majitelé (UBO)</strong> &mdash; podíly a ovládání <span class="text-[11px] text-slate-400">(Hlídač státu)</span></li>
+              <li>· <strong>⚖️ Kapitál &amp; rejstřík</strong> &mdash; akcionáři, akcie, historie <span class="text-[11px] text-slate-400">(VR/OR)</span></li>
+              <li>· <strong>Rozkrýt holding</strong> &rarr; mapa propojení</li>
+            </ul>
           </div>
 
+          <!-- 3 · Finance a veř. peníze -->
           <div class="src-tile rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 p-5">
             <div class="flex items-center gap-3 mb-2">
-              <div class="feature-icon text-xl">📋</div>
+              <div class="feature-icon text-xl">💸</div>
               <div>
-                <h3 class="font-bold">Živnostenský rejstřík</h3>
-                <div class="text-[11px] text-slate-500">MPO ČR</div>
+                <h3 class="font-bold">3 · Finance a veř. peníze</h3>
+                <div class="text-[11px] text-slate-500">toky veřejných peněz</div>
               </div>
             </div>
-            <p class="text-sm text-slate-600 dark:text-slate-400">Aktivní a pozastavené živnosti s CZ-NACE klasifikací a hover tooltipy.</p>
+            <ul class="text-sm text-slate-600 dark:text-slate-400 space-y-1">
+              <li>· <strong>🏦 DPH / ADIS</strong> &mdash; platební riziko dle §109 ZDPH <span class="text-[11px] text-slate-400">(Finanční správa)</span></li>
+              <li>· <strong>💸 Dotace</strong> &mdash; CEDR + EU fondy <span class="text-[11px] text-slate-400">(Hlídač státu)</span></li>
+              <li>· <strong>💰 Registr smluv</strong> &mdash; top protistrany <span class="text-[11px] text-slate-400">(z. 340/2015)</span></li>
+              <li>· <strong>📄 Účetní závěrky</strong> &mdash; co a kdy uloženo (compliance signál) <strong>+ čísla z výkazů</strong> (aktiva, kapitál, výsledek z PDF bez AI) + graf vývoje, u skenů OCR <span class="text-[11px] text-slate-400">(Sbírka listin · or.justice.cz · experimentální)</span></li>
+            </ul>
           </div>
 
+          <!-- 4 · Rizika -->
           <div class="src-tile rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 p-5">
             <div class="flex items-center gap-3 mb-2">
-              <div class="feature-icon text-xl">💰</div>
+              <div class="feature-icon text-xl">🚩</div>
               <div>
-                <h3 class="font-bold">ADIS DPH</h3>
-                <div class="text-[11px] text-slate-500">Finanční správa</div>
+                <h3 class="font-bold">4 · Rizika</h3>
+                <div class="text-[11px] text-slate-500">na co si dát pozor</div>
               </div>
             </div>
-            <p class="text-sm text-slate-600 dark:text-slate-400">Plátce DPH, nespolehlivý plátce, oficiálně oznámené bankovní účty.</p>
+            <ul class="text-sm text-slate-600 dark:text-slate-400 space-y-1">
+              <li>· <strong>Risk semafor</strong> &mdash; čtyři oblasti (identita / vlastnictví / finance / rizika)</li>
+              <li>· <strong>⚖️ Insolvence (ISIR)</strong> &mdash; aktivní i historické <span class="text-[11px] text-slate-400">(justice.cz · HS)</span></li>
+              <li>· <strong>🇪🇺 EU sankce</strong> &mdash; screening jmen <span class="text-[11px] text-slate-400">(FSF feed)</span></li>
+            </ul>
           </div>
 
+          <!-- 5 · Aktiva -->
           <div class="src-tile rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 p-5">
             <div class="flex items-center gap-3 mb-2">
-              <div class="feature-icon text-xl">⚠️</div>
+              <div class="feature-icon text-xl">🏠</div>
               <div>
-                <h3 class="font-bold">ISIR insolvence</h3>
-                <div class="text-[11px] text-slate-500">justice.cz</div>
+                <h3 class="font-bold">5 · Aktiva</h3>
+                <div class="text-[11px] text-slate-500">majetek a značky</div>
               </div>
             </div>
-            <p class="text-sm text-slate-600 dark:text-slate-400">Aktivní + historické insolvenční řízení (úplný XML feed, ne jen vzorek).</p>
+            <ul class="text-sm text-slate-600 dark:text-slate-400 space-y-1">
+              <li>· <strong>Nemovitosti (Katastr)</strong> &mdash; hmotná aktiva <span class="text-[11px] text-slate-400">(ČÚZK — brzy)</span></li>
+              <li>· <strong>™ Ochranné známky (ÚPV)</strong> &mdash; nehmotná aktiva, 307&nbsp;000+ známek <span class="text-[11px] text-slate-400">(ÚPV ST.96)</span></li>
+            </ul>
           </div>
 
+          <!-- 6 · Syntéza -->
           <div class="src-tile rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 p-5">
             <div class="flex items-center gap-3 mb-2">
-              <div class="feature-icon text-xl">👤</div>
+              <div class="feature-icon text-xl">🧠</div>
               <div>
-                <h3 class="font-bold">UBO &mdash; skuteční majitelé</h3>
-                <div class="text-[11px] text-slate-500">Hlídač státu</div>
+                <h3 class="font-bold">6 · Syntéza</h3>
+                <div class="text-[11px] text-slate-500">AI souhrn · vývoj</div>
               </div>
             </div>
-            <p class="text-sm text-slate-600 dark:text-slate-400">Skutečný vlastník (Beneficial Owner) s podíly a strukturou ovládání.</p>
+            <ul class="text-sm text-slate-600 dark:text-slate-400 space-y-1">
+              <li>· <strong>🤖 AI souhrn (Claude)</strong> &mdash; exec-summary z dat <span class="text-[11px] text-slate-400">(BYO klíč)</span></li>
+              <li>· <strong>📜 Časová osa</strong> &mdash; vzorec změn a vývoj firmy <span class="text-[11px] text-slate-400">(odvozeno z VR)</span></li>
+            </ul>
           </div>
 
-          <div class="src-tile rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 p-5">
-            <div class="flex items-center gap-3 mb-2">
-              <div class="feature-icon text-xl">📑</div>
-              <div>
-                <h3 class="font-bold">Veřejné zakázky + dotace</h3>
-                <div class="text-[11px] text-slate-500">Hlídač státu + CEDR</div>
-              </div>
-            </div>
-            <p class="text-sm text-slate-600 dark:text-slate-400">Vyhrané státní zakázky a přijaté dotace &mdash; signál ekonomické aktivity i politické vazby.</p>
-          </div>
+        </div>
 
-          <div class="src-tile rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 p-5">
-            <div class="flex items-center gap-3 mb-2">
-              <div class="feature-icon text-xl">🏦</div>
-              <div>
-                <h3 class="font-bold">ČNB JERRS</h3>
-                <div class="text-[11px] text-slate-500">Česká národní banka</div>
-              </div>
-            </div>
-            <p class="text-sm text-slate-600 dark:text-slate-400">Regulované finanční subjekty: banky, pojišťovny, IZ, OCP, MFI atd.</p>
+        <!-- Nástroje -->
+        <h3 class="text-xl font-bold mt-12 mb-1">Nástroje &mdash; nad rámec jedné firmy</h3>
+        <p class="text-slate-600 dark:text-slate-300 mb-6 text-sm max-w-3xl">Panel nástrojů v levém sloupci. Mapa propojení 🌐 není tlačítko &mdash; je stále vidět vpravo (zkratka&nbsp;<kbd class="px-1 rounded bg-slate-100 dark:bg-slate-700 font-mono text-[11px]">⌘G</kbd>).</p>
+        <div class="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div class="rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 p-4">
+            <div class="text-2xl mb-1.5">🔗</div>
+            <div class="font-bold mb-1">Vazby osob</div>
+            <p class="text-sm text-slate-600 dark:text-slate-400">Všechny firmy jedné osoby (jméno + datum narození) napříč rejstříkem.</p>
           </div>
-
-          <div class="src-tile rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 p-5">
-            <div class="flex items-center gap-3 mb-2">
-              <div class="feature-icon text-xl">🚫</div>
-              <div>
-                <h3 class="font-bold">EU sankce</h3>
-                <div class="text-[11px] text-slate-500">Financial Sanctions Files</div>
-              </div>
-            </div>
-            <p class="text-sm text-slate-600 dark:text-slate-400">Přímý oficiální FSF feed &mdash; sankcionované subjekty započítané do risk skóre.</p>
+          <div class="rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 p-4">
+            <div class="text-2xl mb-1.5">🏢</div>
+            <div class="font-bold mb-1">Adresa</div>
+            <p class="text-sm text-slate-600 dark:text-slate-400">Firmy sídlící na stejné adrese &mdash; odhalení virtuálních sídel.</p>
           </div>
-
-          <div class="src-tile rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 p-5">
-            <div class="flex items-center gap-3 mb-2">
-              <div class="feature-icon text-xl">™</div>
-              <div>
-                <h3 class="font-bold">Ochranné známky</h3>
-                <div class="text-[11px] text-slate-500">ÚPV ČR (ST.96 open data)</div>
-              </div>
-            </div>
-            <p class="text-sm text-slate-600 dark:text-slate-400">307&nbsp;000+ známek s denním přírůstkem. Match podle obchodního jména a sídla.</p>
+          <div class="rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 p-4">
+            <div class="text-2xl mb-1.5">⚖️</div>
+            <div class="font-bold mb-1">Porovnat</div>
+            <p class="text-sm text-slate-600 dark:text-slate-400">Více firem vedle sebe &mdash; rychlé srovnání rizik a parametrů.</p>
           </div>
-
-          <div class="src-tile rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 p-5">
-            <div class="flex items-center gap-3 mb-2">
-              <div class="feature-icon text-xl">📬</div>
-              <div>
-                <h3 class="font-bold">Datová schránka</h3>
-                <div class="text-[11px] text-slate-500">Ministerstvo vnitra</div>
-              </div>
-            </div>
-            <p class="text-sm text-slate-600 dark:text-slate-400">ID schránky pro elektronickou komunikaci. Pro PO veřejné dle § 14a zák. 300/2008.</p>
+          <div class="rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 p-4">
+            <div class="text-2xl mb-1.5">📋</div>
+            <div class="font-bold mb-1">Dávková prověrka</div>
+            <p class="text-sm text-slate-600 dark:text-slate-400">Seznam IČO naráz &mdash; hromadné PDF prověrky do ZIP.</p>
           </div>
-
-          <div class="src-tile rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 p-5">
-            <div class="flex items-center gap-3 mb-2">
-              <div class="feature-icon text-xl">🏘️</div>
-              <div>
-                <h3 class="font-bold">Katastr nemovitostí</h3>
-                <div class="text-[11px] text-slate-500">ČÚZK</div>
-              </div>
-            </div>
-            <p class="text-sm text-slate-600 dark:text-slate-400">Vyhledání nemovitostí firmy a propojení v profilu.</p>
-          </div>
-
-          <div class="src-tile rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 p-5">
-            <div class="flex items-center gap-3 mb-2">
-              <div class="feature-icon text-xl">📄</div>
-              <div>
-                <h3 class="font-bold">Sbírka listin (účetní závěrky)</h3>
-                <div class="text-[11px] text-slate-500">or.justice.cz</div>
-              </div>
-            </div>
-            <p class="text-sm text-slate-600 dark:text-slate-400">Za které roky firma uložila závěrku a kdy &mdash; compliance signál „podává / chybí / nepodává" &mdash; a nově i <strong>čísla z výkazů</strong> (aktiva, kapitál, výsledek) z PDF bez AI + víceletý graf vývoje; u skenů OCR. Experimentální.</p>
-          </div>
-
         </div>
 
         <div class="mt-10 p-5 rounded-xl border border-emerald-200 dark:border-emerald-800 bg-emerald-50/50 dark:bg-emerald-900/20 text-sm">
           <strong class="text-emerald-700 dark:text-emerald-300">Vše veřejné · vše citované.</strong>
-          <span class="text-slate-600 dark:text-slate-300">Žádná data si neudržujeme natajno &mdash; každý údaj má v UI uvedený svůj zdroj
-          a kdy byl naposled aktualizován. Žádné placené API třetích stran &mdash; jen oficiální české a evropské registry.</span>
+          <span class="text-slate-600 dark:text-slate-300">Za skupinami stojí <strong>11 oficiálních veřejných registrů</strong> (ARES, OR, RŽP, ADIS, ISIR, Hlídač státu, ČNB, EU&nbsp;FSF, ÚPV, datové schránky, ČÚZK). Každý údaj má v UI uvedený svůj zdroj
+          a kdy byl naposled aktualizován. Žádné placené API třetích stran.</span>
         </div>
       </div>
     </section>
@@ -1055,10 +1058,10 @@ flowchart TB
       <div class="mt-8 p-5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm">
         <div class="font-semibold mb-1">📌 Důležité &mdash; co zatím <em>není</em></div>
         <p class="text-slate-600 dark:text-slate-400">
-          U účetních závěrek čteme <strong>metadata i čísla z výkazů</strong> ze Sbírky listin (aktiva, kapitál,
-          cizí zdroje, výsledek z PDF rozvahy <em>bez AI</em>) + víceletý graf vývoje, u skenů OCR &mdash; vše
-          <strong>experimentální</strong> (u nestandardních forem nízká spolehlivost, doporučené ruční ověření).
-          Detailní výpis z katastru je placený a vyžaduje autentizaci přes ČÚZK.
+          Účetní závěrky &mdash; ze Sbírky listin čteme metadata <strong>i čísla z rozvahy</strong> (aktiva, kapitál,
+          cizí zdroje, výsledek z PDF <em>bez AI</em>) + víceletý graf vývoje, u skenů OCR; vše <strong>experimentální</strong>
+          (u nestandardních forem nízká spolehlivost, doporučené ruční ověření). Detailní výpis z katastru je placený a
+          vyžaduje autentizaci přes ČÚZK.
         </p>
       </div>
     </section>

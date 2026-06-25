@@ -221,7 +221,7 @@
           var d = sec && window.Alpine && window.Alpine.$data(sec);
           if (d) { d.shared = false; d.shareUrl = ""; }
         } catch (e) {}
-        try { window.history.replaceState(null, "", "/v2"); } catch (e) {}
+        try { window.history.replaceState(null, "", "/"); } catch (e) {}
       },
 
       onKey: function (e) {

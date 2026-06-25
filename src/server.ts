@@ -56,6 +56,7 @@ import {
   getVrDetailService,
   getTradeLicensesService,
   getUboService,
+  ownershipVerdictService,
   type InvoiceTarget,
   lookupCompanyService,
   searchByAddressService,
@@ -193,32 +194,32 @@ const serveIndex = async (req: FastifyRequest, reply: FastifyReply) => {
   return INDEX_HTML;
 };
 
-// `/v2` — workspace varianta UI (varianta C).
-// Mirror serveIndex: vlastní handler protože fastify-static má index:false.
-// V2 HTML předrenderováno při startu + replace {{VERSION}} → PKG_VERSION
-// (stejně jako INDEX_HTML). DŮVOD: v2 skripty (/js/app.js, /v2/js/v2.js) musí
-// nést ?v={{VERSION}} cache-buster — jinak prohlížeč drží STAROU cachovanou
-// app.js po deployi (statika má long max-age) a v2 běží na zastaralém kódu.
-const V2_HTML = (() => {
+// Klasický (starší) layout — přesunut na /klasik. Vlastní handler kvůli
+// {{VERSION}} cache-busteru (fastify-static má index:false). Hlavní app
+// (workspace) je teď INDEX_HTML na `/` (viz serveIndex výše).
+const KLASIK_HTML = (() => {
   try {
-    return readFileSync(join(PUBLIC_DIR, "v2", "index.html"), "utf8")
+    return readFileSync(join(PUBLIC_DIR, "klasik", "index.html"), "utf8")
       .replaceAll("{{VERSION}}", PKG_VERSION);
   } catch {
     return "";
   }
 })();
-const serveV2 = async (_req: FastifyRequest, reply: FastifyReply) => {
+const serveKlasik = async (_req: FastifyRequest, reply: FastifyReply) => {
   reply.header("cache-control", "no-store, must-revalidate");
   reply.type("text/html; charset=utf-8");
-  return reply.send(V2_HTML);
+  return reply.send(KLASIK_HTML);
 };
-app.get("/v2", serveV2);
-// ── Překlopení (2026-06): v2 = HLAVNÍ stránka („aktuální verze"). Klasický
-//    layout přesunut na /klasik. /v2 zůstává funkční kvůli záložkám/odkazům.
-app.get("/", serveV2);
-app.get("/index.html", serveV2);
-app.get("/klasik", serveIndex);
-app.get("/klasik/index.html", serveIndex);
+// `/` = hlavní app (workspace). Klasický layout na `/klasik`.
+app.get("/", serveIndex);
+app.get("/index.html", serveIndex);
+// Legacy: dřívější `/v2` alias → 301 na `/` (zachová query, např. ?v=<id>, ?ico=).
+app.get("/v2", async (req: FastifyRequest, reply: FastifyReply) => {
+  const qs = req.url.includes("?") ? req.url.slice(req.url.indexOf("?")) : "";
+  return reply.status(301).header("location", "/" + qs).send();
+});
+app.get("/klasik", serveKlasik);
+app.get("/klasik/index.html", serveKlasik);
 
 // #8: časově konstantní porovnání admin tokenu (proti timing útoku).
 function adminTokenOk(provided: string | undefined | null): boolean {
@@ -1018,6 +1019,19 @@ app.get("/api/ubo/:ico", expensiveCfg, async (req: FastifyRequest, reply) => {
   try {
     const ico = (req.params as { ico: string }).ico;
     reply.send(await cached(`ubo:${ico}`, () => getUboService(ico), { persist: true }));
+  } catch (e) {
+    sendError(reply, e);
+  }
+});
+
+// ─── Ownership verdikt (A1) — popisná syntéza „kdo vlastní" ────────────────────
+app.get("/api/ownership-verdict/:ico", expensiveCfg, async (req: FastifyRequest, reply) => {
+  try {
+    const ico = (req.params as { ico: string }).ico;
+    // BEZ vlastní cache: syntéza je levná a čte z cachovaných sub-dat (vr:/ubo:/
+    // crossborder:). Tím se verdikt self-healuje — nezůstane „nejasné" zapsané,
+    // když UBO (Hlídač) zrovna selhal při prvním výpočtu.
+    reply.send(await ownershipVerdictService(client, ico));
   } catch (e) {
     sendError(reply, e);
   }

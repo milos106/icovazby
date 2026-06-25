@@ -18,6 +18,7 @@ import {
   memberDisplayName,
   pickPrimaryZaznam,
 } from "./ares/vr.js";
+import { cached } from "./cache.js";
 import { InvalidInputError, NotFoundError } from "./errors.js";
 import {
   type CompanyInput,
@@ -2392,6 +2393,156 @@ export async function getCrossBorderService(icoInput: string) {
     foreignParent,
     crossBorder: foreignParent || foreignChildren.length > 0,
     _attribution: GLEIF_ATTRIBUTION,
+  };
+}
+
+// ─── Ownership verdikt (A1) — POPISNÁ syntéza „kdo vlastní" ze 3 vrstev ─────────
+// Smíří přímé akcionáře/společníky (OR) · skutečného majitele (evidence SM) ·
+// holding (GLEIF). Když se přímý akcionář a skutečný majitel rozcházejí, je to
+// signál (svěřenský fond / nominee) — nehlásíme slepě zapsané jméno. Popisné, ne
+// hodnotící (§2950/GDPR): předkládáme zdrojované fakty, závěr dělá uživatel.
+const _VERDICT_TITLES = /\b(ing|mgr|bc|judr|mudr|rndr|phdr|prof|doc|csc|dis|ph|m|b|a|d|akad)\.?\b/gi;
+function _normName(s: string | null | undefined): string {
+  if (!s) return "";
+  return s
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "")
+    .replace(_VERDICT_TITLES, " ")
+    .replace(/[.,]/g, " ")
+    .toUpperCase()
+    .split(/\s+/)
+    .filter((t) => t.length > 1)
+    .sort()
+    .join(" ");
+}
+function _sharesToken(a: string, b: string): boolean {
+  const ta = new Set(_normName(a).split(" ").filter((t) => t.length > 2));
+  return _normName(b)
+    .split(" ")
+    .some((t) => t.length > 2 && ta.has(t));
+}
+
+export async function ownershipVerdictService(client: AresClient, icoInput: string) {
+  const ico = String(icoInput).replace(/\D/g, "").padStart(8, "0");
+  // Sdílíme cache se samostatnými endpointy (vr:/ubo:/crossborder:) — verdikt tak
+  // NEvolá Hlídače/ARES znovu načisto (UBO přes HS umí limitovat → jinak by verdikt
+  // spadl do „nejasné", i když /api/ubo má data z cache). Konzistentní + odolné.
+  const [vrR, uboR, cbR] = await Promise.allSettled([
+    cached(`vr:${ico}`, () => getVrDetailService(ico), { persist: true }),
+    cached(`ubo:${ico}`, () => getUboService(ico), { persist: true }),
+    cached(`crossborder:${ico}`, () => getCrossBorderService(ico), { persist: true }),
+  ]);
+  const vr = vrR.status === "fulfilled" ? (vrR.value as Record<string, unknown>) : null;
+  const ubo = uboR.status === "fulfilled" ? (uboR.value as Record<string, unknown>) : null;
+  const cb = cbR.status === "fulfilled" ? (cbR.value as Record<string, unknown>) : null;
+
+  type Sh = { jmeno?: string; prijmeni?: string; fullName?: string; funkce?: string; isLegalEntity?: boolean; ico?: string | null };
+  const akc = (vr?.akcionar as { clenove?: Sh[] } | undefined)?.clenove ?? [];
+  const shareholders: Sh[] = akc;
+  const uboActive = ((ubo?.active as Array<{ jmeno?: string; postaveni?: string; datumZapis?: string | null }>) ?? []);
+  const uboNames = uboActive.map((u) => u.jmeno || "").filter(Boolean);
+  const uboList = uboNames.join(", ");
+  const shName = (s: Sh) => s.fullName || [s.jmeno, s.prijmeni].filter(Boolean).join(" ").trim();
+  const foreignParent = !!cb?.foreignParent;
+  const directParent = cb?.directParent as { name?: string } | null | undefined;
+  const ultimateParent = cb?.ultimateParent as { name?: string } | null | undefined;
+  const asOf = uboActive[0]?.datumZapis ?? null;
+  // Statutární orgán (jednatelé) — fallback, když nejsou akcionáři ani zapsaný SM.
+  const statutari = ((vr?.statutarniOrgan as { clenove?: Sh[] } | undefined)?.clenove ?? []).filter((s) => !s.isLegalEntity);
+
+  let stav: string;
+  let level: "ok" | "warn" | "unknown";
+  let veta: string;
+  let detail: string;
+
+  const noData = shareholders.length === 0 && uboActive.length === 0 && !cb?.hasLei && statutari.length === 0;
+
+  if (noData) {
+    stav = "nejasne";
+    level = "unknown";
+    veta = "Vlastnická struktura nedohledatelná.";
+    detail = "Skutečný majitel není v evidenci a akcionáři/společníci nejsou veřejně dostupní.";
+  } else if (foreignParent) {
+    stav = "zahranicni";
+    level = "warn";
+    const p = directParent?.name || ultimateParent?.name || "zahraniční entitu";
+    veta = `Vlastněno přes zahraniční entitu (${p}).`;
+    detail = uboList ? `Skutečný majitel dle evidence: ${uboList}.` : "Skutečný majitel neuveden — struktura vede do zahraničí.";
+  } else if (shareholders.length === 1 && shareholders[0]?.isLegalEntity) {
+    stav = "retez";
+    level = "ok";
+    const s = shareholders[0]!;
+    veta = `Vlastněno přes ${shName(s)}${s.ico ? ` (IČO ${s.ico})` : ""}.`;
+    detail = uboList ? `Koncový skutečný majitel: ${uboList}.` : "Skutečný majitel neuveden.";
+  } else if (
+    shareholders.length >= 1 &&
+    shareholders.every((s) => !s.isLegalEntity) &&
+    uboNames.length > 0 &&
+    !shareholders.some((s) => uboNames.some((u) => _sharesToken(shName(s), u)))
+  ) {
+    stav = "nepruhledne_fond";
+    level = "warn";
+    const sh = shareholders.map(shName).join(", ");
+    veta = `Zapsaný ${shareholders.length > 1 ? "akcionáři" : "akcionář"} (${sh}) není skutečný majitel.`;
+    detail = `Skutečný majitel dle evidence: ${uboList}. Nesoulad obvykle značí držení přes svěřenský fond nebo nastrčenou osobu (nominee) — ne nutně protiprávní, ale signál k prověření.`;
+  } else if (shareholders.length === 1 && !shareholders[0]?.isLegalEntity) {
+    stav = "jednoznacny";
+    level = "ok";
+    const s = shareholders[0]!;
+    const isAkc = (s.funkce || "").toLowerCase().includes("akcion");
+    veta = `Jediný ${isAkc ? "akcionář" : "společník"}: ${shName(s)}.`;
+    detail = uboNames.some((u) => _sharesToken(shName(s), u))
+      ? "Zároveň zapsaný skutečný majitel."
+      : uboList
+        ? `Skutečný majitel dle evidence: ${uboList}.`
+        : "Skutečný majitel v evidenci neuveden.";
+  } else if (uboNames.length === 1) {
+    stav = "jednoznacny";
+    level = "ok";
+    veta = `Skutečný majitel: ${uboList}.`;
+    detail = "Přímí akcionáři/společníci nejsou ve veřejném rejstříku uvedeni; uveden skutečný majitel z evidence SM.";
+  } else if (shareholders.length > 1 || uboNames.length > 1) {
+    stav = "rozptylene";
+    level = "warn";
+    veta = "Rozptýlené vlastnictví / více majitelů.";
+    detail = uboList ? `Skuteční majitelé: ${uboList}.` : "Skutečný majitel neuveden.";
+  } else if (statutari.length >= 1) {
+    // Fallback: bez akcionářů a bez zapsaného SM použij statutární orgán (jednatel).
+    // U s.r.o. nemusí být společníci veřejní; jednatel je nejbližší dostupný signál
+    // a kryje i výpadek evidence SM (Hlídač státu).
+    stav = "jednoznacny";
+    level = "ok";
+    const jm = statutari.map(shName).join(", ");
+    veta = statutari.length === 1 ? `${statutari[0]!.funkce || "Jednatel"}: ${jm}.` : `Statutární orgán: ${jm}.`;
+    detail = "Skutečný majitel není v evidenci SM a společníci s.r.o. nemusí být veřejní — uveden statutární zástupce (signál vlastnictví, ne potvrzení).";
+  } else {
+    stav = "nejasne";
+    level = "unknown";
+    veta = "Vlastnická struktura nejasná.";
+    detail = "Nepodařilo se jednoznačně určit vlastníka z dostupných vrstev.";
+  }
+
+  return {
+    ico,
+    stav,
+    level,
+    veta,
+    detail,
+    vrstvy: {
+      akcionari: shareholders.map((s) => ({ jmeno: shName(s), isLegalEntity: !!s.isLegalEntity, ico: s.ico ?? null, funkce: s.funkce ?? null })),
+      ubo: uboActive.map((u) => ({ jmeno: u.jmeno ?? null, postaveni: u.postaveni ?? null })),
+      statutari: statutari.map((s) => ({ jmeno: shName(s), funkce: s.funkce ?? null })),
+      holding: cb?.hasLei
+        ? { foreignParent, jeVrchol: !directParent && !ultimateParent, childrenCount: (cb?.childrenCount as number) ?? 0 }
+        : null,
+    },
+    confidence: uboActive.length > 0 ? (shareholders.length > 0 ? "vysoka" : "stredni") : shareholders.length > 0 || statutari.length > 0 ? "stredni" : "nizka",
+    asOf,
+    _attribution: {
+      zdroj: "Veřejný rejstřík (akcionáři/společníci) + evidence skutečných majitelů + GLEIF",
+      pozn: "Popisná syntéza vrstev vlastnictví. Signál, ne důkaz — ověř ve Veřejném rejstříku.",
+    },
+    _legalNote: "Verdikt popisuje zveřejněné registrové údaje a jejich vztahy; není to právní posouzení ovládání ani doporučení.",
   };
 }
 
