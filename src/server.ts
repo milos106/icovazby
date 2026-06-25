@@ -56,6 +56,7 @@ import {
   getVrDetailService,
   getTradeLicensesService,
   getUboService,
+  groupFundingService,
   ownershipVerdictService,
   type InvoiceTarget,
   lookupCompanyService,
@@ -1019,6 +1020,16 @@ app.get("/api/smlouvy/:ico", async (req: FastifyRequest, reply) => {
   try {
     const ico = (req.params as { ico: string }).ico;
     reply.send(await cached(`smlouvy:${ico}`, () => getSmlouvyService(ico), { persist: true, isComplete: hsComplete }));
+  } catch (e) {
+    sendError(reply, e);
+  }
+});
+
+// ─── A2: Hlídač státu přes vlastnickou skupinu (dotace+zakázky za holding) ─────
+app.get("/api/group-funding/:ico", expensiveCfg, async (req: FastifyRequest, reply) => {
+  try {
+    const ico = (req.params as { ico: string }).ico;
+    reply.send(await cached(`groupfunding:${ico}`, () => groupFundingService(client, ico), { persist: true }));
   } catch (e) {
     sendError(reply, e);
   }
