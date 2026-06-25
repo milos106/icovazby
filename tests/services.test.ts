@@ -129,11 +129,14 @@ describe("exportForInvoicingService", () => {
 });
 
 describe("crossCompanyPersonsService", () => {
-  it("rejects when fewer than 2 IČOs after dedup", async () => {
+  it("accepts a single distinct IČO and auto-expands instead of rejecting", async () => {
     const client = makeMockClient({});
-    await expect(
-      crossCompanyPersonsService(client, { icos: ["26185610", "26185610"] }),
-    ).rejects.toThrow(/two distinct/);
+    // Duplikát se zdedupuje na 1 IČO. Dřív to byl reject (/two distinct/), ale
+    // od auto-expandu (Profil firmy bez dceřinek) je 1 IČO validní vstup —
+    // rozšíří se o firmy statutárů; s prázdným mockem zůstane jen ono samo.
+    const r = await crossCompanyPersonsService(client, { icos: ["26185610", "26185610"] });
+    expect(r.zpracovanoIco).toBe(1);
+    expect(r.companies.map((c) => c.ico)).toContain("26185610");
   });
   it("rejects invalid IČO", async () => {
     const client = makeMockClient({});
