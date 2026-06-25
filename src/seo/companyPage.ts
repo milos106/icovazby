@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // Server-rendered, indexovatelná stránka per firma pro SEO (Etapa 1+2).
 // Bere výstup fullDueDiligenceService a renderuje sémantické HTML s
 // firma-specifickým <title>/meta/OG + JSON-LD schema.org/Organization +

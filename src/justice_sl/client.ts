@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 /**
  * Sbírka listin (or.justice.cz) — Fáze 1: jen METADATA listin (typ + roky +
  * data podání), žádné PDF, žádná čísla z výkazů.

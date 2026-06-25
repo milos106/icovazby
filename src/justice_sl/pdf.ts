@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 /**
  * Fáze 2 — čísla z účetní závěrky BEZ LLM.
  *
