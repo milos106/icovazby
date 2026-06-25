@@ -74,6 +74,17 @@ export async function runCheck(client: AresClient): Promise<{ checked: number; a
   for (const sub of subs) {
     try {
       const report = await fullDueDiligenceService(client, sub.ico);
+      // Robustnost: pokud je DD degradované (ARES/Hlídač při téhle kontrole selhal),
+      // PŘESKOČ — neaktualizuj snapshot ani neposílej alert. Jinak hrozí FALEŠNÝ
+      // poplach (např. „insolvence zahájena" / „statutár odešel", když se data jen
+      // dočasně ztratila). Necháme starý snapshot a počkáme na příští běh.
+      const reliable =
+        !!report.obchodniJmeno &&
+        (report.insolvenci as { available?: boolean } | undefined)?.available !== false;
+      if (!reliable) {
+        console.warn(`[alerts] přeskočeno (degradovaná data) pro ${sub.ico}`);
+        continue;
+      }
       // ADIS nespolehlivý plátce (1 SOAP, cache 1h) — best-effort, výpadek nevadí.
       const adis = await getAdisVatStatusService(sub.ico).catch(() => null);
       const snapshot = buildSnapshot(report, adis);
@@ -106,14 +117,16 @@ export async function runCheck(client: AresClient): Promise<{ checked: number; a
 
 let timer: NodeJS.Timeout | null = null;
 
+function tick(client: AresClient): void {
+  runCheck(client)
+    .then((r) => console.log(`[alerts] kontrola dokončena: zkontrolováno=${r.checked}, odeslaných alertů=${r.alerts}`))
+    .catch((e) => console.error("[alerts] runCheck error", e));
+}
+
 export function startScheduler(client: AresClient): void {
   if (timer) return;
   const minutes = Number(process.env.ALERTS_CHECK_MIN ?? 360);
   // První běh za 1 minutu po startu, pak periodicky.
-  setTimeout(() => {
-    runCheck(client).catch((e) => console.error("[alerts] runCheck error", e));
-  }, 60_000);
-  timer = setInterval(() => {
-    runCheck(client).catch((e) => console.error("[alerts] runCheck error", e));
-  }, minutes * 60_000);
+  setTimeout(() => tick(client), 60_000);
+  timer = setInterval(() => tick(client), minutes * 60_000);
 }
