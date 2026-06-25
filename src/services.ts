@@ -190,6 +190,27 @@ export async function searchCompaniesService(
 }
 
 // ─── Search by address (shell detection) ──────────────────────────────────────
+/**
+ * ARES API odmítá JAKÝKOLI dotaz s >1000 zásahy (i `pocet=1`) chybou 400:
+ * „...vrací příliš mnoho výsledků (6 041). Povoleno je maximálně 1 000 výsledků."
+ * Z té hlášky umíme vytáhnout počet — je to právě ten forenzně nejcennější údaj
+ * (obří sdílené sídlo). Vrátíme ho místo toho, abychom celý dotaz zahodili.
+ */
+function parseAresTooMany(e: unknown): number | null {
+  if (!(e instanceof InvalidInputError)) return null;
+  const m = /příliš mnoho výsled[^(]*\(([\d\s ]+)\)/i.exec(e.message);
+  const raw = m?.[1];
+  if (!raw) return null;
+  const n = Number.parseInt(raw.replace(/[\s ]/g, ""), 10);
+  return Number.isFinite(n) ? n : null;
+}
+
+function addressShellLevel(total: number): "low" | "medium" | "high" {
+  if (total > 500) return "high";
+  if (total > 50) return "medium";
+  return "low";
+}
+
 export async function searchByAddressService(
   client: AresClient,
   args: { adresa: string; limit?: number; offset?: number },
@@ -197,20 +218,36 @@ export async function searchByAddressService(
   if (!args.adresa || args.adresa.length < 3) {
     throw new InvalidInputError("Address must be at least 3 characters.");
   }
-  const result = await client.searchEconomicSubjects({
-    sidlo: { textovaAdresa: args.adresa } as Record<string, unknown>,
-    pocet: Math.min(args.limit ?? 50, 100),
-    start: args.offset ?? 0,
-  });
+  let result: Awaited<ReturnType<typeof client.searchEconomicSubjects>>;
+  try {
+    result = await client.searchEconomicSubjects({
+      sidlo: { textovaAdresa: args.adresa } as Record<string, unknown>,
+      pocet: Math.min(args.limit ?? 50, 100),
+      start: args.offset ?? 0,
+    });
+  } catch (e) {
+    // >1000 firem na adrese: ARES výpis odmítne, ale počet je v chybě. Vrátíme
+    // ho jako "tooMany" se silným shell signálem místo tvrdé chyby uživateli.
+    const total = parseAresTooMany(e);
+    if (total === null) throw e;
+    return {
+      adresa: args.adresa,
+      celkemNalezeno: total,
+      vraceno: 0,
+      shellLevel: addressShellLevel(total),
+      tooMany: true,
+      poznamka: `Adresu sdílí ${total.toLocaleString("cs-CZ")} firem — ARES neumí vypsat přes 1 000 zásahů. Zužte dotaz (PSČ, část názvu).`,
+      vysledky: [],
+      _attribution: ARES_ATTRIBUTION,
+    };
+  }
   const total = result.pocetCelkem ?? 0;
-  let shellLevel: "low" | "medium" | "high" = "low";
-  if (total > 500) shellLevel = "high";
-  else if (total > 50) shellLevel = "medium";
   return {
     adresa: args.adresa,
     celkemNalezeno: total,
     vraceno: result.ekonomickeSubjekty?.length ?? 0,
-    shellLevel,
+    shellLevel: addressShellLevel(total),
+    tooMany: false,
     vysledky:
       result.ekonomickeSubjekty?.map((s) => ({
         ico: s.ico,
@@ -2127,8 +2164,17 @@ export async function getForensikaService(client: AresClient, icoInput: string, 
       adresa = subj?.sidlo?.textovaAdresa ?? null;
     }
     if (adresa && adresa.length >= 3) {
-      const r = await client.searchEconomicSubjects({ sidlo: { textovaAdresa: adresa }, pocet: 1 } as unknown as Parameters<typeof client.searchEconomicSubjects>[0]);
-      const pocet = r.pocetCelkem ?? 0;
+      let pocet: number;
+      try {
+        const r = await client.searchEconomicSubjects({ sidlo: { textovaAdresa: adresa }, pocet: 1 } as unknown as Parameters<typeof client.searchEconomicSubjects>[0]);
+        pocet = r.pocetCelkem ?? 0;
+      } catch (e) {
+        // ARES odmítá >1000 zásahů i u pocet:1 — bez tohoto by nejhorší sídla
+        // (Kaprova 6 041…) spadla do null a NEUKÁZALA flag. Počet je v chybě.
+        const tooMany = parseAresTooMany(e);
+        if (tooMany === null) throw e;
+        pocet = tooMany;
+      }
       const level: ForLevel = pocet > 300 ? "red" : pocet >= 40 ? "amber" : "green";
       sidlo = { pocet, level, adresa };
     }
