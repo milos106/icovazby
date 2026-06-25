@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // Procházecí adresář firem pro SEO (Etapa 3a). Dává Googlu crawl cesty z
 // indexovaných stránek na /firma stránky (řeší "objeveno, ale neindexováno" /
 // orphan). Stránkováno; každá strana linkuje ~100 firem + prev/next řetěz.

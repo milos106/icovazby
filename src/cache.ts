@@ -15,6 +15,10 @@ import { LRUCache } from "lru-cache";
 
 const DEFAULT_TTL_MS = Number(process.env.DD_CACHE_TTL_MS ?? 24 * 60 * 60 * 1000);
 const MAX_ENTRIES = Number(process.env.CACHE_MAX_ENTRIES ?? 5000);
+// Degradovaný/neúplný výsledek (upstream — hl. Hlídač státu — selhal): cachuj jen
+// KRÁTCE in-memory a NEpersistuj. Jinak přechodný výpadek „zamrzne" na 24 h a ani
+// tvrdý refresh prohlížeče ho neopraví (serverová cache). Krátké TTL = self-heal.
+const INCOMPLETE_TTL_MS = Number(process.env.CACHE_INCOMPLETE_TTL_MS ?? 10 * 60 * 1000);
 
 const cache = new LRUCache<string, unknown>({
   max: MAX_ENTRIES,
@@ -24,13 +28,16 @@ const cache = new LRUCache<string, unknown>({
 export async function cached<T>(
   key: string,
   fn: () => Promise<T>,
-  opts: { ttlMs?: number; persist?: boolean } = {},
+  // isComplete: vrať false, pokud je výsledek degradovaný (upstream selhal) → krátké
+  // TTL + bez persistu. Bez predikátu se chová jako dřív (vše kompletní = persist).
+  opts: { ttlMs?: number; persist?: boolean; isComplete?: (value: T) => boolean } = {},
 ): Promise<T> {
   // L1: in-memory LRU
   const hit = cache.get(key);
   if (hit !== undefined) return hit as T;
   const ttl = opts.ttlMs ?? DEFAULT_TTL_MS;
   // L2: persistentní SQLite (přežije restart) — jen pro persist:true (HS/DD/VR…).
+  // Persistujeme jen KOMPLETNÍ výsledky, takže L2 nikdy nenese degradovaná data.
   if (opts.persist) {
     try {
       const { dbGetResponseCache } = await import("./persons_index/db.js");
@@ -44,6 +51,19 @@ export async function cached<T>(
     }
   }
   const value = await fn();
+  let complete = true;
+  if (opts.isComplete) {
+    try {
+      complete = opts.isComplete(value) !== false;
+    } catch {
+      complete = true; // chyba predikátu → chovej se konzervativně (kompletní)
+    }
+  }
+  if (!complete) {
+    // Neúplné: jen krátká in-memory cache, NEpersistovat → zahojí se, až upstream naběhne.
+    cache.set(key, value, { ttl: INCOMPLETE_TTL_MS });
+    return value;
+  }
   cache.set(key, value, opts.ttlMs ? { ttl: opts.ttlMs } : undefined);
   if (opts.persist) {
     try {

@@ -2215,6 +2215,29 @@ function ddUboLoader() {
   };
 }
 
+function ddOwnershipVerdictLoader() {
+  return {
+    verdict: null,
+    loading: false,
+    vError: "",
+    _ico: null,
+    async load(ico) {
+      if (!ico || ico === this._ico) return;
+      this._ico = ico;
+      this.loading = true;
+      this.verdict = null;
+      this.vError = "";
+      try {
+        this.verdict = await jsonFetch(`/api/ownership-verdict/${encodeURIComponent(ico)}`);
+      } catch (e) {
+        this.vError = "Vlastnictví nelze vyhodnotit: " + e.message;
+      } finally {
+        this.loading = false;
+      }
+    },
+  };
+}
+
 function ddAdisLoader() {
   return {
     adis: null,
@@ -2566,6 +2589,7 @@ window.historyBar = historyBar;
 window.themeToggle = themeToggle;
 window.ddAdisLoader = ddAdisLoader;
 window.ddUboLoader = ddUboLoader;
+window.ddOwnershipVerdictLoader = ddOwnershipVerdictLoader;
 window.ddSmlouvyLoader = ddSmlouvyLoader;
 window.ddDotaceLoader = ddDotaceLoader;
 window.ddIsirLoader = ddIsirLoader;
