@@ -168,6 +168,16 @@ const expensiveCfg = {
   },
 };
 
+// Predikát kompletnosti pro cache (viz cached() v cache.ts). HS-backed služby vrací
+// `{ available: false }` JEN při selhání tokenu/upstreamu — úspěch i bez záznamů =
+// `available:true`. Takže available===false = degradace → krátké TTL, nepersistovat
+// (jinak přechodný výpadek Hlídače zamrzne na 24 h). NEPOUŽÍVAT na VR (tam je
+// available:false i genuine „není v rejstříku").
+const hsComplete = (v: unknown): boolean => (v as { available?: unknown } | null | undefined)?.available !== false;
+// DD agregát: jediná HS-závislá sekce je insolvenci → kompletní, když ta neselhala.
+const ddComplete = (v: unknown): boolean =>
+  ((v as { insolvenci?: { available?: unknown } } | null | undefined)?.insolvenci?.available) !== false;
+
 await app.register(fastifyStatic, {
   root: PUBLIC_DIR,
   prefix: "/",
@@ -626,7 +636,7 @@ app.get("/sitemap-firmy.xml", async (_req: FastifyRequest, reply) => {
 app.get("/api/dd/:ico", async (req: FastifyRequest, reply) => {
   try {
     const ico = (req.params as { ico: string }).ico;
-    const data = await cached(`dd:${ico}`, () => fullDueDiligenceService(client, ico), { persist: true });
+    const data = await cached(`dd:${ico}`, () => fullDueDiligenceService(client, ico), { persist: true, isComplete: ddComplete });
     reply.send(data);
   } catch (e) {
     sendError(reply, e);
@@ -889,7 +899,7 @@ app.post("/api/eu-sanctions/screen", async (req: FastifyRequest, reply) => {
 app.get("/api/isir/:ico", async (req: FastifyRequest, reply) => {
   try {
     const ico = (req.params as { ico: string }).ico;
-    reply.send(await cached(`isir:${ico}`, () => getInsolvenceDetailService(ico), { persist: true }));
+    reply.send(await cached(`isir:${ico}`, () => getInsolvenceDetailService(ico), { persist: true, isComplete: hsComplete }));
   } catch (e) {
     sendError(reply, e);
   }
@@ -899,7 +909,7 @@ app.get("/api/isir/:ico", async (req: FastifyRequest, reply) => {
 app.get("/api/dotace/:ico", async (req: FastifyRequest, reply) => {
   try {
     const ico = (req.params as { ico: string }).ico;
-    reply.send(await cached(`dotace:${ico}`, () => getDotaceService(ico), { persist: true }));
+    reply.send(await cached(`dotace:${ico}`, () => getDotaceService(ico), { persist: true, isComplete: hsComplete }));
   } catch (e) {
     sendError(reply, e);
   }
@@ -978,7 +988,7 @@ app.get("/api/forensika/:ico", expensiveCfg, async (req: FastifyRequest, reply) 
 app.get("/api/pep-sankce/:ico", expensiveCfg, async (req: FastifyRequest, reply) => {
   try {
     const ico = (req.params as { ico: string }).ico;
-    reply.send(await cached(`pepsankce:${ico}`, () => getPepSankceService(client, ico), { persist: true }));
+    reply.send(await cached(`pepsankce:${ico}`, () => getPepSankceService(client, ico), { persist: true, isComplete: (v) => !(v as { pepTokenMissing?: unknown } | null | undefined)?.pepTokenMissing }));
   } catch (e) {
     sendError(reply, e);
   }
@@ -1008,7 +1018,7 @@ app.get("/api/zaverka-vyvoj/:ico", async (req: FastifyRequest, reply) => {
 app.get("/api/smlouvy/:ico", async (req: FastifyRequest, reply) => {
   try {
     const ico = (req.params as { ico: string }).ico;
-    reply.send(await cached(`smlouvy:${ico}`, () => getSmlouvyService(ico), { persist: true }));
+    reply.send(await cached(`smlouvy:${ico}`, () => getSmlouvyService(ico), { persist: true, isComplete: hsComplete }));
   } catch (e) {
     sendError(reply, e);
   }
@@ -1018,7 +1028,7 @@ app.get("/api/smlouvy/:ico", async (req: FastifyRequest, reply) => {
 app.get("/api/ubo/:ico", expensiveCfg, async (req: FastifyRequest, reply) => {
   try {
     const ico = (req.params as { ico: string }).ico;
-    reply.send(await cached(`ubo:${ico}`, () => getUboService(ico), { persist: true }));
+    reply.send(await cached(`ubo:${ico}`, () => getUboService(ico), { persist: true, isComplete: hsComplete }));
   } catch (e) {
     sendError(reply, e);
   }

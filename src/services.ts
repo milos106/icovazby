@@ -2429,7 +2429,9 @@ export async function ownershipVerdictService(client: AresClient, icoInput: stri
   // spadl do „nejasné", i když /api/ubo má data z cache). Konzistentní + odolné.
   const [vrR, uboR, cbR] = await Promise.allSettled([
     cached(`vr:${ico}`, () => getVrDetailService(ico), { persist: true }),
-    cached(`ubo:${ico}`, () => getUboService(ico), { persist: true }),
+    // ubo: stejný klíč i predikát jako route /api/ubo — available:false (HS selhal)
+    // = neúplné → krátké TTL, nepersistovat (self-heal). VR/crossborder ne (genuine).
+    cached(`ubo:${ico}`, () => getUboService(ico), { persist: true, isComplete: (v) => (v as { available?: unknown } | null | undefined)?.available !== false }),
     cached(`crossborder:${ico}`, () => getCrossBorderService(ico), { persist: true }),
   ]);
   const vr = vrR.status === "fulfilled" ? (vrR.value as Record<string, unknown>) : null;
