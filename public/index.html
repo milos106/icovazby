@@ -1036,6 +1036,42 @@
                 </div>
               </section>
 
+              <!-- A2: Hlídač státu přes vlastnickou skupinu (lazy, on-demand) -->
+              <section class="card-pop rounded-xl border border-slate-200 dark:border-ink-700 bg-white dark:bg-ink-850 p-3.5" x-data="ddGroupFundingLoader()" x-effect="report && report.ico && report.ico !== _ico && (gf = null, gfError = '')">
+                <div class="flex items-center justify-between mb-2"><h3 class="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">🏛️ Hlídač přes vlastnickou skupinu</h3><span class="text-[10px] font-mono text-slate-400">Hlídač státu</span></div>
+                <p class="text-[11px] text-slate-400 mb-2">Kolik státních peněz tahá firma <strong>i celý její holding</strong> dohromady (dotace + zakázky).</p>
+                <button x-show="!gf && !loading" type="button" @click="run(report.ico)" class="text-[12px] px-2.5 py-1.5 rounded-md bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-500/20 font-medium">💰 Spočítat za skupinu</button>
+                <div x-show="loading" x-cloak class="text-[12px] text-slate-400">Počítám skupinu (může chvíli trvat)…</div>
+                <template x-if="gf">
+                  <div class="space-y-2">
+                    <div class="text-[11px] text-slate-400" x-text="'Skupina: ' + gf.skupina.spocitano + (gf.skupina.orezano ? ' z ' + gf.skupina.firemVeSkupine : '') + ' firem'"></div>
+                    <div class="grid grid-cols-2 gap-2">
+                      <div class="p-2 rounded-lg border border-slate-200 dark:border-ink-700">
+                        <div class="text-[10px] uppercase tracking-wider text-slate-400">Dotace (≥)</div>
+                        <div class="text-[15px] font-semibold tnum" x-text="formatCZK(gf.skupina.dotaceCelkemCZK||0)"></div>
+                        <div class="text-[10px] text-slate-400" x-text="(gf.skupina.dotaceCount||0)+' záznamů'"></div>
+                      </div>
+                      <div class="p-2 rounded-lg border border-slate-200 dark:border-ink-700">
+                        <div class="text-[10px] uppercase tracking-wider text-slate-400">Zakázky (≥)</div>
+                        <div class="text-[15px] font-semibold tnum" x-text="formatCZK(gf.skupina.zakazkyCelkemCZK||0)"></div>
+                        <div class="text-[10px] text-slate-400" x-text="(gf.skupina.zakazkyCount||0)+' záznamů'"></div>
+                      </div>
+                    </div>
+                    <div class="pt-1">
+                      <div class="text-[10px] uppercase tracking-wider text-slate-400 mb-1">Po firmách (top dle st. peněz)</div>
+                      <template x-for="(f,idx) in gf.poFirmach.slice(0,8)" :key="idx">
+                        <div class="flex items-center gap-2 text-[12px] py-0.5">
+                          <span class="flex-1 truncate" x-text="(f.obchodniJmeno || f.ico) + (f.role==='základ' ? ' ★' : '')"></span>
+                          <span class="font-mono tnum text-slate-500 dark:text-slate-400 w-24 text-right" x-text="formatCZK((f.dotaceCZK||0) + (f.zakazkyCZK||0))"></span>
+                        </div>
+                      </template>
+                    </div>
+                    <p class="text-[10px] text-slate-400 pt-1.5 border-t border-slate-100 dark:border-ink-700">Spodní hranice (u velkých firem stránkováno) · zdroj Hlídač státu (CC BY 3.0) · signál, ne důkaz.</p>
+                  </div>
+                </template>
+                <template x-if="gfError && !loading"><div class="text-[12px] text-rose-500 flex items-center gap-2 flex-wrap"><span x-text="gfError"></span><button type="button" @click="run(report.ico)" class="underline">↻ Zkusit znovu</button></div></template>
+              </section>
+
               <!-- Účetní závěrky (Sbírka listin) — Fáze 1: jen metadata (co/kdy uloženo) -->
               <section class="card-pop order-first rounded-xl border border-slate-200 dark:border-ink-700 bg-white dark:bg-ink-850 p-3.5" x-data="ddSbirkaListinLoader()" x-init="load(report.ico)">
                 <div class="flex items-center justify-between mb-2"><h3 class="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">📄 Účetní závěrky (Sbírka listin)</h3><span class="text-[10px] font-mono text-slate-400">or.justice.cz</span></div>

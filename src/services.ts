@@ -20,6 +20,7 @@ import {
 } from "./ares/vr.js";
 import { cached } from "./cache.js";
 import { InvalidInputError, NotFoundError } from "./errors.js";
+import { discoverHolding } from "./holding/discover.js";
 import {
   type CompanyInput,
   buildCrossCompanyGraph,
@@ -991,7 +992,7 @@ export async function tryConvert(czkAmount: number, code: string): Promise<numbe
 export { getPersonVazbyService } from "./persons/service.js";
 
 // ─── Holding discovery (BFS po jednatelích + akcionářích) ─────────────────────
-export { discoverHolding } from "./holding/discover.js";
+export { discoverHolding };
 
 // ─── Local persistent index osoba → firmy + subjekt inventář ──────────────────
 import {
@@ -2545,6 +2546,69 @@ export async function ownershipVerdictService(client: AresClient, icoInput: stri
       pozn: "Popisná syntéza vrstev vlastnictví. Signál, ne důkaz — ověř ve Veřejném rejstříku.",
     },
     _legalNote: "Verdikt popisuje zveřejněné registrové údaje a jejich vztahy; není to právní posouzení ovládání ani doporučení.",
+  };
+}
+
+// ─── A2: Hlídač státu přes vlastnickou skupinu ────────────────────────────────
+// „Kolik státních peněz tahá firma + její holding." Vezme vlastnickou skupinu
+// (discoverHolding) a sečte přes ni dotace + zakázky. Reuse cache sub-endpointů.
+// Σ topPayedCZK/topSumCZK = dobrý odhad; u velkých firem (stránkování) SPODNÍ
+// HRANICE → komunikuj jako „≥". Hlídač CC BY 3.0. Signál, ne důkaz.
+export async function groupFundingService(client: AresClient, icoInput: string, maxFirms = 25) {
+  const ico = String(icoInput).replace(/\D/g, "").padStart(8, "0");
+  const holding = await discoverHolding(client, ico);
+
+  const all: { ico: string; obchodniJmeno: string | null; role: "základ" | "člen skupiny" }[] = [
+    { ico: holding.parent.ico, obchodniJmeno: holding.parent.obchodniJmeno, role: "základ" },
+    ...holding.discovered.map((d) => ({ ico: d.ico, obchodniJmeno: d.obchodniJmeno, role: "člen skupiny" as const })),
+  ];
+  const seen = new Set<string>();
+  const unique = all.filter((c) => (seen.has(c.ico) ? false : (seen.add(c.ico), true)));
+  const group = unique.slice(0, maxFirms);
+
+  const isOk = (v: unknown) => (v as { available?: unknown } | null | undefined)?.available !== false;
+  let dotaceCelkemCZK = 0;
+  let zakazkyCelkemCZK = 0;
+  let dotaceCount = 0;
+  let zakazkyCount = 0;
+  const poFirmach: Array<{ ico: string; obchodniJmeno: string | null; role: string; dotaceCZK: number; dotaceCount: number; zakazkyCZK: number; zakazkyCount: number }> = [];
+
+  for (const c of group) {
+    const [dotR, smlR] = await Promise.allSettled([
+      cached(`dotace:${c.ico}`, () => getDotaceService(c.ico), { persist: true, isComplete: isOk }),
+      cached(`smlouvy:${c.ico}`, () => getSmlouvyService(c.ico), { persist: true, isComplete: isOk }),
+    ]);
+    const dot = dotR.status === "fulfilled" ? (dotR.value as { available?: boolean; topPayedCZK?: number; totalDotaci?: number }) : null;
+    const sml = smlR.status === "fulfilled" ? (smlR.value as { available?: boolean; topSumCZK?: number; totalContracts?: number }) : null;
+    const dCZK = dot && dot.available !== false ? dot.topPayedCZK ?? 0 : 0;
+    const zCZK = sml && sml.available !== false ? sml.topSumCZK ?? 0 : 0;
+    const dCnt = dot?.totalDotaci ?? 0;
+    const zCnt = sml?.totalContracts ?? 0;
+    dotaceCelkemCZK += dCZK;
+    zakazkyCelkemCZK += zCZK;
+    dotaceCount += dCnt;
+    zakazkyCount += zCnt;
+    poFirmach.push({ ico: c.ico, obchodniJmeno: c.obchodniJmeno, role: c.role, dotaceCZK: dCZK, dotaceCount: dCnt, zakazkyCZK: zCZK, zakazkyCount: zCnt });
+  }
+  poFirmach.sort((a, b) => b.dotaceCZK + b.zakazkyCZK - (a.dotaceCZK + a.zakazkyCZK));
+
+  return {
+    ico,
+    skupina: {
+      firemVeSkupine: unique.length,
+      spocitano: group.length,
+      orezano: unique.length > group.length,
+      dotaceCelkemCZK,
+      dotaceCount,
+      zakazkyCelkemCZK,
+      zakazkyCount,
+    },
+    poFirmach,
+    _attribution: {
+      zdroj: "Hlídač státu — dotace + veřejné zakázky (CC BY 3.0 CZ)",
+      pozn: "Součet přes vlastnickou skupinu (holding dle akcionářů/statutárů). Spodní hranice — u velkých firem stránkováno; spočítáno z prvních " + maxFirms + " firem skupiny. Signál, ne důkaz.",
+    },
+    _legalNote: "Veřejná data Hlídače státu agregovaná přes vlastnickou skupinu. Skupina = signál vlastnictví, ne potvrzení ovládání.",
   };
 }
 

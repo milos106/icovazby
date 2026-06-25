@@ -2215,6 +2215,29 @@ function ddUboLoader() {
   };
 }
 
+function ddGroupFundingLoader() {
+  return {
+    gf: null,
+    loading: false,
+    gfError: "",
+    _ico: null,
+    async run(ico) {
+      if (!ico) return;
+      this._ico = ico;
+      this.loading = true;
+      this.gf = null;
+      this.gfError = "";
+      try {
+        this.gf = await jsonFetch(`/api/group-funding/${encodeURIComponent(ico)}`);
+      } catch (e) {
+        this.gfError = "Skupinu nelze spočítat: " + e.message;
+      } finally {
+        this.loading = false;
+      }
+    },
+  };
+}
+
 function ddOwnershipVerdictLoader() {
   return {
     verdict: null,
@@ -2590,6 +2613,7 @@ window.themeToggle = themeToggle;
 window.ddAdisLoader = ddAdisLoader;
 window.ddUboLoader = ddUboLoader;
 window.ddOwnershipVerdictLoader = ddOwnershipVerdictLoader;
+window.ddGroupFundingLoader = ddGroupFundingLoader;
 window.ddSmlouvyLoader = ddSmlouvyLoader;
 window.ddDotaceLoader = ddDotaceLoader;
 window.ddIsirLoader = ddIsirLoader;
