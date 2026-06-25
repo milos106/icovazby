@@ -31,6 +31,7 @@ import {
   listSubjects,
 } from "./persons_index/store.js";
 import { firmaPath, renderCompanyPage } from "./seo/companyPage.js";
+import { renderDirectoryPage } from "./seo/directoryPage.js";
 import {
   crossCompanyPersonsService,
   discoverHolding,
@@ -584,6 +585,26 @@ const firmaHandler = async (req: FastifyRequest, reply: FastifyReply) => {
 };
 app.get("/firma/:ico", firmaHandler);
 app.get("/firma/:ico/:slug", firmaHandler); // slug je kosmetický; klíč je IČO, canonical → slug URL
+
+// SEO (Etapa 3a): procházecí adresář firem — dává crawl cesty z indexovaných
+// stránek na /firma (řeší orphan / "objeveno, ale neindexováno"). Stránkováno.
+const DIR_PAGE_SIZE = 100;
+const directoryHandler = async (req: FastifyRequest, reply: FastifyReply) => {
+  const all = listSubjects();
+  const total = all.length;
+  const totalPages = Math.max(1, Math.ceil(total / DIR_PAGE_SIZE));
+  const raw = Number((req.params as { n?: string }).n ?? 1);
+  const page = Number.isFinite(raw) ? Math.min(Math.max(Math.trunc(raw), 1), totalPages) : 1;
+  const items = all
+    .slice((page - 1) * DIR_PAGE_SIZE, page * DIR_PAGE_SIZE)
+    .map((s) => ({ ico: s.ico, name: s.obchodniJmeno }));
+  reply
+    .header("cache-control", "public, max-age=3600")
+    .type("text/html")
+    .send(renderDirectoryPage(items, page, totalPages, total));
+};
+app.get("/firmy", directoryHandler);
+app.get("/firmy/strana/:n", directoryHandler);
 
 // SEO: sitemap firemních stránek z inventáře (persons_index). Druhý sitemap
 // vedle statického /sitemap.xml; oba jsou v robots.txt.
