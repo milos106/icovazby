@@ -259,6 +259,16 @@
         </div>
       </section>
 
+      <section id="ownership-verdict" class="fn">
+        <h3 class="text-xl font-bold tracking-tight mb-3">Kdo doopravdy vlastní <span class="text-sm font-normal text-slate-500">(verdikt)</span></h3>
+        <p class="text-slate-700 dark:text-slate-300 mb-4">V levém sloupci u každé firmy <strong>jednověté shrnutí vlastnictví</strong>. Smíří tři vrstvy a řekne to na rovinu: zapsaný <strong>akcionář/společník</strong> (Obchodní rejstřík) · <strong>skutečný majitel</strong> (evidence SM) · <strong>holding</strong> (GLEIF). Místo zavádějícího jména dostaneš poctivý závěr „kdo firmu doopravdy ovládá".</p>
+        <div class="space-y-2 text-sm">
+          <div class="flag-red pl-3 py-1"><strong>🔴 Vyčteš:</strong> zapsaný <em>akcionář ≠ skutečný majitel</em> → drženo přes <strong>svěřenský fond / nastrčenou osobu</strong> (signál k prověření) · vlastník přes zahraniční entitu · vlastnická struktura nedohledatelná.</div>
+          <div class="flag-green pl-3 py-1"><strong>🟢 Vyčteš:</strong> jediný společník = skutečný majitel, transparentní vlastnictví.</div>
+          <div class="flag-amber pl-3 py-1"><strong>Pozn.:</strong> popisné, ne hodnotící — předkládáme zdrojované registrové údaje + datum zápisu SM. <em>Signál, ne důkaz.</em></div>
+        </div>
+      </section>
+
       <!-- ░░░░░░ SKUPINA 3 · FINANCE A VEŘ. PENÍZE ░░░░░░ -->
       <div id="g-finance" class="grp flex items-center gap-3 pt-6 border-t border-slate-200 dark:border-slate-800">
         <span class="text-3xl">💸</span>
@@ -284,6 +294,16 @@
         <div class="space-y-2 text-sm">
           <div class="flag-amber pl-3 py-1"><strong>Vyčteš:</strong> firma žije převážně z veřejných peněz · spojení s konkrétními úřady; v kombinaci s Mapou propojení odhalíš provázané uchazeče.</div>
           <div class="flag-green pl-3 py-1"><strong>🟢 Vyčteš:</strong> doložená historie reálných zakázek = ekonomicky aktivní firma.</div>
+        </div>
+      </section>
+
+      <section id="group-funding" class="fn">
+        <h3 class="text-xl font-bold tracking-tight mb-3">Hlídač přes vlastnickou skupinu <span class="text-sm font-normal text-slate-500">(Hlídač státu)</span></h3>
+        <p class="text-slate-700 dark:text-slate-300 mb-4">Tlačítko <strong>„Spočítat za skupinu"</strong> sečte dotace + veřejné zakázky přes <strong>celou vlastnickou skupinu</strong> (firma + její holding), ne jen jednu firmu. Ukáže souhrn i rozpad po firmách. Unikát — žádný jiný nástroj Hlídače přes skupinu neagreguje.</p>
+        <div class="space-y-2 text-sm">
+          <div class="flag-red pl-3 py-1"><strong>🔴 Vyčteš:</strong> firma vypadá čistě, ale <em>celá skupina</em> tahá stovky milionů z veřejných peněz · skutečná „stopa" ve státních penězích, kterou per-firma pohled skryje.</div>
+          <div class="flag-green pl-3 py-1"><strong>🟢 Vyčteš:</strong> skupina bez závislosti na veřejných penězích.</div>
+          <div class="flag-amber pl-3 py-1"><strong>Pozn.:</strong> <em>spodní hranice</em> (u velkých firem stránkováno), spočteno z prvních 25 firem skupiny. Zdroj Hlídač státu (CC BY 3.0). <em>Signál, ne důkaz.</em></div>
         </div>
       </section>
 

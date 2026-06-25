@@ -4,6 +4,43 @@ Všechny významné změny v tomto projektu jsou zaznamenány zde.
 
 Formát vychází z [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), verzování podle [SemVer](https://semver.org/).
 
+## [0.9.221] — 2026-06-25
+
+Větší pracovní den (verze 0.9.208–0.9.221). Shrnutí významných změn:
+
+### Added
+
+- **Ownership verdikt (A1)** — nový `GET /api/ownership-verdict/:ico` + blok
+  „Vlastnictví" v levém sloupci. Popisná syntéza „kdo doopravdy vlastní" ze tří
+  vrstev (akcionáři OR · skutečný majitel SM · GLEIF). Když se zapsaný akcionář
+  a skutečný majitel rozcházejí → signál „drženo přes svěřenský fond / nastrčenou
+  osobu". Popisné, ne hodnotící (§2950/GDPR).
+- **Hlídač přes vlastnickou skupinu (A2)** — nový `GET /api/group-funding/:ico`
+  + lazy karta ve skupině Finance. Sečte dotace + veřejné zakázky přes celou
+  vlastnickou skupinu (holding), ne jen jednu firmu; rozpad po firmách s názvy.
+  Cap 25 firem, „spodní hranice" u velkých firem.
+
+### Changed
+
+- **Sjednocení UI na `/`** — workspace je hlavní stránka na rootu; klasický layout
+  přesunut na `/klasik`; legacy `/v2` → 301 redirect na `/` (zachová query).
+  Odstraněn `/v2` alias a stará cesta z celé aplikace (`public/index.html` =
+  workspace, `public/klasik/`, `public/js/workspace.js`, `public/pro.html`).
+- **E-mail alerty (monitoring) — robustnost + observabilita:** checker přeskočí
+  degradovaná DD data (výpadek ARES/Hlídače) → konec falešných alertů; scheduler
+  loguje výsledek běhu.
+
+### Fixed
+
+- **ARES limit >1000 zásahů** — `searchByAddressService` i forenzní „sídlo" vracejí
+  počet z chybové hlášky místo tvrdé chyby (velká sdílená sídla teď fungují).
+- **Cache — necachovat degradované výsledky** — když upstream (hl. Hlídač státu)
+  přechodně selže, výsledek se uloží jen krátce do paměti a NEpersistuje (self-heal
+  místo 24h „zamrznutí", které neopravil ani tvrdý refresh). Predikát `isComplete`
+  na HS-backed routách (isir/dotace/smlouvy/ubo/pepsankce) + dd.
+- Zastaralý test `crossCompanyPersonsService` (změna na auto-expand), doplněné SPDX
+  hlavičky (CI green).
+
 ## [0.4.1] — 2026-06-08
 
 ### Added
