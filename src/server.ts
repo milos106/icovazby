@@ -611,6 +611,7 @@ const firmaHandler = async (req: FastifyRequest, reply: FastifyReply) => {
           ...(report as object),
           identification,
           _canonical: `${base}${firmaPath(r.ico, r.obchodniJmeno)}`,
+          _cite: `${base}${firmaPath(r.ico, r.obchodniJmeno)}?utm_source=ai`,
           _source: "icovazby.cz",
           _mcp: "https://ares-mcp.icovazby.cz/mcp",
         });
