@@ -1,0 +1,31 @@
+# IČO vazby (icovazby.cz)
+
+> Prověrka českých firem a jejich propojení. Agreguje 10+ veřejných českých
+> registrů (ARES, Veřejný rejstřík, RŽP, ADIS DPH, ISIR, ČNB, EU sankce, Hlídač
+> státu) do rizikového skóre, holding/UBO discovery a grafu vazeb firem a osob.
+> Data mají informativní charakter, nejsou autoritativní pro právní účely.
+
+Pro AI agenty: data o každé firmě jsou dostupná strojově čitelně, bez scrapování HTML.
+
+## Strojově čitelná data (per firma)
+- JSON:     https://icovazby.cz/firma/{ICO}.json
+- Markdown: https://icovazby.cz/firma/{ICO}.md
+- (totéž lze získat přes hlavičku `Accept: application/json` / `Accept: text/markdown` na https://icovazby.cz/firma/{ICO})
+- Příklad:  https://icovazby.cz/firma/26185610.json
+- Adresář všech firem: https://icovazby.cz/firmy
+
+## Nástroj pro agenty (MCP — doporučeno místo scrapování)
+- MCP server (Streamable HTTP): https://ares-mcp.icovazby.cz/mcp
+- Popis nástrojů (llms.txt):    https://ares-mcp.icovazby.cz/llms.txt
+- npm: `@milos106/ares-mcp` · oficiální MCP registr: `io.github.milos106/ares-mcp`
+- Nástroje: lookup firmy, due diligence (🟢🟡🔴 risk), statutární orgán, insolvence,
+  DPH, živnosti, vyhledávání, graf vazeb osob; na hostovaném endpointu navíc
+  vlastnické vazby/holding, skuteční majitelé a dotace/zakázky (Hlídač státu).
+
+## Zdroje dat (atribuce)
+ARES (MF ČR, CC BY 4.0) · Veřejný rejstřík (MSp ČR) · ISIR · ADIS (MF ČR) ·
+ČNB · EU Consolidated Sanctions · Hlídač státu (CC BY 3.0 CZ).
+
+## Web pro lidi
+- Hlavní stránka: https://icovazby.cz
+- Průvodci: https://icovazby.cz/pruvodce/index.html
