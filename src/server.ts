@@ -30,6 +30,7 @@ import {
   indexStats,
   listSubjects,
 } from "./persons_index/store.js";
+import { renderCompanyMarkdown } from "./seo/companyMarkdown.js";
 import { firmaPath, renderCompanyPage } from "./seo/companyPage.js";
 import { renderDirectoryPage } from "./seo/directoryPage.js";
 import {
@@ -576,7 +577,42 @@ app.get("/report/:ico", expensiveCfg, async (req: FastifyRequest, reply) => {
 // levné, bez ARES volání). Globální rate-limit ať Googlebot crawluje; cache persist.
 const firmaHandler = async (req: FastifyRequest, reply: FastifyReply) => {
   try {
-    const ico = (req.params as { ico: string }).ico;
+    let ico = (req.params as { ico: string }).ico;
+    // AEO (Q1.1): strojově čitelné varianty pro agenty — přípona .json/.md
+    // nebo Accept hlavička. HTML zůstává default pro lidi/Googlebot.
+    let format: "html" | "json" | "md" = "html";
+    if (ico.endsWith(".json")) {
+      format = "json";
+      ico = ico.slice(0, -5);
+    } else if (ico.endsWith(".md")) {
+      format = "md";
+      ico = ico.slice(0, -3);
+    } else {
+      const accept = String(req.headers.accept ?? "");
+      if (accept.includes("text/markdown")) format = "md";
+      else if (accept.includes("application/json") && !accept.includes("text/html")) format = "json";
+    }
+
+    if (format !== "html") {
+      const report = await cached(`firma-data:${ico}`, () => fullDueDiligenceService(client, ico), {
+        persist: true,
+      });
+      const r = report as { ico: string; obchodniJmeno: string | null };
+      const base = process.env.PUBLIC_BASE_URL ?? "https://icovazby.cz";
+      reply.header("cache-control", "public, max-age=86400");
+      if (format === "json") {
+        reply.type("application/json").send({
+          ...(report as object),
+          _canonical: `${base}${firmaPath(r.ico, r.obchodniJmeno)}`,
+          _source: "icovazby.cz",
+          _mcp: "https://ares-mcp.icovazby.cz/mcp",
+        });
+      } else {
+        reply.type("text/markdown; charset=utf-8").send(renderCompanyMarkdown(report as never));
+      }
+      return;
+    }
+
     const html = await cached(
       // -v2: slug canonical + interní prolinkování (Etapa 2); ignoruje Etapa-1 cache.
       `firma-seo-v2:${ico}`,
@@ -597,6 +633,23 @@ const firmaHandler = async (req: FastifyRequest, reply: FastifyReply) => {
 };
 app.get("/firma/:ico", firmaHandler);
 app.get("/firma/:ico/:slug", firmaHandler); // slug je kosmetický; klíč je IČO, canonical → slug URL
+
+// AEO (Q1.2): discovery manifest pro AI agenty — ukazuje na MCP server + llms.txt.
+app.get("/.well-known/mcp.json", async (_req: FastifyRequest, reply) => {
+  reply.header("cache-control", "public, max-age=86400").type("application/json").send({
+    name: "io.github.milos106/ares-mcp",
+    description:
+      "MCP server for ARES — Czech business registry: company lookup, due diligence, statutory bodies, insolvency, ownership/UBO and public funding.",
+    mcp: { transport: "streamable-http", url: "https://ares-mcp.icovazby.cz/mcp" },
+    llms_txt: "https://icovazby.cz/llms.txt",
+    registry: "https://registry.modelcontextprotocol.io",
+    npm: "@milos106/ares-mcp",
+    machine_readable_pages: {
+      json: "https://icovazby.cz/firma/{ico}.json",
+      markdown: "https://icovazby.cz/firma/{ico}.md",
+    },
+  });
+});
 
 // SEO (Etapa 3a): procházecí adresář firem — dává crawl cesty z indexovaných
 // stránek na /firma (řeší orphan / "objeveno, ale neindexováno"). Stránkováno.
