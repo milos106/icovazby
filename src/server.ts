@@ -32,6 +32,7 @@ import {
 } from "./persons_index/store.js";
 import { renderCompanyMarkdown } from "./seo/companyMarkdown.js";
 import { firmaPath, renderCompanyPage } from "./seo/companyPage.js";
+import { legalFormLabel } from "./seo/legalForm.js";
 import { renderDirectoryPage } from "./seo/directoryPage.js";
 import {
   crossCompanyPersonsService,
@@ -601,8 +602,14 @@ const firmaHandler = async (req: FastifyRequest, reply: FastifyReply) => {
       const base = process.env.PUBLIC_BASE_URL ?? "https://icovazby.cz";
       reply.header("cache-control", "public, max-age=86400");
       if (format === "json") {
+        // doplň čitelný název právní formy (kód ponecháme pro agenty)
+        const idf = (report as { identification?: { pravniForma?: string | null } }).identification;
+        const identification = idf
+          ? { ...idf, pravniFormaText: legalFormLabel(idf.pravniForma) }
+          : idf;
         reply.type("application/json").send({
           ...(report as object),
+          identification,
           _canonical: `${base}${firmaPath(r.ico, r.obchodniJmeno)}`,
           _source: "icovazby.cz",
           _mcp: "https://ares-mcp.icovazby.cz/mcp",
