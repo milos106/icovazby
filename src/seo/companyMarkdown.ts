@@ -2,6 +2,7 @@
 // Nízko-tokenová, bez HTML balastu. Stejná veřejná data jako /firma HTML.
 
 import { firmaPath } from "./companyPage.js";
+import { legalFormLabel } from "./legalForm.js";
 
 const BASE_URL = process.env.PUBLIC_BASE_URL ?? "https://icovazby.cz";
 
@@ -36,7 +37,7 @@ export function renderCompanyMarkdown(r: DdLike): string {
   lines.push(`# ${name}`);
   lines.push("");
   const head = [`**IČO:** ${r.ico}`];
-  if (id.pravniForma) head.push(`**Právní forma:** ${id.pravniForma}`);
+  if (id.pravniForma) head.push(`**Právní forma:** ${legalFormLabel(id.pravniForma)}`);
   if (id.sidloText) head.push(`**Sídlo:** ${id.sidloText}`);
   lines.push(head.join(" · "));
   lines.push(`**Rizikové skóre:** ${RISK[r.risk.level]}`);

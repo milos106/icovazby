@@ -4,6 +4,8 @@
 // firma-specifickým <title>/meta/OG + JSON-LD schema.org/Organization +
 // interní odkazy na propojené firmy (Etapa 2). Záměrně bez CDN/JS závislostí.
 
+import { legalFormLabel } from "./legalForm.js";
+
 const BASE_URL = process.env.PUBLIC_BASE_URL ?? "https://icovazby.cz";
 
 const DIACRITICS: Record<string, string> = {
@@ -70,7 +72,8 @@ const RISK = {
 
 function metaDescription(r: DdLike): string {
   const parts: string[] = [`${r.obchodniJmeno ?? "Firma"} (IČO ${r.ico})`];
-  if (r.identification.pravniForma) parts.push(r.identification.pravniForma);
+  if (r.identification.pravniForma)
+    parts.push(legalFormLabel(r.identification.pravniForma) as string);
   if (r.identification.sidloText) parts.push(r.identification.sidloText);
   const tail: string[] = [`rizikové skóre ${RISK[r.risk.level].label}`];
   if (r.statutary.aktivniCount) tail.push(`${r.statutary.aktivniCount} ve statutárním orgánu`);
@@ -169,7 +172,7 @@ export function renderCompanyPage(report: DdLike, related: RelatedCompany[] = []
 </head>
 <body>
 <h1>${esc(name)}</h1>
-<p class="sub">IČO ${esc(r.ico)}${r.identification.pravniForma ? ` · ${esc(r.identification.pravniForma)}` : ""}${
+<p class="sub">IČO ${esc(r.ico)}${r.identification.pravniForma ? ` · ${esc(legalFormLabel(r.identification.pravniForma))}` : ""}${
     r.identification.sidloText ? ` · ${esc(r.identification.sidloText)}` : ""
   }</p>
 
@@ -184,7 +187,7 @@ ${findings ? `<ul>${findings}</ul>` : ""}
 <h2>Identifikace</h2>
 <ul>
   <li>IČO: <strong>${esc(r.ico)}</strong></li>
-  ${r.identification.pravniForma ? `<li>Právní forma: ${esc(r.identification.pravniForma)}</li>` : ""}
+  ${r.identification.pravniForma ? `<li>Právní forma: ${esc(legalFormLabel(r.identification.pravniForma))}</li>` : ""}
   ${r.identification.datumVzniku ? `<li>Datum vzniku: ${esc(r.identification.datumVzniku)}</li>` : ""}
   ${r.identification.datumZaniku ? `<li>Datum zániku: ${esc(r.identification.datumZaniku)}</li>` : ""}
   ${r.identification.sidloText ? `<li>Sídlo: ${esc(r.identification.sidloText)}</li>` : ""}
