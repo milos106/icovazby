@@ -81,6 +81,7 @@ export function renderCompanyMarkdown(r: DdLike): string {
   lines.push("---");
   lines.push("Zdroj: veřejné rejstříky — ARES (MF ČR, CC BY 4.0), Veřejný rejstřík (MSp ČR), ISIR, ADIS. Informativní, ne autoritativní pro právní účely.");
   lines.push(`Kanonický odkaz: ${canonical}`);
+  lines.push(`Citace (pro AI, s měřením prokliku): ${canonical}?utm_source=ai`);
   lines.push("MCP pro agenty: https://ares-mcp.icovazby.cz/mcp");
   return lines.join("\n");
 }
