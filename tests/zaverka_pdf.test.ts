@@ -71,3 +71,29 @@ describe("parseRozvahaMulti — výběr konzistentní bilance z více listin", (
     expect(r.confidence).toBe("low");
   });
 });
+
+describe("tržby — rozšířené pokrytí Výkazu zisku a ztráty", () => {
+  it("nová forma: Tržby za prodej zboží (č.ř. 02, obchodní firma)", () => {
+    const vzz = "VÝKAZ ZISKU A ZTRÁTY\nII.    Tržby za prodej zboží     02     5 000 000    4 000 000";
+    const r = parseRozvahaMulti([INDIV, vzz], "url", 2023)!;
+    expect(r.trzby[0]).toBe(5000000);
+  });
+
+  it("plná forma: Tržby za prodej vlastních výrobků a služeb", () => {
+    const vzz = "I.  Tržby za prodej vlastních výrobků a služeb     1 234 567     1 111 111";
+    const r = parseRozvahaMulti([INDIV, vzz], "url", 2021)!;
+    expect(r.trzby[0]).toBe(1234567);
+  });
+
+  it("stará forma: Výkony", () => {
+    const vzz = "II.   Výkony     04     9 000 000     8 000 000";
+    const r = parseRozvahaMulti([INDIV, vzz], "url", 2022)!;
+    expect(r.trzby[0]).toBe(9000000);
+  });
+
+  it("„Výkonová spotřeba“ (náklad) se NEbere jako tržby", () => {
+    const vzz = "A.  Výkonová spotřeba     2 000 000     1 900 000";
+    const r = parseRozvahaMulti([INDIV, vzz], "url", 2020)!;
+    expect(r.trzby[0]).toBeNull();
+  });
+});

@@ -23,6 +23,15 @@ const UA = "ares-web/0.2 (+https://github.com/milos106/ares-web)";
 const MAX_PDF_BYTES = 30 * 1024 * 1024; // 30 MB strop
 const DL_TIMEOUT_MS = 25000;
 
+// undici: set-cookie NELZE číst přes headers.get("set-cookie") (Fetch spec ho z
+// get() filtruje → vrací null). Správně je getSetCookie(). Bereme první cookie
+// (name=value) — u or.justice je to BIG-IP routing cookie NUTNÁ pro stažení PDF;
+// bez ní backend u části souborů vrátí HTML místo PDF.
+function firstSetCookie(h: { getSetCookie?: () => string[] }): string | undefined {
+  const arr = h.getSetCookie?.() ?? [];
+  return arr.length ? arr[0]!.split(";")[0] : undefined;
+}
+
 export interface ZaverkaCisla {
   obdobi: { bezne: number | null; minule: number | null };
   jednotka: "tis. Kč" | "Kč";
@@ -129,8 +138,17 @@ function extractFields(text: string): Fields {
     cr: [55, 53], crHint: /výsledek hospodaření za účetní|čistý zisk|po zdanění/i,
   });
   const trzby = valuesFor(text, {
-    labels: [/Tržby z prodeje výrobků a služeb/i, /Tržby za prodej vlastních výrobků/i, /Tržby celkem/i, /Tržby z prodeje vlastních/i],
-    cr: [1], crHint: /tržby z prodeje|tržby za prod/i,
+    labels: [
+      /Tržby z prodeje výrobků a služeb/i, // č.ř. 01 (vyhláška 500/2002 od 2016)
+      /Tržby za prodej vlastních výrobků a služeb/i, // starší plná forma
+      /Tržby za prodej vlastních výrobků/i,
+      /Tržby za prodej zboží/i, // č.ř. 02 — obchodní firmy (dřív jen výrobky/služby)
+      /Tržby z prodeje zboží/i,
+      /Tržby celkem/i,
+      /Tržby z prodeje vlastních/i,
+      /\bVýkony\b/i, // předvyhláškový agregát tržeb (NE „Výkonová spotřeba" = náklad)
+    ],
+    cr: [1, 2], crHint: /tržby z prodeje|tržby za prod|\bvýkony\b/i,
   });
 
   // #3 Konzistenční gate per pole — radši mezeru než tiché špatné číslo:
@@ -326,24 +344,25 @@ async function collectFileUrls(detailUrls: string[]): Promise<{ urls: string[]; 
   let cookie: string | undefined;
   // Prime session přes výpis firmy — spolehlivě nastaví BIG-IP cookie (routing na
   // správný backend), takže následné stažení nevrací HTML místo PDF. (Jako `curl -c jar`.)
+  // Prime opakuj — or.justice cookie občas nevrátí hned; bez ní část souborů
+  // (typicky nekonsolidovaná závěrka) vrací HTML místo PDF.
   const subj = detailUrls[0]?.match(/subjektId=(\d+)/)?.[1];
-  if (subj) {
+  for (let a = 0; subj && a < 3 && !cookie; a++) {
     try {
       const res = await undiciFetch(`${OR_BASE}/ias/ui/vypis-sl-firma?subjektId=${subj}`, { headers: { "user-agent": UA, accept: "text/html" } });
-      const sc = res.headers.get("set-cookie");
-      if (sc) cookie = sc.split(";")[0];
+      cookie = firstSetCookie(res.headers);
       await res.text();
     } catch {
-      /* prime selhal → pokračuj bez něj */
+      /* prime selhal → zkus znovu */
     }
+    if (!cookie) await new Promise((r) => setTimeout(r, 400));
   }
   const urls: string[] = [];
   for (const du of detailUrls) {
     try {
       const res = await undiciFetch(du, { headers: { "user-agent": UA, accept: "text/html", ...(cookie ? { cookie } : {}) } });
       if (!res.ok) continue;
-      const sc = res.headers.get("set-cookie");
-      if (sc && !cookie) cookie = sc.split(";")[0];
+      if (!cookie) cookie = firstSetCookie(res.headers);
       const html = await res.text();
       for (const m of html.matchAll(/\/ias\/content\/download\?id=([a-f0-9]+)/gi)) {
         urls.push(`${OR_BASE}/ias/content/download?id=${m[1]}`);
@@ -420,3 +439,4 @@ export async function extractZaverkaCisla(
     ? { error: "Ani OCR čísla nepřečetl — sken je nečitelný nebo netypická forma. Otevři PDF ručně." }
     : { error: "Čísla z výkazů se nepodařilo přečíst (sken nebo strukturovaný formát) — otevři PDF ručně." };
 }
+
