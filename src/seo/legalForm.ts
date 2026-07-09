@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // Mapování číselných kódů právní formy (ARES číselník) na čitelný popis.
 // Použito v HTML/MD/JSON výstupech firmy. Neznámý kód → vrátí se beze změny.
 
