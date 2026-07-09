@@ -97,9 +97,15 @@ function valuesFor(
 
 const ZAV_POLE = ["Aktiva", "Vlastní kapitál", "Cizí zdroje", "Výsledek hosp.", "Tržby"] as const;
 
-/** Parsuje rozvahu/výsledovku z layout textu. Per-POLE: vrátí, co se podaří přečíst
- *  (i jen část), a kolik polí chybí. Null jen když nepřečte VŮBEC nic. */
-function parseRozvaha(text: string, pdfUrl: string, rok: number | null): ZaverkaCisla | null {
+type Pair = [number | null, number | null];
+interface Fields { aktiva: Pair; vk: Pair; cizi: Pair; vh: Pair; trzby: Pair }
+
+/** Aktiva ≈ pasiva (VK + cizí) v rozumné toleranci — bilanční kontrola. */
+const balances = (a: number | null, v: number | null, c: number | null): boolean =>
+  a != null && v != null && c != null && a > 0 && Math.abs(v + c - a) / a < 0.02;
+
+/** Vytáhne surová pole z JEDNOHO textu (bez confidence/balení). Sdílené single/multi. */
+function extractFields(text: string): Fields {
   // „Vlastní kapitál a závazky" NEbrat jako kapitál ani cizí zdroje (= pasiva celkem).
   const aktiva = valuesFor(text, {
     labels: [/\bAKTIVA\s+CELKEM\b/i, /\bAktiva celkem\b/i, /Celková\s+aktiva/i, /Aktiva\s+celkem/i],
@@ -136,35 +142,74 @@ function parseRozvaha(text: string, pdfUrl: string, rok: number | null): Zaverka
     // VK == aktiva = stejná záměna → zahoď
     if (vk[col] != null && aktiva[col] != null && vk[col] === aktiva[col]) vk[col] = null;
   }
+  return { aktiva, vk, cizi, vh, trzby };
+}
 
-  const fields = [aktiva, vk, cizi, vh, trzby];
+/** Zabalí pole do výsledku (precteno/chybi/jednotka/confidence). */
+function packageResult(f: Fields, unitText: string, pdfUrl: string, rok: number | null): ZaverkaCisla | null {
+  const fields = [f.aktiva, f.vk, f.cizi, f.vh, f.trzby];
   const precteno = fields.filter((v) => v[0] != null).length;
   if (precteno === 0) return null; // úplně nečitelné (sken / strukturovaný formát / netypická forma)
   const chybi = ZAV_POLE.filter((_, i) => fields[i]![0] == null) as unknown as string[];
-
-  const jednotka: "tis. Kč" | "Kč" = /v\s+(?:tis(?:íc)?\.?|celých\s+tis)/i.test(text) ? "tis. Kč" : "Kč";
+  const jednotka: "tis. Kč" | "Kč" = /v\s+(?:tis(?:íc)?\.?|celých\s+tis)/i.test(unitText) ? "tis. Kč" : "Kč";
   const maxY = rok; // rok z metadat Sbírky listin (spolehlivé, neparsujeme z PDF)
-
-  // confidence: Aktiva ≈ pasiva (VK + cizí) v rozumné toleranci
-  let confidence: "high" | "low" = "low";
-  if (aktiva[0] != null && vk[0] != null && cizi[0] != null) {
-    const pasiva = (vk[0] || 0) + (cizi[0] || 0);
-    if (aktiva[0] > 0 && Math.abs(pasiva - aktiva[0]) / aktiva[0] < 0.02) confidence = "high";
-  }
-
+  const confidence: "high" | "low" = balances(f.aktiva[0], f.vk[0], f.cizi[0]) ? "high" : "low";
   return {
     obdobi: { bezne: maxY, minule: maxY ? maxY - 1 : null },
     jednotka,
-    aktivaCelkem: aktiva,
-    vlastniKapital: vk,
-    ciziZdroje: cizi,
-    vysledekHospodareni: vh,
-    trzby,
+    aktivaCelkem: f.aktiva,
+    vlastniKapital: f.vk,
+    ciziZdroje: f.cizi,
+    vysledekHospodareni: f.vh,
+    trzby: f.trzby,
     confidence,
     zdrojPdfUrl: pdfUrl,
     precteno,
     chybi,
   };
+}
+
+/** Parsuje z JEDNOHO textu (zpětně kompatibilní — OCR cesta / fallback / testy). */
+export function parseRozvaha(text: string, pdfUrl: string, rok: number | null): ZaverkaCisla | null {
+  return packageResult(extractFields(text), text, pdfUrl, rok);
+}
+
+/**
+ * Parsuje z VÍCE souborů jedné listiny. Řeší závěrky, kde je současně konsolidovaná
+ * i nekonsolidovaná (individuální) rozvaha (AGROFERT ap.): parsování spojeného textu
+ * bere první výskyt polí, takže se křížově pomíchají (aktiva z konsolidované, cizí
+ * zdroje z jiného výkazu → aktiva ≠ pasiva). Vybere bilanční blok, který SEDÍ
+ * (aktiva ≈ VK+cizí), s preferencí NEkonsolidované (konzistence napříč roky);
+ * tržby/VH doplní z libovolného souboru. Když nic nesedí → fallback na spojený text.
+ */
+export function parseRozvahaMulti(texts: string[], pdfUrl: string, rok: number | null): ZaverkaCisla | null {
+  const combined = texts.join("\n");
+  const files = texts
+    .filter((t) => t && t.replace(/\s/g, "").length >= 40)
+    .map((t) => ({
+      f: extractFields(t),
+      // nekonsolidovaná = explicitní marker, nebo prostě text bez zmínky o konsolidaci
+      nekon: /nekonsolidovan|sestaven[aá] jako nekonsolidovan/i.test(t) || !/konsolidovan/i.test(t),
+    }));
+
+  // bilanční bloky, které sedí; preferuj nekonsolidované, při shodě větší aktiva.
+  const balancing = files
+    .filter((x) => balances(x.f.aktiva[0], x.f.vk[0], x.f.cizi[0]))
+    .sort((a, b) => (a.nekon === b.nekon ? (b.f.aktiva[0]! - a.f.aktiva[0]!) : a.nekon ? -1 : 1));
+
+  const combinedFields = extractFields(combined);
+  const bal = balancing[0]?.f;
+  // tržby/VH: z vybraného bilančního bloku, jinak první dostupné napříč soubory, jinak spojený text
+  const pick = (sel: (f: Fields) => Pair): Pair => {
+    if (bal && sel(bal)[0] != null) return sel(bal);
+    for (const x of files) if (sel(x.f)[0] != null) return sel(x.f);
+    return sel(combinedFields);
+  };
+  const merged: Fields = bal
+    ? { aktiva: bal.aktiva, vk: bal.vk, cizi: bal.cizi, vh: pick((f) => f.vh), trzby: pick((f) => f.trzby) }
+    : combinedFields; // nic nesedí → staré chování (první výskyt ze spojeného textu)
+
+  return packageResult(merged, combined, pdfUrl, rok);
 }
 
 const OCR_MAX_PAGES = 6; // strop (bound ~60s); u velkých závěrek je rozvaha za úvodem/auditem
@@ -331,14 +376,14 @@ export async function extractZaverkaCisla(
   }
   if (files.length === 0) return { error: "Soubory listiny se nepodařilo stáhnout (token vypršel / sken / formát)." };
 
-  let combined = ""; // text všech čitelných souborů → rozvaha i výkaz pohromadě
+  const texts: string[] = []; // text PER SOUBOR → parseRozvahaMulti vybere konzistentní bilanci
   const ocrTodo: Array<{ path: string; url: string }> = [];
   const firstUrl = files[0]!.url;
   for (const { path, url } of files) {
     let keep = false;
     try {
       const text = await run("pdftotext", ["-layout", path, "-"]);
-      combined += "\n" + text;
+      texts.push(text);
       if (opts.ocr && text.replace(/\s/g, "").length < 200) {
         ocrTodo.push({ path, url });
         keep = true; // sken → necháme soubor pro OCR
@@ -350,21 +395,21 @@ export async function extractZaverkaCisla(
     }
   }
 
-  let parsed = parseRozvaha(combined, firstUrl, rok);
+  let parsed = parseRozvahaMulti(texts, firstUrl, rok);
   if (parsed) return parsed;
 
-  // OCR fallback (drahé) — jen na žádost a jen u skenů; OCR text přidáme k textovému.
+  // OCR fallback (drahé) — jen na žádost a jen u skenů; OCR text přidáme jako další soubor.
   if (opts.ocr && ocrTodo.length) {
     for (const { path } of ocrTodo) {
       try {
-        combined += "\n" + (await ocrPdfText(path));
+        texts.push(await ocrPdfText(path));
       } catch {
         /* OCR strany selhal */
       } finally {
         unlink(path).catch(() => {});
       }
     }
-    parsed = parseRozvaha(combined, firstUrl, rok);
+    parsed = parseRozvahaMulti(texts, firstUrl, rok);
     if (parsed) {
       parsed.source = "ocr";
       parsed.confidence = "low"; // OCR je vždy nejistý (záměny 0/O, 5/S, 8/B)

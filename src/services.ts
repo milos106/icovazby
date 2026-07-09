@@ -2033,11 +2033,14 @@ export async function getZaverkaVyvojService(icoInput: string) {
   const ico = String(icoInput).replace(/\D/g, "").padStart(8, "0");
   const zaverky = (sl.zaverky ?? []).slice().sort((a, b) => b.rok - a.rok);
 
-  const have = new Set(dbGetFinancials(ico).map((r) => r.rok));
+  // Přeskakuj jen roky, které už máme v HIGH kvalitě (aktiva=pasiva). Low roky
+  // (možná trefené do flaky stažení / smíchané konsolidované+individuální) znovu
+  // přeparsujeme → self-heal na high, jakmile se stáhne správný výkaz.
+  const have = new Set(dbGetFinancials(ico).filter((r) => r.confidence === "high").map((r) => r.rok));
   let parsed = 0;
   for (const z of zaverky) {
     if (parsed >= 4) break;
-    if (have.has(z.rok) && have.has(z.rok - 1)) continue; // pár let už máme → šetři stahování
+    if (have.has(z.rok) && have.has(z.rok - 1)) continue; // pár let už máme v high → šetři stahování
     const urls = z.detailUrls?.length ? z.detailUrls : z.detailUrl ? [z.detailUrl] : [];
     if (!urls.length) continue;
     const res = await extractZaverkaCisla(urls, z.rok);
@@ -2055,7 +2058,7 @@ export async function getZaverkaVyvojService(icoInput: string) {
         ciziZdroje: res.ciziZdroje[idx], vysledekHospodareni: res.vysledekHospodareni[idx],
         trzby: res.trzby[idx], jednotka: res.jednotka, confidence: res.confidence, source: "pdftotext",
       });
-      have.add(rok);
+      if (res.confidence === "high") have.add(rok); // jen high „uzamkne" rok proti přeparsování
     }
   }
 
