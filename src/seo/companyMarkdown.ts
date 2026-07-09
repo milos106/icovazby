@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // Strojově čitelná Markdown varianta firmy pro AI agenty / answer-enginy (AEO).
 // Nízko-tokenová, bez HTML balastu. Stejná veřejná data jako /firma HTML.
 

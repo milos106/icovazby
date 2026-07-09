@@ -991,7 +991,18 @@ app.get("/api/sbirka-listin/:ico", async (req: FastifyRequest, reply) => {
 app.get("/api/zaverka-cisla/:ico", async (req: FastifyRequest, reply) => {
   try {
     const ico = (req.params as { ico: string }).ico;
-    reply.send(await cached(`zavcisla:${ico}`, () => getZaverkaCislaService(ico), { persist: true }));
+    // isComplete: persistuj jen HIGH-confidence (aktiva=pasiva) nebo terminální
+    // „firma nemá závěrky". Low/error nepersistuj → krátká TTL + retry: pokud se
+    // low trefila do flaky stažení (chybějící individuální výkaz), příště se self-healí.
+    reply.send(await cached(`zavcisla:${ico}`, () => getZaverkaCislaService(ico), {
+      persist: true,
+      isComplete: (v) => {
+        const r = v as { applicable?: boolean; cisla?: { confidence?: string } } | null | undefined;
+        if (!r) return false;
+        if (r.applicable === false) return true; // firma nemá závěrky → terminální
+        return r.cisla?.confidence === "high";
+      },
+    }));
   } catch (e) {
     sendError(reply, e);
   }
