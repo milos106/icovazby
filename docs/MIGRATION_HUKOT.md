@@ -139,7 +139,7 @@ Z (před):                                       Na (po):
 
 ### Databáze (MySQL 8.0 → MariaDB 10.11)
 - [x] Export `aps_10406` + `db_monitoring` přes phpMyAdmin (gzip). Kompatibilita ověřena (žádné utf8mb4_0900, vše InnoDB)
-- [x] Import na ivz1 MariaDB 10.11. Lokální user `db_monitoring`@localhost (heslo 11MiDa22). Auth tabulka `fve_users` (z wp_users + table_monitoring)
+- [x] Import na ivz1 MariaDB 10.11. Lokální user `db_monitoring`@localhost (heslo NENÍ v repu — viz `~/Stažené/dulezite/`; rotováno 2026-07-22 po úniku ve veřejném repu). Auth tabulka `fve_users` (z wp_users + table_monitoring)
 - [x] Finální čerstvý dump `db_monitoring` při nočním cutoveru (zachytit celý den) → re-import. Záloha předchozího stavu v `/root/simplesolar-migration/`
 
 ### Nový web (redesign V3, ne migrace)
