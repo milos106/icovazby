@@ -339,7 +339,7 @@ Z (před):                                       Na (po):
   - WG peery: desktop (`10.7.0.2`), telefon, externí osoba read-only Adminer (`10.7.0.5`, AllowedIPs jen `10.7.0.1/32`, UFW restrikce). Server pubkey `pYouF8OkSrt23DJQqZ+lQa0WC8/N/rpSi2/RhNuvBXo=`, endpoint `:51820`.
   - Seznam SMTP heslo (relay pro poptávkový formulář) v `/etc/postfix/sasl_passwd` na ivz1 (root, chmod 600).
   - Cloudflare účet (DNS + Email Routing) = osobní účet uživatele. Recovery codes: u uživatele.
-  - DB hesla: `db_monitoring` (`11MiDa22`), v `inc/fve.php` + `startscript.php` na ivz1.
+  - DB hesla: `db_monitoring` (heslo NENÍ v repu — viz `~/Stažené/dulezite/`, rotováno 2026-07-22), v `inc/fve.php` + `startscript.php` na ivz1.
 
 ---
 
